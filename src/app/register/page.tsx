@@ -96,15 +96,18 @@ function RegisterForm() {
       });
 
       if (error) {
-        // Dịch các mã lỗi phổ biến của Supabase sang tiếng Việt thân thiện
+        console.error("Lỗi đăng ký (dev log):", error.message);
         if (error.message.includes("User already registered") || error.message.includes("already exists")) {
           setErrorMessage("Email này đã được đăng ký tài khoản. Vui lòng đăng nhập hoặc sử dụng email khác.");
         } else if (error.message.includes("Password should be at least")) {
           setErrorMessage("Mật khẩu quá ngắn. Vui lòng đặt mật khẩu từ 6 ký tự trở lên.");
+        } else if (error.message.includes("rate limit") || error.message.includes("Rate limit")) {
+          setErrorMessage("Hệ thống gửi thư đang có nhiều yêu cầu. Vui lòng thử lại sau ít phút.");
         } else if (error.message.includes("invalid") && error.message.includes("email")) {
-          setErrorMessage("Địa chỉ email không hợp lệ. Vui lòng dùng email thật (ví dụ: @gmail.com).");
+          setErrorMessage("Địa chỉ email không hợp lệ. Vui lòng dùng email đúng định dạng.");
         } else {
-          setErrorMessage(error.message || "Đăng ký không thành công. Vui lòng thử lại sau.");
+          // Bảo mật: Không in raw backend/db error ra ngoài
+          setErrorMessage("Đăng ký không thành công. Vui lòng kiểm tra lại thông tin và thử lại.");
         }
         setIsLoading(false);
         return;

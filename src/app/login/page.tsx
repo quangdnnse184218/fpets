@@ -101,15 +101,15 @@ function LoginForm() {
       });
 
       if (error) {
-        if (error.message.includes("Invalid login credentials")) {
-          setErrorMessage("Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.");
-        } else if (error.message.includes("Email not confirmed")) {
+        console.error("Lỗi xác thực đăng nhập (dev log):", error.message);
+        if (error.message.includes("Email not confirmed")) {
           setIsUnconfirmed(true);
           setErrorMessage("Tài khoản chưa được kích hoạt. Vui lòng kiểm tra hộp thư email để xác nhận.");
         } else if (error.message.includes("Too many requests")) {
           setErrorMessage("Bạn đã thử đăng nhập quá nhiều lần. Vui lòng đợi ít phút và thử lại.");
         } else {
-          setErrorMessage(error.message || "Đăng nhập không thành công.");
+          // Bảo mật: Không để lộ lỗi nội bộ database/schema ra màn hình người dùng
+          setErrorMessage("Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.");
         }
         setIsLoading(false);
         return;
