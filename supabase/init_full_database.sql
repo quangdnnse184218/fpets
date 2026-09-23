@@ -1118,6 +1118,19 @@ DO $$ BEGIN
       ('a0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'cskh@fpets.vn', crypt('Cskh@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"CSKH Hỗ Trợ"}', now(), now()),
       ('a0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'khachhang@fpets.vn', crypt('Khach@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Nguyễn Văn Quang","phone":"0988123456"}', now(), now())
     ON CONFLICT (id) DO NOTHING;
+
+    -- Bổ sung auth.identities để GoTrue xác thực được đăng nhập qua email
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'auth' AND table_name = 'identities') THEN
+      INSERT INTO auth.identities (
+        id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at
+      )
+      VALUES
+        ('a0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', jsonb_build_object('sub', 'a0000000-0000-0000-0000-000000000001', 'email', 'admin@fpets.vn', 'email_verified', true), 'email', 'a0000000-0000-0000-0000-000000000001', now(), now(), now()),
+        ('a0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000002', jsonb_build_object('sub', 'a0000000-0000-0000-0000-000000000002', 'email', 'kho@fpets.vn', 'email_verified', true), 'email', 'a0000000-0000-0000-0000-000000000002', now(), now(), now()),
+        ('a0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000003', jsonb_build_object('sub', 'a0000000-0000-0000-0000-000000000003', 'email', 'cskh@fpets.vn', 'email_verified', true), 'email', 'a0000000-0000-0000-0000-000000000003', now(), now(), now()),
+        ('a0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000004', jsonb_build_object('sub', 'a0000000-0000-0000-0000-000000000004', 'email', 'khachhang@fpets.vn', 'email_verified', true), 'email', 'a0000000-0000-0000-0000-000000000004', now(), now(), now())
+      ON CONFLICT (provider, provider_id) DO NOTHING;
+    END IF;
   END IF;
 END $$;
 
