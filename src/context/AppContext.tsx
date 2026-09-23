@@ -7,7 +7,7 @@ import { BoxType, BOX_TYPES } from "@/mock/boxTypes";
 import { Order, INITIAL_ORDERS } from "@/mock/orders";
 import { Subscription, INITIAL_SUBSCRIPTIONS } from "@/mock/subscriptions";
 import { CurationItem, INITIAL_CURATION_QUEUE } from "@/mock/curationQueue";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 export interface CartItem {
   id: string; // unique cart line id
@@ -136,37 +136,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Khởi tạo và lắng nghe Supabase auth state change
+  // Khởi tạo và lắng nghe Supabase auth state change (với cơ chế kiểm tra an toàn)
   useEffect(() => {
-    const supabase = createClient();
-
-    // 1. Kiểm tra session hiện tại
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        fetchUserProfile(session.user.id, session.user.email);
-      } else {
-        setIsLoggedIn(false);
-        setUser(DEFAULT_USER);
-      }
+    if (!isSupabaseConfigured()) {
       setIsLoadingAuth(false);
-    });
+      return;
+    }
 
-    // 2. Lắng nghe thay đổi auth (đăng nhập, đăng xuất, token refreshed)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+    try {
+      const supabase = createClient();
+
+      // 1. Kiểm tra session hiện tại
+      supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
-          await fetchUserProfile(session.user.id, session.user.email);
+          fetchUserProfile(session.user.id, session.user.email);
         } else {
           setIsLoggedIn(false);
           setUser(DEFAULT_USER);
         }
         setIsLoadingAuth(false);
-      }
-    );
+      }).catch((err) => {
+        console.warn("Lỗi getSession Supabase:", err);
+        setIsLoadingAuth(false);
+      });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+      // 2. Lắng nghe thay đổi auth (đăng nhập, đăng xuất, token refreshed)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (session?.user) {
+            await fetchUserProfile(session.user.id, session.user.email);
+          } else {
+            setIsLoggedIn(false);
+            setUser(DEFAULT_USER);
+          }
+          setIsLoadingAuth(false);
+        }
+      );
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    } catch (err) {
+      console.warn("Lỗi khởi tạo Supabase auth listener:", err);
+      setIsLoadingAuth(false);
+    }
   }, []);
 
   // Auth actions
