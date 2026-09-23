@@ -1,0 +1,17 @@
+==========================================
+HỆ THỐNG TÀI KHOẢN FPETS (TINH GỌN)
+==========================================
+
+1. TÀI KHOẢN QUẢN TRỊ VIÊN (SUPER ADMIN)
+- Toàn quyền hệ thống: Kho hàng, Đơn hàng, Hộp quà, Doanh thu, Khách hàng & Cài đặt
+- Email: admin@fpets.vn
+- Mật khẩu: Admin@123
+- Trang quản trị: /admin/dashboard
+
+2. TÀI KHOẢN KHÁCH HÀNG MẪU (CUSTOMER)
+- Dùng để trải nghiệm giao diện mua sắm và quản lý thú cưng của khách
+- Email: khachhang@fpets.vn
+- Mật khẩu: Khach@123
+- Trang cá nhân: /my-account/pets
+
+(Lưu ý: Mật khẩu có phân biệt chữ hoa/thường, chữ cái đầu tiên luôn viết HOA).

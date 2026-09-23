@@ -1117,8 +1117,6 @@ DO $$ BEGIN
     )
     VALUES
       ('a0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@fpets.vn', crypt('Admin@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Admin Quản Trị"}', false, false, '', '', '', '', '', '', '', '', now(), now()),
-      ('a0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'kho@fpets.vn', crypt('Kho@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Thủ Kho Vận Hành"}', false, false, '', '', '', '', '', '', '', '', now(), now()),
-      ('a0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'cskh@fpets.vn', crypt('Cskh@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"CSKH Hỗ Trợ"}', false, false, '', '', '', '', '', '', '', '', now(), now()),
       ('a0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'khachhang@fpets.vn', crypt('Khach@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Nguyễn Văn Quang"}', false, false, '', '', '', '', '', '', '', '', now(), now())
     ON CONFLICT (id) DO UPDATE SET
       encrypted_password = EXCLUDED.encrypted_password,
@@ -1136,8 +1134,6 @@ DO $$ BEGIN
       )
       VALUES
         ('a0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', jsonb_build_object('sub', 'a0000000-0000-0000-0000-000000000001', 'email', 'admin@fpets.vn', 'email_verified', true), 'email', 'a0000000-0000-0000-0000-000000000001', now(), now(), now()),
-        ('a0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000002', jsonb_build_object('sub', 'a0000000-0000-0000-0000-000000000002', 'email', 'kho@fpets.vn', 'email_verified', true), 'email', 'a0000000-0000-0000-0000-000000000002', now(), now(), now()),
-        ('a0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000003', jsonb_build_object('sub', 'a0000000-0000-0000-0000-000000000003', 'email', 'cskh@fpets.vn', 'email_verified', true), 'email', 'a0000000-0000-0000-0000-000000000003', now(), now(), now()),
         ('a0000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000004', jsonb_build_object('sub', 'a0000000-0000-0000-0000-000000000004', 'email', 'khachhang@fpets.vn', 'email_verified', true), 'email', 'a0000000-0000-0000-0000-000000000004', now(), now(), now())
       ON CONFLICT (provider, provider_id) DO NOTHING;
     END IF;
@@ -1148,8 +1144,6 @@ END $$;
 INSERT INTO public.profiles (id, email, full_name, phone, role, is_active)
 VALUES
   ('a0000000-0000-0000-0000-000000000001', 'admin@fpets.vn', 'Admin Quản Trị', '0901234567', 'admin', true),
-  ('a0000000-0000-0000-0000-000000000002', 'kho@fpets.vn', 'Thủ Kho Vận Hành', '0901234568', 'kho', true),
-  ('a0000000-0000-0000-0000-000000000003', 'cskh@fpets.vn', 'CSKH Hỗ Trợ', '0901234569', 'cskh', true),
   ('a0000000-0000-0000-0000-000000000004', 'khachhang@fpets.vn', 'Nguyễn Văn Quang', '0988123456', 'customer', true)
 ON CONFLICT (id) DO UPDATE SET
   role = EXCLUDED.role,

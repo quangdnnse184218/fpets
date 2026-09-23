@@ -71,9 +71,7 @@ export default function MainNavbar() {
 
   const roleLabels: Record<string, string> = {
     admin: "Quản trị viên",
-    kho: "Thủ kho",
-    cskh: "Chăm sóc khách",
-    customer: "Khách hàng thân thiết",
+    customer: "Thành viên",
   };
 
   return (
@@ -183,8 +181,8 @@ export default function MainNavbar() {
                       <span>Đơn hàng & Gói định kỳ</span>
                     </Link>
 
-                    {/* Nếu là Admin/Staff -> Liên kết đến Admin Dashboard */}
-                    {(user.role === "admin" || user.role === "kho" || user.role === "cskh") && (
+                    {/* Nếu là Admin -> Liên kết đến Admin Dashboard */}
+                    {user.role === "admin" && (
                       <Link
                         href="/admin/dashboard"
                         onClick={() => setUserDropdownOpen(false)}
@@ -264,7 +262,7 @@ export default function MainNavbar() {
                 >
                   Tài khoản của tôi
                 </Link>
-                {(user.role === "admin" || user.role === "kho" || user.role === "cskh") && (
+                {user.role === "admin" && (
                   <Link
                     href="/admin/dashboard"
                     onClick={() => setMobileMenuOpen(false)}

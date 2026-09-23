@@ -27,7 +27,7 @@ import BrandLogo from "@/components/common/BrandLogo";
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { toggleRole, user } = useApp();
+  const { logout, user } = useApp();
 
   const menuItems = [
     { href: "/admin/dashboard", label: "Tổng quan Dashboard", icon: LayoutDashboard },
@@ -47,11 +47,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const currentPage = menuItems.find((m) => m.href === pathname);
   const pageTitle = currentPage ? currentPage.label : "Quản trị hệ thống";
 
-  const handleLogoutAdmin = () => {
-    if (user.role === "admin") {
-      toggleRole();
-    }
-    router.push("/");
+  const handleLogoutAdmin = async () => {
+    await logout();
+    router.push("/login");
   };
 
   return (
@@ -156,8 +154,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <UserCheck className="w-3.5 h-3.5" />
               </span>
               <div className="text-right">
-                <span className="font-bold text-pine-950 block leading-tight">Admin Kho & CSKH</span>
-                <span className="text-[10px] text-grass-700 block">Trực tuyến</span>
+                <span className="font-bold text-pine-950 block leading-tight">Quản trị viên (Admin)</span>
+                <span className="text-[10px] text-grass-700 block font-medium">Toàn quyền hệ thống</span>
               </div>
             </div>
 

@@ -120,7 +120,7 @@ function LoginForm() {
         setTimeout(() => {
           if (redirectUrl) {
             router.push(redirectUrl);
-          } else if (profile?.role === "admin" || profile?.role === "kho" || profile?.role === "cskh") {
+          } else if (profile?.role === "admin") {
             router.push("/admin/dashboard");
           } else {
             router.push("/my-account/pets");
