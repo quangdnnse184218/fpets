@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Be_Vietnam_Pro, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
-import DemoRoleSwitcher from "@/components/common/DemoRoleSwitcher";
 import MainNavbar from "@/components/common/MainNavbar";
 import MobileBottomNav from "@/components/common/MobileBottomNav";
 import Footer from "@/components/common/Footer";
@@ -34,9 +33,6 @@ export default function RootLayout({
     <html lang="vi" className={`${beVietnamPro.variable} ${bricolageGrotesque.variable}`}>
       <body className="min-h-screen flex flex-col bg-surface text-bark-900 antialiased selection:bg-honey-200">
         <AppProvider>
-          {/* Thanh công cụ hỗ trợ demo: Chuyển đổi Khách / Admin & Đăng nhập nhanh */}
-          <DemoRoleSwitcher />
-          
           {/* Header điều hướng chính */}
           <MainNavbar />
 

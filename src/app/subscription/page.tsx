@@ -6,7 +6,6 @@ import {
   Calendar,
   Gift,
   Truck,
-  Sparkles,
   ShieldCheck,
   CheckCircle2,
   PauseCircle,

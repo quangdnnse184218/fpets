@@ -2,10 +2,10 @@
 
 import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { User, MapPin, Phone, Mail, CheckCircle2 } from "lucide-react";
+import { User, MapPin, Phone, Mail, CheckCircle2, LogOut } from "lucide-react";
 
 export default function ProfilePage() {
-  const { user } = useApp();
+  const { user, logout } = useApp();
   const [address, setAddress] = useState(user.address);
   const [phone, setPhone] = useState(user.phone);
   const [saved, setSaved] = useState(false);
@@ -86,6 +86,25 @@ export default function ProfilePage() {
           </button>
         </div>
       </form>
+
+      {/* KHỐI ĐĂNG XUẤT TÀI KHOẢN */}
+      <div className="p-5 rounded-container bg-surface-card border border-surface-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div>
+          <h4 className="font-bold text-bark-900">Quản lý phiên đăng nhập</h4>
+          <p className="text-bark-500 mt-0.5">Đăng xuất khỏi tài khoản trên thiết bị này.</p>
+        </div>
+        <button
+          type="button"
+          onClick={async () => {
+            await logout();
+            window.location.href = "/";
+          }}
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 font-semibold transition-colors"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Đăng xuất tài khoản</span>
+        </button>
+      </div>
     </div>
   );
 }

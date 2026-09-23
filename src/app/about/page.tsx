@@ -5,7 +5,6 @@ import {
   Heart,
   ShieldCheck,
   PackageOpen,
-  Sparkles,
   Users,
   Award,
   CheckCircle2,

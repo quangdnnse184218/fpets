@@ -7,7 +7,7 @@ import {
   Cookie,
   Gamepad2,
   Brush,
-  Sparkles,
+  Droplets,
   HeartHandshake,
   Package,
   Layers,
@@ -54,7 +54,7 @@ export default function ProductItemImage({
       return <Brush className="w-8 h-8 text-pine-700/80" />;
     }
     if (lower.includes("khăn ướt") || lower.includes("vệ sinh")) {
-      return <Sparkles className="w-8 h-8 text-grass-700/80" />;
+      return <Droplets className="w-8 h-8 text-grass-700/80" />;
     }
     if (lower.includes("vòng cổ")) {
       return <CircleDot className="w-8 h-8 text-honey-700/80" />;
