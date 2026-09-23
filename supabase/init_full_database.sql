@@ -1110,14 +1110,24 @@ DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'auth' AND table_name = 'users') THEN
     INSERT INTO auth.users (
       id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
-      raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+      raw_app_meta_data, raw_user_meta_data, is_anonymous, is_sso_user,
+      confirmation_token, recovery_token, email_change_token_new, email_change,
+      email_change_token_current, phone_change, phone_change_token, reauthentication_token,
+      created_at, updated_at
     )
     VALUES
-      ('a0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@fpets.vn', crypt('Admin@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Admin Quản Trị"}', now(), now()),
-      ('a0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'kho@fpets.vn', crypt('Kho@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Thủ Kho Vận Hành"}', now(), now()),
-      ('a0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'cskh@fpets.vn', crypt('Cskh@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"CSKH Hỗ Trợ"}', now(), now()),
-      ('a0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'khachhang@fpets.vn', crypt('Khach@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Nguyễn Văn Quang","phone":"0988123456"}', now(), now())
-    ON CONFLICT (id) DO NOTHING;
+      ('a0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@fpets.vn', crypt('Admin@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Admin Quản Trị"}', false, false, '', '', '', '', '', '', '', '', now(), now()),
+      ('a0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'kho@fpets.vn', crypt('Kho@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Thủ Kho Vận Hành"}', false, false, '', '', '', '', '', '', '', '', now(), now()),
+      ('a0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'cskh@fpets.vn', crypt('Cskh@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"CSKH Hỗ Trợ"}', false, false, '', '', '', '', '', '', '', '', now(), now()),
+      ('a0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'khachhang@fpets.vn', crypt('Khach@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Nguyễn Văn Quang"}', false, false, '', '', '', '', '', '', '', '', now(), now())
+    ON CONFLICT (id) DO UPDATE SET
+      encrypted_password = EXCLUDED.encrypted_password,
+      is_anonymous = false,
+      confirmation_token = '',
+      recovery_token = '',
+      email_change = '',
+      email_change_token_new = '',
+      email_confirmed_at = now();
 
     -- Bổ sung auth.identities để GoTrue xác thực được đăng nhập qua email
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'auth' AND table_name = 'identities') THEN
