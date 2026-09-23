@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useApp } from "@/context/AppContext";
 import { BOX_TYPES } from "@/mock/boxTypes";
 import { formatVND } from "@/lib/formatters";
-import { Sparkles, ArrowLeft, CheckCircle2, Gift, Dog, Cat, PackageOpen, PawPrint, Baby, Zap, Moon } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Gift, Dog, Cat, PackageOpen, PawPrint, Baby, Zap, Moon } from "lucide-react";
 
 export default function PetQuizPage() {
   const router = useRouter();
@@ -111,11 +111,7 @@ export default function PetQuizPage() {
     <div className="max-w-2xl mx-auto py-4 sm:py-8">
       {/* Tiêu đề & thanh tiến trình */}
       {!showResult && (
-        <div className="space-y-4 mb-8 text-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-tag bg-pine-50 text-pine-900 border border-pine-200 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5 text-pine-700" />
-            <span>Pet Quiz 2 phút</span>
-          </div>
+        <div className="space-y-2 mb-8 text-center">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
             Tìm Mystery Box hoàn hảo cho bé cưng
           </h1>
@@ -489,9 +485,8 @@ export default function PetQuizPage() {
             <button
               type="button"
               onClick={handleFinishQuiz}
-              className="px-6 py-2.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+              className="px-6 py-2.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
             >
-              <Sparkles className="w-3.5 h-3.5 text-pine-200" />
               <span>Xem kết quả Mystery Box gợi ý</span>
             </button>
           </div>

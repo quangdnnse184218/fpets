@@ -33,11 +33,8 @@ export default function AdminDashboardPage() {
         <div className="lg:col-span-6 rounded-container bg-pine-950 text-white p-6 sm:p-7 flex flex-col justify-between shadow-md relative overflow-hidden border border-pine-900">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-tag bg-pine-900 text-pine-200 text-xs font-semibold border border-pine-800">
-                <Package className="w-3.5 h-3.5 text-pine-300" />
-                <span>Trọng tâm tác nghiệp kho</span>
-              </span>
-              <span className="text-xs text-pine-300 font-medium">Đợt 1–5/10</span>
+              <span className="text-xs font-semibold text-pine-300">Đợt giao sắp tới</span>
+              <span className="text-xs px-2.5 py-0.5 rounded-tag bg-pine-900 text-pine-200 font-semibold border border-pine-800">01 – 05/10/2026</span>
             </div>
 
             <div>

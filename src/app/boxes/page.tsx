@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { BOX_TYPES } from "@/mock/boxTypes";
 import { formatVND } from "@/lib/formatters";
-import { CheckCircle2, Sparkles, Filter } from "lucide-react";
+import { CheckCircle2, Filter } from "lucide-react";
 
 export default function BoxesPage() {
   const [speciesFilter, setSpeciesFilter] = useState<'all' | 'dog' | 'cat'>('all');
@@ -16,12 +16,9 @@ export default function BoxesPage() {
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
       {/* Tiêu đề trang */}
-      <div className="space-y-3 max-w-2xl">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-tag bg-pine-100 text-pine-800 text-xs font-bold">
-          <span>Hộp quà định kỳ & Mua lẻ 1 lần</span>
-        </div>
+      <div className="space-y-2 max-w-2xl">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-pine-950 font-display">
           Các loại Mystery Box tại FPETS
         </h1>
@@ -83,7 +80,7 @@ export default function BoxesPage() {
                   src={box.imageUrl}
                   alt={`Ảnh chụp thật ${box.name}`}
                   fill
-                  sizes="(max-width: 768px) 100vw, 350px"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 25vw"
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
                 />
                 <span className="absolute top-2 right-2 px-2 py-0.5 rounded-tag bg-white/90 text-bark-800 text-[10px] font-bold shadow-xs">
@@ -147,9 +144,8 @@ export default function BoxesPage() {
       {/* Banner Quiz trợ giúp: Thiết kế phẳng tone pine tinh tế */}
       <div className="p-6 rounded-container bg-pine-50/70 border border-pine-100 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="space-y-1 text-center sm:text-left">
-          <h3 className="text-base font-bold text-pine-950 flex items-center justify-center sm:justify-start gap-1.5">
-            <Sparkles className="w-4 h-4 text-pine-700" />
-            <span>Chưa rõ bé phù hợp với loại hộp nào nhất?</span>
+          <h3 className="text-base font-bold text-pine-950">
+            Chưa rõ bé phù hợp với loại hộp nào nhất?
           </h3>
           <p className="text-xs text-bark-600">
             Làm bài trắc nghiệm 5 câu nhanh để hệ thống tính toán khẩu phần và kích cỡ chuẩn cho bé.
@@ -159,7 +155,7 @@ export default function BoxesPage() {
           href="/quiz"
           className="px-5 py-2.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-xs shrink-0 transition-colors shadow-xs"
         >
-          Làm Pet Quiz 2 phút
+          Làm Pet Quiz cho bé
         </Link>
       </div>
     </div>

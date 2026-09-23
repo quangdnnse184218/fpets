@@ -53,8 +53,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["var(--font-vietnam)", "system-ui", "sans-serif"],
-        display: ["var(--font-vietnam)", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "system-ui", "sans-serif"],
       },
       borderRadius: {
         badge: "4px",

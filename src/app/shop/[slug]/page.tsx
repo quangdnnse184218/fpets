@@ -3,10 +3,12 @@
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { PRODUCTS } from "@/mock/products";
 import { formatVND } from "@/lib/formatters";
+import ProductItemImage from "@/components/common/ProductItemImage";
 import { useApp } from "@/context/AppContext";
-import { Star, CheckCircle2, ShoppingCart, ArrowLeft, ShieldCheck, UtensilsCrossed, PawPrint, Sparkles } from "lucide-react";
+import { Star, CheckCircle2, ShoppingCart, ArrowLeft, ShieldCheck, UtensilsCrossed, PawPrint, HeartHandshake } from "lucide-react";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -45,25 +47,18 @@ export default function ProductDetailPage() {
       </nav>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-        {/* Ảnh sản phẩm */}
-        <div
-          className="w-full aspect-square rounded-container flex flex-col items-center justify-center p-8 text-center border border-surface-border relative"
-          style={{ backgroundColor: product.placeholderColor }}
-        >
-          <div className="mb-3 text-pine-900">
-            {product.category === 'food' ? (
-              <UtensilsCrossed className="w-14 h-14" />
-            ) : product.category === 'toy' ? (
-              <PawPrint className="w-14 h-14" />
-            ) : (
-              <Sparkles className="w-14 h-14" />
-            )}
-          </div>
-          <span className="text-xs text-bark-500 font-medium">
-            [Vị trí ảnh chụp thực tế sản phẩm]
-          </span>
+        {/* Ảnh sản phẩm thật */}
+        <div className="w-full aspect-square rounded-container overflow-hidden border border-surface-border relative bg-surface-muted shadow-sm">
+          <ProductItemImage
+            src={product.image}
+            alt={`Ảnh chụp sản phẩm ${product.name}`}
+            category={product.category}
+            placeholderColor={product.placeholderColor}
+            sizes="(max-width: 768px) 100vw, 50vw"
+            priority
+          />
           {product.badge && (
-            <span className="absolute top-3 left-3 px-2 py-0.5 rounded-badge bg-honey-600 text-white text-xs font-bold">
+            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-badge bg-honey-600 text-white text-xs font-bold shadow-xs z-10">
               {product.badge}
             </span>
           )}

@@ -7,7 +7,7 @@ import Image from "next/image";
 import { BOX_TYPES, SUBSCRIPTION_PLANS } from "@/mock/boxTypes";
 import { formatVND } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
-import { CheckCircle2, ShieldCheck, Heart, Sparkles, PlusCircle, PackageOpen, PawPrint } from "lucide-react";
+import { CheckCircle2, ShieldCheck, Heart, PlusCircle, PackageOpen, PawPrint } from "lucide-react";
 
 export default function BoxDetailPage() {
   const params = useParams();
@@ -73,7 +73,7 @@ export default function BoxDetailPage() {
               src={box.imageUrl}
               alt={`Ảnh chụp thật ${box.name}`}
               fill
-              sizes="(max-width: 1024px) 100vw, 500px"
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
               priority
             />
@@ -273,7 +273,6 @@ export default function BoxDetailPage() {
                 onClick={handleSubscribeCheckout}
                 className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Sparkles className="w-4 h-4 text-pine-200" />
                 <span>Đăng ký {selectedPlan.name} cho bé {selectedPet?.name} ({formatVND(planTotalPrice)})</span>
               </button>
             )}

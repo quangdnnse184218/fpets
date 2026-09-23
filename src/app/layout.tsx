@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Be_Vietnam_Pro } from "next/font/google";
+import { Be_Vietnam_Pro, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/context/AppContext";
 import DemoRoleSwitcher from "@/components/common/DemoRoleSwitcher";
@@ -7,10 +7,16 @@ import MainNavbar from "@/components/common/MainNavbar";
 import MobileBottomNav from "@/components/common/MobileBottomNav";
 import Footer from "@/components/common/Footer";
 
+const bricolageGrotesque = Bricolage_Grotesque({
+  subsets: ["latin", "vietnamese"],
+  variable: "--font-display",
+  display: "swap",
+});
+
 const beVietnamPro = Be_Vietnam_Pro({
   weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin", "vietnamese"],
-  variable: "--font-vietnam",
+  variable: "--font-sans",
   display: "swap",
 });
 
@@ -25,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={beVietnamPro.variable}>
+    <html lang="vi" className={`${beVietnamPro.variable} ${bricolageGrotesque.variable}`}>
       <body className="min-h-screen flex flex-col bg-surface text-bark-900 antialiased selection:bg-honey-200">
         <AppProvider>
           {/* Thanh công cụ hỗ trợ demo: Chuyển đổi Khách / Admin & Đăng nhập nhanh */}

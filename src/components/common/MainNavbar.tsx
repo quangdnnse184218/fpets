@@ -4,18 +4,26 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useApp } from "@/context/AppContext";
-import { ShoppingCart, Sparkles, User, Package, Search, Menu, X, Compass, PawPrint } from "lucide-react";
+import { ShoppingCart, User, Menu, X } from "lucide-react";
+import BrandLogo from "@/components/common/BrandLogo";
 
 export default function MainNavbar() {
   const pathname = usePathname();
-  const { cart, isLoggedIn } = useApp();
+  const { cart } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Không hiển thị Header khách khi đang ở các trang Admin
+  if (pathname.startsWith("/admin")) {
+    return null;
+  }
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const navLinks = [
     { href: "/boxes", label: "Mystery Box" },
+    { href: "/subscription", label: "Gói định kỳ" },
     { href: "/shop", label: "Shop bán lẻ" },
+    { href: "/reviews", label: "Đánh giá" },
     { href: "/quiz", label: "Pet Quiz", badge: "Gợi ý box" },
     { href: "/order-tracking", label: "Tra cứu đơn" },
   ];
@@ -28,21 +36,9 @@ export default function MainNavbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-surface-card border-b border-surface-border">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        {/* Logo Thương hiệu */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-box bg-pine-900 text-white flex items-center justify-center font-bold text-lg shadow-sm group-hover:bg-pine-800 transition-colors">
-            <PawPrint className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <span className="font-extrabold text-xl tracking-tight text-pine-950 font-display">
-              FPETS
-            </span>
-            <span className="hidden sm:inline-block ml-2 text-xs font-medium text-bark-500 bg-surface-muted px-2 py-0.5 rounded-tag">
-              Mystery Box Thú Cưng
-            </span>
-          </div>
-        </Link>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        {/* Logo Thương hiệu mới: Hộp quà + thú cưng bằng SVG inline */}
+        <BrandLogo href="/" size="md" />
 
         {/* Menu Desktop */}
         <nav className="hidden md:flex items-center gap-1">
@@ -71,19 +67,18 @@ export default function MainNavbar() {
 
         {/* Cụm hành động bên phải */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* CTA Pet Quiz trên desktop */}
+          {/* CTA Pet Quiz trên desktop (bỏ icon Sparkles) */}
           <Link
             href="/quiz"
-            className="hidden lg:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-box bg-pine-900 hover:bg-pine-800 text-white shadow-sm transition-colors"
+            className="hidden lg:inline-flex items-center px-3.5 py-2 text-xs font-bold rounded-box bg-pine-900 hover:bg-pine-800 text-white shadow-sm transition-colors"
           >
-            <Sparkles className="w-3.5 h-3.5 text-pine-200" />
             <span>Làm Quiz tìm Box</span>
           </Link>
 
-          {/* Nút tài khoản */}
+          {/* Nút tài khoản: Chỉ hiển thị trên Desktop (trên mobile đã có trong menu mở ra) */}
           <Link
             href="/my-account/pets"
-            className={`p-2 rounded-box text-bark-700 hover:bg-surface-muted transition-colors ${
+            className={`hidden md:inline-flex p-2 rounded-box text-bark-700 hover:bg-surface-muted transition-colors ${
               pathname.startsWith("/my-account") ? "bg-pine-50 text-pine-950" : ""
             }`}
             title="Tài khoản của tôi"

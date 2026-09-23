@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useApp } from "@/context/AppContext";
 import { Pet } from "@/mock/pets";
-import { Plus, Edit2, Trash2, ShieldAlert, Sparkles, Check, Dog, Cat, PawPrint } from "lucide-react";
+import { Plus, Edit2, Trash2, ShieldAlert, Check, Dog, Cat, PawPrint } from "lucide-react";
 
 export default function MyPetsPage() {
   const { pets, addPet, updatePet, deletePet } = useApp();
@@ -77,7 +77,6 @@ export default function MyPetsPage() {
             href="/quiz"
             className="px-3 py-2 rounded-box bg-surface-card hover:bg-surface-muted border border-surface-border text-xs font-bold text-bark-800 transition-colors flex items-center gap-1.5"
           >
-            <Sparkles className="w-3.5 h-3.5 text-honey-600" />
             <span>Thêm qua Quiz</span>
           </Link>
           <button

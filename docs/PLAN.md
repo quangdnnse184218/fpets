@@ -143,7 +143,8 @@ fpets/
 │   │   │   ├── client.ts                  # Supabase client cho Browser
 │   │   │   ├── server.ts                  # Supabase client cho Server Components / Actions
 │   │   │   ├── admin.ts                   # Supabase service role client (bảo mật server-only)
-│   │   │   └── middleware.ts              # Session refresh & Route protection
+│   │   │   ├── middleware.ts              # Session refresh & Route protection
+│   │   │   └── storage.ts                 # Helper upload & lấy URL cho 3 buckets (product-images, pet-avatars, review-photos)
 │   │   ├── payments/
 │   │   │   ├── mock.ts                    # Xử lý giả lập Gateway Mock (MoMo/VNPay)
 │   │   │   ├── momo.ts                    # Xử lý ký HMAC SHA256 MoMo
@@ -344,7 +345,7 @@ Chi tiết món trong giỏ hàng (chỉ chứa đơn mua 1 lần).
 - `cart_id`: `uuid` NOT NULL REFERENCES `carts(id)` ON DELETE CASCADE
 - `product_id`: `uuid` REFERENCES `products(id)` ON DELETE CASCADE
 - `box_type_id`: `uuid` REFERENCES `box_types(id)` ON DELETE CASCADE
-- `pet_id`: `uuid` REFERENCES `pets(id)` ON DELETE CASCADE -- Đã sửa sang CASCADE để tránh lỗi CHECK constraint khi xóa thú cưng
+- `pet_id`: `uuid` REFERENCES `pets(id)` ON DELETE CASCADE -- ON DELETE CASCADE để tránh vi phạm CHECK constraint khi khách xóa pet đang có box trong giỏ
 - `quantity`: `integer` NOT NULL DEFAULT 1 CHECK (quantity > 0 AND quantity <= 10)
 - `created_at`: `timestamptz` NOT NULL DEFAULT now()
 - `updated_at`: `timestamptz` NOT NULL DEFAULT now()
@@ -566,6 +567,25 @@ erDiagram
 
 ---
 
+### 2.4. Cấu Hình Supabase Storage Buckets
+
+Các bucket lưu trữ media đã được tạo sẵn trên Supabase Dashboard. Ứng dụng tích hợp với 3 bucket này theo quy chuẩn kỹ thuật cụ thể:
+
+| Tên Bucket | Chế độ | Mục đích sử dụng | Quy ước đường dẫn (Storage Path) | Quyền hạn ghi & Bảo mật (RLS) |
+| :--- | :--- | :--- | :--- | :--- |
+| **`product-images`** | **Public** | Ảnh sản phẩm bán lẻ và ảnh loại Mystery Box | `product-images/<ten-file>.jpg` | Đọc công khai (public). Quyền ghi hiện tại tạm mở cho user đăng nhập; sau khi chạy migration tạo hàm `public.is_admin()` sẽ **siết lại chỉ Admin mới được upload, sửa, xóa**. |
+| **`pet-avatars`** | **Private** | Ảnh đại diện của thú cưng (Pet Profile) | `pet-avatars/<user_id>/<ten-file>.jpg` | Bucket riêng tư. Chỉ chính chủ sở hữu Pet (`auth.uid() = user_id`) mới được upload, sửa, xóa và xem ảnh; Staff nội bộ (`public.is_staff() = true`) có quyền đọc để hỗ trợ đóng hộp và CSKH. |
+| **`review-photos`** | **Public** | Ảnh unbox mở hộp thực tế do khách gửi kèm đánh giá | `review-photos/<user_id>/<ten-file>.jpg` | Đọc công khai (public) cho các review đã duyệt. Khách hàng chỉ được phép upload vào thư mục mang chính `user_id` của mình (`auth.uid() = user_id`). |
+
+**Quy định lưu trữ & xử lý hình ảnh:**
+1. **Dung lượng tối đa**: Không quá **5MB** cho mỗi tệp hình ảnh tải lên.
+2. **Định dạng cho phép**: Chỉ chấp nhận các định dạng ảnh: `image/jpeg` (.jpg, .jpeg), `image/png` (.png), `image/webp` (.webp), và `image/avif` (.avif). Các định dạng khác sẽ bị từ chối từ client và validate ở server.
+3. **Lưu trữ trong Database**:
+   - Trong database (các cột `avatar_url` trong `pets`, `images` trong `products` / `box_types` / `reviews`), **CHỈ LƯU ĐƯỜNG DẪN DẠNG TEXT** (storage path dạng text như `product-images/cat-box-pro.webp` hoặc public/signed URL tương ứng).
+   - **TUYỆT ĐỐI KHÔNG** lưu dữ liệu ảnh nhị phân (BLOB/bytea) hoặc chuỗi base64 thô vào database PostgreSQL.
+
+---
+
 ## 3. Danh Sách Chính Sách Row Level Security (RLS) Cho Từng Bảng
 
 Mọi bảng trong database đều được **bật RLS (`ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`)**. Khách hàng chỉ được đọc/sửa dữ liệu của chính mình; các quyền quản trị được chia theo vai trò người dùng trong `profiles.role`.
@@ -645,6 +665,23 @@ $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 ---
 
+### 3.3. Chính Sách RLS Cho Supabase Storage (`storage.objects`)
+
+Sau khi khởi tạo các hàm phân quyền `public.is_admin()` và `public.is_staff()` trong schema `public`, các chính sách bảo mật cho 3 bucket Supabase Storage được thiết lập chi tiết:
+
+1. **Bucket `product-images` (Public)**:
+   - `SELECT`: Cho phép `public` (anon và authenticated).
+   - `INSERT / UPDATE / DELETE`: Chỉ cho phép Admin (`public.is_admin() = true`). *(Lưu ý: Quyền ghi bucket product-images hiện đang mở cho mọi user đã đăng nhập; sau khi có hàm public.is_admin() ở Task 1 thì phải siết lại chỉ admin mới được upload, cập nhật và xóa).*
+2. **Bucket `pet-avatars` (Private)**:
+   - `SELECT`: Cho phép chính chủ (`bucket_id = 'pet-avatars' AND (storage.foldername(name))[1] = auth.uid()::text`) HOẶC nhân viên nội bộ (`public.is_staff() = true`).
+   - `INSERT / UPDATE / DELETE`: Chỉ cho phép chính chủ (`bucket_id = 'pet-avatars' AND (storage.foldername(name))[1] = auth.uid()::text`).
+3. **Bucket `review-photos` (Public)**:
+   - `SELECT`: Cho phép `public` đọc ảnh review unbox.
+   - `INSERT`: Chỉ cho phép user đăng nhập upload vào đúng thư mục của mình (`bucket_id = 'review-photos' AND (storage.foldername(name))[1] = auth.uid()::text`).
+   - `DELETE`: Cho phép chính chủ xóa ảnh của mình hoặc Admin (`public.is_admin() = true`) gỡ ảnh vi phạm.
+
+---
+
 ## 4. Các Tác Vụ Chạy Định Kỳ (Cron Jobs) & Phương Án Triển Khai
 
 Hệ thống yêu cầu 4 tác vụ định kỳ chính để đảm bảo tính toàn vẹn của giỏ hàng, tồn kho và chu kỳ hộp:
@@ -719,12 +756,18 @@ Kế hoạch được chia thành **11 Task độc lập**, mỗi task tương �
 ---
 
 ### Task 1: Nền Móng Kỹ Thuật, Database Schema & Base Layout Mobile-First
-- **Mục tiêu**: Khởi tạo repo hoàn chỉnh, chạy được Next.js App Router, cấu hình Tailwind CSS, kết nối Supabase, chạy migration schema 20 bảng, tạo RLS policies và dữ liệu mẫu (seed data).
+- **Mục tiêu**: Khởi tạo repo hoàn chỉnh, chạy được Next.js App Router, cấu hình Tailwind CSS, kết nối Supabase, chạy migration schema 20 bảng, tạo RLS policies, cấu hình RLS cho 3 Storage buckets có sẵn và tạo dữ liệu mẫu (seed data).
 - **Phạm vi thực hiện**:
-  - Tạo cấu trúc thư mục chuẩn theo mục 1.
+  - Tạo cấu trúc thư mục chuẩn theo mục 1 (bao gồm helper `src/lib/supabase/storage.ts`).
   - Viết các file migration SQL trong `supabase/migrations/`:
-    - Enums, 20 tables đầy đủ (với `cart_items.pet_id` ON DELETE CASCADE).
-    - RLS policies dùng các hàm `public.is_admin()`, `public.is_staff()`, `public.get_user_role()`.
+    - Enums, 20 tables đầy đủ (với `cart_items.pet_id` ON DELETE CASCADE để tránh vi phạm CHECK constraint khi khách xóa pet đang có box trong giỏ).
+    - Cột lưu trữ ảnh trong các bảng (`pets.avatar_url`, `products.images`, `box_types.images`, `reviews.images`) chỉ lưu đường dẫn dạng text (`image_path` / URL), tuyệt đối không lưu ảnh nhị phân.
+    - Tạo các hàm phân quyền chuẩn trong schema `public`: `public.get_user_role()`, `public.is_admin()`, `public.is_staff()` (tránh lỗi permission denied nếu tạo trong schema `auth`).
+    - RLS policies cho 20 bảng sử dụng các hàm `public.is_admin()`, `public.is_staff()`, `public.get_user_role()`.
+    - Thiết lập RLS policies cho 3 Supabase Storage buckets đã tạo sẵn:
+      + `product-images` (public): Siết lại quyền ghi chỉ dành riêng cho Admin (`public.is_admin() = true`).
+      + `pet-avatars` (private): Giới hạn chỉ chính chủ (`auth.uid()`) và nhân viên (`public.is_staff()`) truy cập.
+      + `review-photos` (public): Cho phép đọc public, khách chỉ được upload ảnh vào folder `user_id` của mình.
     - Trigger cập nhật `updated_at`.
     - Trigger đồng bộ `auth.users` sang `profiles` kèm logic **tự động gộp các đơn hàng cũ của khách vãng lai** (`orders.user_id = new_user_id` nếu trùng số điện thoại hoặc email).
   - Viết file `supabase/seed.sql` với dữ liệu ban đầu: 2 loại Mystery Box (Tiêu chuẩn, Premium cho chó và mèo), 3 gói subscription (1, 3, 6), 15 sản phẩm lẻ mẫu đủ 3 phân loại food/toy/accessory, tài khoản admin mẫu.
@@ -732,7 +775,8 @@ Kế hoạch được chia thành **11 Task độc lập**, mỗi task tương �
 - **Tiêu chí hoàn thành (DoD)**:
   1. Chạy `npm run dev` không lỗi, layout hiển thị chuẩn trên màn hình mobile 375px và desktop.
   2. Toàn bộ 20 bảng và RLS được khởi tạo trên Supabase thành công mà không gặp lỗi permission schema `auth`.
-  3. Đăng ký tài khoản khách thử nghiệm thành công, bản ghi tự lưu vào `profiles` và tự động liên kết các đơn hàng cũ nếu trùng SĐT.
+  3. 3 Storage buckets (`product-images`, `pet-avatars`, `review-photos`) được cấu hình RLS bảo mật đúng quy định (đã siết quyền ghi `product-images` chỉ cho admin).
+  4. Đăng ký tài khoản khách thử nghiệm thành công, bản ghi tự lưu vào `profiles` và tự động liên kết các đơn hàng cũ nếu trùng SĐT/email.
 
 ---
 
@@ -742,11 +786,11 @@ Kế hoạch được chia thành **11 Task độc lập**, mỗi task tương �
   - Xây dựng component `PetQuiz` 5 câu tương tác mượt mà: (1) Bé là chó hay mèo? (2) Tên & Giới tính? (3) Cân nặng / Size? (4) Độ tuổi? (5) Sở thích & Thành phần dị ứng.
   - Tự động gợi ý loại Box và gói tương ứng kèm giá VND chuẩn (299.000₫ / 499.000₫).
   - Khách bấm mua -> Modal đăng ký nhanh / Đăng nhập -> Lưu câu trả lời thành bản ghi trong bảng `pets`.
-  - Trang `(account)/my-account/pets`: Danh sách pet dạng card, form thêm mới/chỉnh sửa pet, upload ảnh đại diện cho pet lên Supabase Storage.
+  - Trang `(account)/my-account/pets`: Danh sách pet dạng card, form thêm mới/chỉnh sửa pet, upload ảnh đại diện cho pet lên Supabase Storage bucket `pet-avatars` theo đường dẫn `pet-avatars/<user_id>/<ten-file>.jpg` (giới hạn 5MB, định dạng jpeg/png/webp/avif, chỉ lưu đường dẫn text vào cột `avatar_url`).
 - **Tiêu chí hoàn thành (DoD)**:
   1. Hoàn thành quiz 5 bước không cần đăng nhập, kết quả hiển thị đúng box gợi ý.
   2. Đăng nhập xong, pet tự xuất hiện trong `my-account/pets`.
-  3. Thêm / sửa / xóa thông tin pet trong tài khoản hoạt động mượt mà, lưu đúng định dạng mảng dị ứng `allergies`.
+  3. Thêm / sửa / xóa thông tin pet trong tài khoản hoạt động mượt mà, lưu đúng định dạng mảng dị ứng `allergies` và upload avatar private thành công.
 
 ---
 
@@ -790,13 +834,13 @@ Kế hoạch được chia thành **11 Task độc lập**, mỗi task tương �
 - **Mục tiêu**: Xây dựng giao diện Admin Dashboard với phân quyền RBAC và các module quản trị vận hành kho/sản phẩm.
 - **Phạm vi thực hiện**:
   - Route Guard tại `/admin`: Chỉ user có role `admin`, `kho`, `cskh` mới được vào; phân chia quyền truy cập menu theo bảng phân quyền mục 9 của SPEC.
-  - Quản lý sản phẩm lẻ (`/admin/products`): Thêm/sửa sản phẩm, upload ảnh, cài đặt thành phần, toggle "Bán lẻ" / "Dùng cho box".
-  - Quản lý loại Mystery Box (`/admin/box-types`): Chỉnh sửa số món, giá trị tối thiểu cam kết, giá bán.
+  - Quản lý sản phẩm lẻ (`/admin/products`): Thêm/sửa sản phẩm, upload ảnh lên bucket `product-images` theo đường dẫn `product-images/<ten-file>.jpg` (giới hạn 5MB, jpeg/png/webp/avif, lưu đường dẫn text vào cột `images`), cài đặt thành phần, toggle "Bán lẻ" / "Dùng cho box".
+  - Quản lý loại Mystery Box (`/admin/box-types`): Chỉnh sửa số món, giá trị tối thiểu cam kết, giá bán, upload ảnh đại diện box lên `product-images`.
   - Quản lý tồn kho (`/admin/inventory`): Xem danh sách tồn kho, cảnh báo hàng sắp hết dưới ngưỡng, tạo phiếu nhập kho, xem nhật ký biến động kho (`inventory_movements`).
   - Quản lý đơn hàng (`/admin/orders`): Danh sách đơn, lọc trạng thái, xem chi tiết đơn, nút xác nhận đơn COD, cập nhật trạng thái đơn (Đang chuẩn bị -> Đang giao kèm mã vận đơn).
 - **Tiêu chí hoàn thành (DoD)**:
   1. Phân quyền hoạt động: Nhân viên kho không vào được mục Doanh thu hay Tài khoản nhân viên.
-  2. Tạo sản phẩm mới và nhập thêm kho thành công, bản ghi ghi nhận vào `inventory_movements`.
+  2. Tạo sản phẩm mới, upload ảnh lên `product-images` và nhập thêm kho thành công, bản ghi ghi nhận vào `inventory_movements`.
   3. Admin duyệt đơn COD và đổi trạng thái đơn, khách hàng thấy trạng thái cập nhật ngay lập tức.
 
 ---
@@ -845,7 +889,7 @@ Kế hoạch được chia thành **11 Task độc lập**, mỗi task tương �
     - Trang giả lập cổng thanh toán có lựa chọn: "Thanh toán thành công" hoặc "Thanh toán thất bại / Hủy".
     - Gọi API IPN Webhook nội bộ có kiểm tra chữ ký số để cập nhật trạng thái đơn hàng sang `da_xac_nhan` hoặc `da_huy`.
   - Tích hợp sẵn kiến trúc SDK MoMo (HMAC SHA256) và VNPay (HMAC SHA512) trong `src/lib/payments/`.
-  - Khi người dùng cung cấp thông tin tài khoản Sandbox (Partner Code, Secret Key, Terminal ID), chỉ cần cập nhật file `.env.local` là hệ thống tự động chuyển từ Mock sang kết nối trực tiếp đến MoMo/VNPay Sandbox thật.
+  - Khi người dùng cung cấp thông tin tài khoản Sandbox (Partner Code, Secret Key, Terminal ID) sau khi đăng ký xong (trước khi bắt đầu Task 8), chỉ cần cập nhật file `.env.local` là hệ thống tự động chuyển từ Mock sang kết nối trực tiếp đến MoMo/VNPay Sandbox thật.
   - Xử lý Idempotency & Concurrency: Đảm bảo webhook gọi lặp lại không bị xử lý trùng lặp.
 - **Tiêu chí hoàn thành (DoD)**:
   1. Thanh toán trực tuyến qua Mock Gateway hoạt động mượt mà cả 2 kịch bản (Thành công & Thất bại).
@@ -871,7 +915,7 @@ Kế hoạch được chia thành **11 Task độc lập**, mỗi task tương �
 - **Mục tiêu**: Hoàn thiện tính năng review unbox kèm chấm điểm chi tiết từng món cho bé và quy trình yêu cầu đổi trả hàng.
 - **Phạm vi thực hiện**:
   - Màn hình Review đơn hàng `da_giao`:
-    - Chấm sao 1-5, nhận xét chung, upload tối đa 5 ảnh unbox.
+    - Chấm sao 1-5, nhận xét chung, upload tối đa 5 ảnh unbox lên Supabase Storage bucket `review-photos` theo đường dẫn `review-photos/<user_id>/<ten-file>.jpg` (giới hạn 5MB mỗi ảnh, định dạng jpeg/png/webp/avif, lưu mảng đường dẫn text vào cột `images`).
     - **Chấm điểm từng món trong hộp**: Với mỗi món đã nhận, chọn Thích / Bình thường / Không thích. Lưu dữ liệu vào `pet_item_feedback`.
     - Tự động tặng mã voucher 20.000₫ cho đơn tiếp theo nếu review có kèm hình ảnh.
   - Quản lý Voucher nâng cao: Khách xem danh sách voucher trong My Account; checkout tự động validate điều kiện (đơn tối thiểu, phạm vi áp dụng, hạn dùng).
@@ -880,7 +924,7 @@ Kế hoạch được chia thành **11 Task độc lập**, mỗi task tương �
     - Chọn lý do (Dị ứng ngoài ý muốn, hàng hỏng/vỡ, giao thiếu món), đính kèm ảnh bằng chứng.
     - Admin/CSKH duyệt yêu cầu: Gửi bù món miễn phí hoặc hoàn tiền món đó.
 - **Tiêu chí hoàn thành (DoD)**:
-  1. Khách review có ảnh: Nhận được ngay thông báo và mã voucher 20.000₫ vào tài khoản.
+  1. Khách review có ảnh: Upload ảnh vào `review-photos` thành công, nhận được ngay thông báo và mã voucher 20.000₫ vào tài khoản.
   2. Món bị chấm "Không thích" được lưu vào `pet_item_feedback` và không bao giờ xuất hiện lại trong lần tuyển chọn sau của bé đó.
   3. Tạo và duyệt một yêu cầu đổi trả thành công trong giao diện CSKH.
 

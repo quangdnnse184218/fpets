@@ -2,10 +2,12 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import ProductItemImage from "@/components/common/ProductItemImage";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import { formatVND } from "@/lib/formatters";
-import { Trash2, ShoppingBag, Sparkles, Tag, CheckCircle2, AlertCircle, PackageOpen, UtensilsCrossed, PawPrint } from "lucide-react";
+import { Trash2, ShoppingBag, Truck, Tag, CheckCircle2, AlertCircle, PackageOpen, UtensilsCrossed, PawPrint } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 
@@ -83,7 +85,7 @@ export default function CartPage() {
       {/* Thông báo thanh Freeship */}
       <div className="p-3.5 rounded-box bg-pine-50 border border-pine-100 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-honey-600" />
+          <Truck className="w-4 h-4 text-pine-800" />
           {remainingForFreeship === 0 ? (
             <span className="font-bold text-grass-700">
               Bạn đã đủ điều kiện nhận MIỄN PHÍ VẬN CHUYỂN toàn quốc!
@@ -105,22 +107,30 @@ export default function CartPage() {
               className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
             >
               <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                {/* Icon loại sản phẩm */}
-                <div
-                  className="w-16 h-16 rounded-box flex items-center justify-center text-2xl shrink-0 border border-black/5"
-                  style={{
-                    backgroundColor:
-                      item.type === 'box'
-                        ? item.boxType?.imagePlaceholderColor || '#E1EDE8'
-                        : item.product?.placeholderColor || '#FEF7E6',
-                  }}
-                >
-                  {item.type === 'box' ? (
-                    <PackageOpen className="w-6 h-6 text-pine-900" />
-                  ) : item.product?.category === 'food' ? (
-                    <UtensilsCrossed className="w-6 h-6 text-bark-700" />
+                {/* Ảnh thật của sản phẩm / Mystery Box */}
+                <div className="w-16 h-16 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
+                  {/* TODO: thay bằng ảnh thật của FPETS khi có */}
+                  {item.type === 'box' && item.boxType?.imageUrl ? (
+                    <Image
+                      src={item.boxType.imageUrl}
+                      alt={item.boxType.name}
+                      fill
+                      sizes="64px"
+                      className="object-cover"
+                    />
+                  ) : item.product ? (
+                    <ProductItemImage
+                      src={item.product.image}
+                      alt={item.product.name}
+                      category={item.product.category}
+                      placeholderColor={item.product.placeholderColor}
+                      sizes="64px"
+                      showNote={false}
+                    />
                   ) : (
-                    <PawPrint className="w-6 h-6 text-bark-700" />
+                    <div className="w-full h-full flex items-center justify-center bg-surface-muted text-bark-600">
+                      <PackageOpen className="w-6 h-6" />
+                    </div>
                   )}
                 </div>
 

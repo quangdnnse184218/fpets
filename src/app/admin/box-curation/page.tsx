@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
+import ProductItemImage from "@/components/common/ProductItemImage";
 import { useApp } from "@/context/AppContext";
 import { formatVND } from "@/lib/formatters";
 import { PRODUCTS, Product } from "@/mock/products";
 import { CurationItem } from "@/mock/curationQueue";
-import { CheckCircle2, AlertTriangle, ShieldCheck, ShieldAlert, RefreshCw, Eye, Sparkles, Dog, Cat, PawPrint, UtensilsCrossed } from "lucide-react";
+import { CheckCircle2, AlertTriangle, ShieldCheck, ShieldAlert, RefreshCw, Eye, HeartHandshake, Dog, Cat, PawPrint, UtensilsCrossed } from "lucide-react";
 
 export default function AdminBoxCurationPage() {
   const { curationQueue, approveCuration, swapCurationItem } = useApp();
@@ -56,11 +58,7 @@ export default function AdminBoxCurationPage() {
       {/* Tiêu đề trang */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-tag bg-honey-100 text-honey-800 text-[11px] font-bold">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Thuật toán tuyển chọn cá nhân hóa</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-pine-950 font-display mt-1">
+          <h1 className="text-2xl font-extrabold text-pine-950 font-display">
             Hàng chờ tuyển chọn Mystery Box
           </h1>
           <p className="text-xs text-bark-500">
@@ -223,15 +221,16 @@ export default function AdminBoxCurationPage() {
                   className="p-3 rounded-box bg-surface-muted border border-surface-border flex items-center justify-between gap-3 text-xs"
                 >
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <span className="w-7 h-7 rounded-full bg-cream-100 flex items-center justify-center shrink-0 text-pine-900">
-                      {prod.category === 'food' ? (
-                        <UtensilsCrossed className="w-3.5 h-3.5" />
-                      ) : prod.category === 'toy' ? (
-                        <PawPrint className="w-3.5 h-3.5" />
-                      ) : (
-                        <Sparkles className="w-3.5 h-3.5" />
-                      )}
-                    </span>
+                    <div className="w-9 h-9 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
+                      <ProductItemImage
+                        src={prod.image}
+                        alt={prod.name}
+                        category={prod.category}
+                        placeholderColor={prod.placeholderColor}
+                        sizes="36px"
+                        showNote={false}
+                      />
+                    </div>
                     <div className="min-w-0">
                       <span className="font-bold text-pine-950 truncate block">{prod.name}</span>
                       <span className="text-[10px] text-bark-500">
@@ -316,11 +315,23 @@ export default function AdminBoxCurationPage() {
                   key={prod.id}
                   className="p-3 rounded-box border border-surface-border hover:bg-surface-muted flex items-center justify-between gap-3"
                 >
-                  <div>
-                    <span className="font-bold text-pine-950 block">{prod.name}</span>
-                    <span className="text-[11px] text-bark-500">
-                      {prod.categoryLabel} · Tồn: {prod.stock}
-                    </span>
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
+                      <ProductItemImage
+                        src={prod.image}
+                        alt={prod.name}
+                        category={prod.category}
+                        placeholderColor={prod.placeholderColor}
+                        sizes="40px"
+                        showNote={false}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-bold text-pine-950 block truncate">{prod.name}</span>
+                      <span className="text-[11px] text-bark-500">
+                        {prod.categoryLabel} · Tồn: {prod.stock}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-pine-950">{formatVND(prod.price)}</span>

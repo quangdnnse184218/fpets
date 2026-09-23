@@ -4,12 +4,9 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Sparkles,
   Gift,
   CheckCircle2,
   Heart,
-  ShieldAlert,
-  Award,
   Star,
   ShieldCheck,
   Truck,
@@ -18,6 +15,8 @@ import {
   UtensilsCrossed,
   Bone,
   PawPrint,
+  HeartHandshake,
+  Check,
 } from "lucide-react";
 import { BOX_TYPES, SUBSCRIPTION_PLANS } from "@/mock/boxTypes";
 import { formatVND } from "@/lib/formatters";
@@ -25,182 +24,197 @@ import { formatVND } from "@/lib/formatters";
 export default function HomePage() {
   return (
     <div className="space-y-16 sm:space-y-24">
-      {/* 1. HERO SECTION: Trải nghiệm mở hộp quà bất ngờ */}
+      {/* 1. HERO SECTION: Trải nghiệm mở hộp quà bất ngờ nổi bật, tương phản cao */}
       <section className="bg-surface-muted border-b border-surface-border pt-8 pb-14 sm:pt-16 sm:pb-20">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           {/* Cột chữ Hero */}
           <div className="lg:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-tag bg-honey-100 text-honey-700 text-xs font-bold border border-honey-300">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Dành riêng cho chó và mèo tại Việt Nam</span>
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-pine-950 font-display tracking-tight leading-[1.15]">
-              Mỗi tháng một hộp quà bất ngờ, tuyển chọn riêng cho bé cưng của bạn.
+            <h1 className="text-3xl sm:text-5xl lg:text-[52px] font-extrabold text-pine-950 font-display tracking-tight leading-[1.12]">
+              Mỗi tháng một hộp quà bất ngờ, tuyển chọn riêng cho bé cưng.
             </h1>
 
-            <p className="text-base sm:text-lg text-bark-700 leading-relaxed max-w-2xl">
-              Không còn tốn hàng giờ lựa đồ ở pet shop. FPETS gửi đến tận nhà hộp Mystery Box gồm đồ ăn dinh dưỡng, đồ chơi dai bền và phụ kiện hữu ích — được nhặt riêng theo đúng cân nặng, độ tuổi và sở thích của từng bé.
+            <p className="text-base sm:text-lg text-bark-700 leading-relaxed max-w-xl">
+              Không còn mất công phân vân ở pet shop. FPETS gửi đến tận nhà Mystery Box định kỳ gồm thức ăn giàu dinh dưỡng, đồ chơi dai bền và phụ kiện hữu ích — được nhặt riêng theo đúng cân nặng, độ tuổi và sở thích dị ứng của từng bé.
             </p>
 
             {/* Các điểm cam kết nhanh */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs font-semibold text-bark-800">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs font-semibold text-bark-800">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-grass-600 shrink-0" />
+                <ShieldCheck className="w-4 h-4 text-grass-700 shrink-0" />
                 <span>Tránh 100% món dị ứng</span>
               </div>
               <div className="flex items-center gap-2">
-                <PackageOpen className="w-4 h-4 text-grass-600 shrink-0" />
-                <span>Giá trị hàng cao hơn giá bán</span>
+                <PackageOpen className="w-4 h-4 text-grass-700 shrink-0" />
+                <span>Trị giá cao hơn giá bán</span>
               </div>
               <div className="flex items-center gap-2">
-                <RefreshCw className="w-4 h-4 text-grass-600 shrink-0" />
+                <RefreshCw className="w-4 h-4 text-grass-700 shrink-0" />
                 <span>Không tự động trừ tiền</span>
               </div>
             </div>
 
-            {/* Cụm CTA chính */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-4">
+            {/* Cụm CTA chính (không còn Sparkles trang trí) */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
               <Link
                 href="/quiz"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-base shadow-sm transition-colors"
+                className="inline-flex items-center justify-center px-6 py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-base shadow-sm transition-colors text-center"
               >
-                <Sparkles className="w-4 h-4 text-pine-200" />
-                <span>Làm Quiz tìm Box cho bé (2 phút)</span>
+                <span>Làm Quiz tìm Box cho bé</span>
               </Link>
               <Link
                 href="/boxes"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-box bg-surface-card hover:bg-white text-pine-950 border border-surface-border font-bold text-base transition-colors"
+                className="inline-flex items-center justify-center px-6 py-3.5 rounded-box bg-surface-card hover:bg-white text-pine-950 border border-surface-border font-bold text-base transition-colors text-center"
               >
                 <span>Xem các loại Mystery Box</span>
               </Link>
             </div>
+
+            {/* Thanh bảo chứng uy tín (Social Proof & Trust metrics) */}
+            <div className="pt-4 border-t border-surface-border/80 flex flex-wrap items-center gap-4 sm:gap-6 text-xs text-bark-600">
+              {/* Stack Avatar khách hàng & Pet */}
+              <div className="flex items-center gap-2">
+                <div className="flex -space-x-2">
+                  <div className="w-8 h-8 rounded-full border-2 border-surface-muted overflow-hidden relative">
+                    <Image
+                      src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=100&q=80"
+                      alt="Corgi"
+                      fill
+                      sizes="40px"
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="w-8 h-8 rounded-full border-2 border-surface-muted overflow-hidden relative">
+                    <Image
+                      src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=100&q=80"
+                      alt="Mèo"
+                      fill
+                      sizes="40px"
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="w-8 h-8 rounded-full border-2 border-surface-muted overflow-hidden relative">
+                    <Image
+                      src="https://images.unsplash.com/photo-1552053831-71594a27632d?w=100&q=80"
+                      alt="Golden"
+                      fill
+                      sizes="40px"
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <span className="font-extrabold text-pine-950 block">1.200+</span>
+                  <span className="text-[11px] text-bark-500">Bé cưng hạnh phúc</span>
+                </div>
+              </div>
+
+              <div className="hidden sm:block w-px h-8 bg-surface-border" />
+
+              <div>
+                <span className="font-extrabold text-pine-950 block">4.800+</span>
+                <span className="text-[11px] text-bark-500">Hộp quà đã giao</span>
+              </div>
+
+              <div className="hidden sm:block w-px h-8 bg-surface-border" />
+
+              <div>
+                <div className="flex items-center gap-1 font-extrabold text-pine-950">
+                  <Star className="w-3.5 h-3.5 text-honey-500 fill-honey-500" />
+                  <span>4.9 / 5</span>
+                </div>
+                <span className="text-[11px] text-bark-500">620+ đánh giá 5 sao</span>
+              </div>
+            </div>
           </div>
 
-          {/* Cột Hình ảnh minh họa hộp quà mở ra */}
+          {/* Cột Hình ảnh minh họa hộp quà lớn & nổi bật */}
           <div className="lg:col-span-5">
-            <div className="relative rounded-container bg-surface-card p-5 sm:p-6 border border-surface-border shadow-md overflow-hidden">
+            <div className="relative rounded-container overflow-hidden border border-surface-border shadow-xl bg-surface-card">
+              {/* Ảnh chính lớn mở hộp thú cưng: Có chiều cao xác định ở mọi breakpoint */}
               {/* TODO: thay bằng ảnh thật của FPETS khi có */}
-              <div className="relative w-full h-44 rounded-box overflow-hidden mb-4 border border-surface-border">
+              <div className="relative w-full h-[260px] sm:h-[340px] md:h-[400px] lg:h-[430px]">
                 <Image
-                  src="https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=800&q=80"
-                  alt="Ảnh chụp hộp quà mở ra cùng đồ ăn và đồ chơi cho cún cưng"
+                  src="https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=1000&q=85"
+                  alt="Ảnh chụp hộp quà Mystery Box FPETS mở ra cùng đồ ăn và đồ chơi cho thú cưng"
                   fill
-                  sizes="(max-width: 768px) 100vw, 400px"
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-cover"
+                  priority
                 />
-              </div>
 
-              <div className="flex items-center justify-between mb-3 pb-3 border-b border-surface-border">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-box bg-pine-100 text-pine-900 font-bold">
-                    <PackageOpen className="w-4 h-4 text-pine-900" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-pine-950">Bên trong 1 hộp FPETS Tiêu chuẩn</h3>
-                    <p className="text-[11px] text-bark-500">Giá bán 299.000₫ · Trị giá thực từ 380.000₫</p>
-                  </div>
-                </div>
-                <span className="px-2 py-0.5 rounded-tag bg-grass-100 text-grass-700 text-[11px] font-bold">
-                  Tiết kiệm 81k
-                </span>
-              </div>
+                {/* Gradient nhẹ phủ phía dưới chỉ từ md trở lên để làm nổi thẻ thông tin */}
+                <div className="hidden md:block absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent pointer-events-none" />
 
-              {/* Danh sách 4 món minh họa có nhãn rõ ràng */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-3 p-2 rounded-box bg-surface-muted border border-surface-border/70">
-                  <div className="w-8 h-8 rounded-box bg-pine-100 text-pine-900 flex items-center justify-center shrink-0">
-                    <UtensilsCrossed className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-bark-900 truncate">Pate cá hồi Na Uy & bí đỏ (85g)</p>
-                    <p className="text-[10px] text-bark-500">Món ăn tươi giàu đạm & Omega 3</p>
-                  </div>
-                  <span className="text-xs font-semibold text-bark-700">35.000₫</span>
-                </div>
-
-                <div className="flex items-center gap-3 p-2 rounded-box bg-surface-muted border border-surface-border/70">
-                  <div className="w-8 h-8 rounded-box bg-pine-100 text-pine-900 flex items-center justify-center shrink-0">
-                    <PawPrint className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-bark-900 truncate">Dây thừng kéo co đôi cotton bền</p>
-                    <p className="text-[10px] text-bark-500">Chịu lực kéo cắn, làm sạch kẽ răng</p>
-                  </div>
-                  <span className="text-xs font-semibold text-bark-700">55.000₫</span>
-                </div>
-
-                <div className="flex items-center gap-3 p-2 rounded-box bg-surface-muted border border-surface-border/70">
-                  <div className="w-8 h-8 rounded-box bg-pine-100 text-pine-900 flex items-center justify-center shrink-0">
-                    <Bone className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-bark-900 truncate">Bánh quy men tiêu hóa sạch răng</p>
-                    <p className="text-[10px] text-bark-500">Hũ 150g bổ sung canxi và lợi khuẩn</p>
-                  </div>
-                  <span className="text-xs font-semibold text-bark-700">65.000₫</span>
-                </div>
-
-                <div className="flex items-center gap-3 p-2 rounded-box bg-surface-muted border border-surface-border/70">
-                  <div className="w-8 h-8 rounded-box bg-pine-100 text-pine-900 flex items-center justify-center shrink-0">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-bark-900 truncate">Lược chải lông nút bấm tự đẩy lông</p>
-                    <p className="text-[10px] text-bark-500">Vật dụng chăm sóc lông không trầy da</p>
-                  </div>
-                  <span className="text-xs font-semibold text-bark-700">85.000₫</span>
+                {/* Badge góc trên */}
+                <div className="absolute top-3 left-3 sm:top-4 sm:left-4 px-3 py-1 rounded-tag bg-white/95 backdrop-blur-xs text-pine-950 text-xs font-bold shadow-sm border border-white/50 flex items-center gap-1.5 z-10">
+                  <PackageOpen className="w-3.5 h-3.5 text-pine-900" />
+                  <span>Hộp quà Tiêu chuẩn tháng này</span>
                 </div>
               </div>
 
-              <div className="mt-3 pt-2.5 border-t border-surface-border flex items-center justify-between text-xs">
-                <span className="text-bark-500">Cộng thêm 1 món quà ngẫu nhiên</span>
-                <span className="font-bold text-pine-950">Tổng giá trị: 390.000₫</span>
+              {/* Khối thông tin: ở mobile đẩy xuống dưới ảnh (không overlay để không che mặt thú cưng), từ md trở lên mới là overlay nổi */}
+              <div className="p-3.5 sm:p-4 bg-white border-t border-surface-border text-xs space-y-1.5 md:border-t-0 md:absolute md:bottom-4 md:inset-x-4 md:p-3.5 md:rounded-box md:bg-white/95 md:backdrop-blur-xs md:border md:border-white/60 md:shadow-lg z-10">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-pine-950">Gồm 4 – 5 món chọn lọc</span>
+                  <span className="px-2 py-0.5 rounded-tag bg-grass-100 text-grass-800 text-[11px] font-bold">
+                    Trị giá thực từ 380.000₫
+                  </span>
+                </div>
+                <p className="text-[11px] text-bark-600 line-clamp-1">
+                  Pate cá hồi Na Uy · Dây thừng gặm răng · Bánh men sạch khuẩn · Đồ chơi bất ngờ
+                </p>
+                <div className="pt-1 flex items-center gap-3 text-[10px] text-bark-500 border-t border-surface-border">
+                  <span className="flex items-center gap-1 text-grass-700 font-semibold">
+                    <Check className="w-3 h-3" /> Đổi món nếu dị ứng
+                  </span>
+                  <span>·</span>
+                  <span>Tiết kiệm 81.000₫</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. CÁCH HOẠT ĐỘNG: 3 bước minh bạch */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
+      {/* 2. CÁCH HOẠT ĐỘNG: 3 bước trực quan (Hiểu ngay trong 5 giây) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
             Cách Mystery Box vận hành cho từng bé
           </h2>
-          <p className="text-sm sm:text-base text-bark-600">
-            Chúng tôi không đóng sẵn các hộp hàng loạt. Mỗi hộp được chuẩn bị sát ngày giao dựa trên thông tin ba mẹ cung cấp.
+          <p className="text-xs sm:text-sm text-bark-600">
+            Chúng tôi không đóng sẵn hàng loạt. Mỗi hộp được nhân viên kho nhặt riêng sát ngày giao dựa trên hồ sơ của bé.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="p-6 rounded-container bg-surface-card border border-surface-border space-y-4">
-            <div className="w-12 h-12 rounded-box bg-pine-100 text-pine-900 flex items-center justify-center font-bold text-xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+          <div className="p-6 rounded-container bg-surface-card border border-surface-border space-y-3 relative hover:border-pine-800 transition-colors">
+            <div className="w-10 h-10 rounded-box bg-pine-900 text-white flex items-center justify-center font-bold text-base font-display">
               1
             </div>
-            <h3 className="text-lg font-bold text-pine-950">Tạo Pet Profile trong 2 phút</h3>
-            <p className="text-sm text-bark-600 leading-relaxed">
-              Bạn chia sẻ tên bé, loài (chó/mèo), cân nặng, sở thích và các thành phần dị ứng (như gà, bắp, hải sản...).
+            <h3 className="text-base font-bold text-pine-950">Kể về bé cưng (Làm Quiz 2 phút)</h3>
+            <p className="text-xs sm:text-sm text-bark-600 leading-relaxed">
+              Bạn chia sẻ tên bé, loài (chó/mèo), cân nặng, sở thích và các thành phần dị ứng (như gà, bắp, hải sản...) qua bảng trắc nghiệm ngắn.
             </p>
           </div>
 
-          <div className="p-6 rounded-container bg-surface-card border border-surface-border space-y-4">
-            <div className="w-12 h-12 rounded-box bg-honey-100 text-honey-700 flex items-center justify-center font-bold text-xl">
+          <div className="p-6 rounded-container bg-surface-card border border-surface-border space-y-3 relative hover:border-pine-800 transition-colors">
+            <div className="w-10 h-10 rounded-box bg-honey-600 text-white flex items-center justify-center font-bold text-base font-display">
               2
             </div>
-            <h3 className="text-lg font-bold text-pine-950">Đội ngũ FPETS tuyển chọn riêng</h3>
-            <p className="text-sm text-bark-600 leading-relaxed">
-              Sát đợt giao (đầu tháng hoặc giữa tháng), nhân viên kho chọn 4–7 món đạt chuẩn, đảm bảo không trùng món cũ và đủ cơ cấu đồ ăn + đồ chơi + phụ kiện.
+            <h3 className="text-base font-bold text-pine-950">FPETS chọn đồ riêng theo hồ sơ</h3>
+            <p className="text-xs sm:text-sm text-bark-600 leading-relaxed">
+              Sát ngày giao, chuyên viên kho chọn 4–7 món đạt chuẩn an toàn, kiểm tra thành phần loại trừ dị ứng và cơ cấu đủ đồ ăn + đồ chơi + phụ kiện.
             </p>
           </div>
 
-          <div className="p-6 rounded-container bg-surface-card border border-surface-border space-y-4">
-            <div className="w-12 h-12 rounded-box bg-pine-100 text-pine-900 flex items-center justify-center font-bold text-xl">
+          <div className="p-6 rounded-container bg-surface-card border border-surface-border space-y-3 relative hover:border-pine-800 transition-colors">
+            <div className="w-10 h-10 rounded-box bg-pine-900 text-white flex items-center justify-center font-bold text-base font-display">
               3
             </div>
-            <h3 className="text-lg font-bold text-pine-950">Mở hộp cùng bé & Chấm điểm món</h3>
-            <p className="text-sm text-bark-600 leading-relaxed">
-              Nhận hộp quà tại nhà. Ba mẹ chấm điểm món bé thích hay không thích; dữ liệu này giúp hộp tháng sau chuẩn xác hơn nữa.
+            <h3 className="text-base font-bold text-pine-950">Nhận hộp tại nhà & Bé mê tít</h3>
+            <p className="text-xs sm:text-sm text-bark-600 leading-relaxed">
+              Nhận hộp quà mở bất ngờ mỗi tháng. Bạn chấm điểm món bé thích hay ghét để hộp các tháng tiếp theo được tối ưu ngày càng hợp khẩu vị bé.
             </p>
           </div>
         </div>
@@ -208,7 +222,7 @@ export default function HomePage() {
 
       {/* 3. SO SÁNH 2 LOẠI BOX: Tiêu chuẩn vs Premium */}
       <section className="bg-pine-900 text-pine-100 py-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-display">
               Hai phiên bản Mystery Box cho bạn lựa chọn
@@ -319,7 +333,7 @@ export default function HomePage() {
       </section>
 
       {/* 4. BẢNG GÓI ĐỊNH KỲ 1 / 3 / 6 HỘP */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
             Bảng giá các gói định kỳ
@@ -401,7 +415,7 @@ export default function HomePage() {
 
       {/* 5. FEEDBACK KHÁCH HÀNG: Trải nghiệm thật */}
       <section className="bg-surface-muted border-y border-surface-border py-14">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
               Niềm vui unbox của các bé tại Việt Nam
@@ -470,13 +484,9 @@ export default function HomePage() {
       </section>
 
       {/* 6. CTA CUỐI TRANG: Banner Pet Quiz cảm xúc có ảnh cưng */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="rounded-container bg-pine-900 text-white overflow-hidden shadow-lg grid grid-cols-1 md:grid-cols-12 items-center">
           <div className="p-8 sm:p-12 md:col-span-7 space-y-5 text-left">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-tag bg-pine-800 text-pine-200 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5 text-honey-400" />
-              <span>Pet Quiz 2 phút</span>
-            </div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display leading-tight">
               Sẵn sàng mang đến niềm vui mở hộp cho bé yêu?
             </h2>
@@ -486,14 +496,13 @@ export default function HomePage() {
             <div className="pt-2 flex flex-col sm:flex-row gap-3">
               <Link
                 href="/quiz"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-box bg-white hover:bg-pine-50 text-pine-950 font-bold text-sm shadow-md transition-colors"
+                className="inline-flex items-center justify-center px-6 py-3.5 rounded-box bg-white hover:bg-pine-50 text-pine-950 font-bold text-sm shadow-md transition-colors"
               >
-                <Sparkles className="w-4 h-4 text-pine-900" />
                 <span>Bắt đầu làm Pet Quiz ngay</span>
               </Link>
               <Link
                 href="/shop"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-box bg-pine-800 hover:bg-pine-750 text-pine-100 font-bold text-sm transition-colors border border-pine-700/60"
+                className="inline-flex items-center justify-center px-6 py-3.5 rounded-box bg-pine-800 hover:bg-pine-750 text-pine-100 font-bold text-sm transition-colors border border-pine-700/60"
               >
                 <span>Ghé xem đồ ăn & đồ chơi bán lẻ</span>
               </Link>
@@ -506,7 +515,7 @@ export default function HomePage() {
               src="https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?w=800&q=80"
               alt="Cún cưng và mèo cưng đáng yêu bên nhau"
               fill
-              sizes="(max-width: 768px) 100vw, 400px"
+              sizes="(max-width: 768px) 100vw, 50vw"
               className="object-cover"
             />
           </div>

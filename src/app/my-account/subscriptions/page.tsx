@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { formatVND } from "@/lib/formatters";
 import { SUBSCRIPTION_PLANS } from "@/mock/boxTypes";
-import { RefreshCw, Pause, Play, XCircle, CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
+import { RefreshCw, Pause, Play, XCircle, CheckCircle2, AlertTriangle } from "lucide-react";
 
 export default function MySubscriptionsPage() {
   const { subscriptions, pauseSubscription, resumeSubscription, cancelSubscription, renewSubscription } = useApp();
@@ -170,9 +170,8 @@ export default function MySubscriptionsPage() {
                   <button
                     type="button"
                     onClick={() => setRenewModalSubId(sub.id)}
-                    className="px-3.5 py-2 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold flex items-center gap-1.5 transition-colors"
+                    className="px-3.5 py-2 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold transition-colors"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-butter-200" />
                     <span>Gia hạn tiếp nối</span>
                   </button>
                 )}
@@ -285,7 +284,7 @@ export default function MySubscriptionsPage() {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-surface-card rounded-container p-6 space-y-4 shadow-xl border border-surface-border text-xs">
             <h3 className="text-base font-bold text-pine-950 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-honey-600" />
+              <RefreshCw className="w-4 h-4 text-pine-900" />
               <span>Gia hạn gói Mystery Box nối tiếp</span>
             </h3>
 

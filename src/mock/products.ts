@@ -18,6 +18,8 @@ export interface Product {
   isRetail: boolean;
   isBoxItem: boolean;
   placeholderColor: string;
+  // TODO: thay bằng ảnh thật của FPETS khi có
+  image: string;
 }
 
 export const PRODUCTS: Product[] = [
@@ -33,14 +35,15 @@ export const PRODUCTS: Product[] = [
     species: "cat",
     targetSize: "all",
     targetAge: "all",
-    ingredients: ["Cá hồi", "Bí đỏ", "Nước hầm xương cá", "Taurine", "Vitamin E"],
+    ingredients: ["Cá hồi Na Uy", "Bí đỏ", "Nước hầm xương cá", "Taurine", "Vitamin E"],
     description: "Thịt cá hồi phi lê tươi nguyên chất kết hợp bí đỏ bổ sung chất xơ hòa tan, hỗ trợ tiêu hóa và đào thải búi lông tự nhiên ở mèo.",
     rating: 4.9,
     reviewCount: 38,
     badge: "Món ưa thích của mèo",
     isRetail: true,
     isBoxItem: true,
-    placeholderColor: "#FEF7E6"
+    placeholderColor: "#FEF7E6",
+    image: "/images/products/pate-ca-hoi.jpg"
   },
   {
     id: "prod-02",
@@ -61,7 +64,8 @@ export const PRODUCTS: Product[] = [
     badge: "Bán chạy nhất",
     isRetail: true,
     isBoxItem: true,
-    placeholderColor: "#FDECC4"
+    placeholderColor: "#FDECC4",
+    image: "/images/products/snack-uc-ga.jpg"
   },
   {
     id: "prod-03",
@@ -81,7 +85,8 @@ export const PRODUCTS: Product[] = [
     reviewCount: 29,
     isRetail: true,
     isBoxItem: true,
-    placeholderColor: "#E1EDE8"
+    placeholderColor: "#E1EDE8",
+    image: "/images/products/banh-quy-canxi.jpg"
   },
   {
     id: "prod-04",
@@ -100,7 +105,8 @@ export const PRODUCTS: Product[] = [
     reviewCount: 16,
     isRetail: true,
     isBoxItem: true,
-    placeholderColor: "#C2DBD2"
+    placeholderColor: "#C2DBD2",
+    image: "/images/products/hat-dinh-duong.jpg"
   },
   {
     id: "prod-05",
@@ -119,7 +125,8 @@ export const PRODUCTS: Product[] = [
     reviewCount: 33,
     isRetail: true,
     isBoxItem: true,
-    placeholderColor: "#FEF7E6"
+    placeholderColor: "#FEF7E6",
+    image: "/images/products/sup-thuong.jpg"
   },
   {
     id: "prod-06",
@@ -139,7 +146,8 @@ export const PRODUCTS: Product[] = [
     badge: "Siêu bền",
     isRetail: true,
     isBoxItem: true,
-    placeholderColor: "#E1EDE8"
+    placeholderColor: "#E1EDE8",
+    image: "/images/products/day-thung-keo-co.jpg"
   },
   {
     id: "prod-07",
@@ -159,7 +167,8 @@ export const PRODUCTS: Product[] = [
     badge: "Bé nào cũng thích",
     isRetail: true,
     isBoxItem: true,
-    placeholderColor: "#FEF7E6"
+    placeholderColor: "#FEF7E6",
+    image: "/images/products/ca-nhoi-catnip.jpg"
   },
   {
     id: "prod-08",
@@ -178,7 +187,8 @@ export const PRODUCTS: Product[] = [
     reviewCount: 22,
     isRetail: true,
     isBoxItem: true,
-    placeholderColor: "#E1EDE8"
+    placeholderColor: "#E1EDE8",
+    image: "/images/products/bong-cao-su.jpg"
   },
   {
     id: "prod-09",
@@ -197,7 +207,8 @@ export const PRODUCTS: Product[] = [
     reviewCount: 19,
     isRetail: true,
     isBoxItem: true,
-    placeholderColor: "#FDECC4"
+    placeholderColor: "#FDECC4",
+    image: "/images/products/can-cau-long-vu.jpg"
   },
   {
     id: "prod-10",
@@ -217,7 +228,8 @@ export const PRODUCTS: Product[] = [
     badge: "Vật dụng thiết yếu",
     isRetail: true,
     isBoxItem: true,
-    placeholderColor: "#C2DBD2"
+    placeholderColor: "#C2DBD2",
+    image: "/images/products/khan-uot.jpg"
   },
   {
     id: "prod-11",
@@ -237,7 +249,8 @@ export const PRODUCTS: Product[] = [
     reviewCount: 38,
     isRetail: true,
     isBoxItem: true,
-    placeholderColor: "#E1EDE8"
+    placeholderColor: "#E1EDE8",
+    image: "/images/products/luoc-chai-long.jpg"
   },
   {
     id: "prod-12",
@@ -256,6 +269,7 @@ export const PRODUCTS: Product[] = [
     reviewCount: 15,
     isRetail: true,
     isBoxItem: true,
-    placeholderColor: "#FEF7E6"
+    placeholderColor: "#FEF7E6",
+    image: "/images/products/vong-co-da-quang.jpg"
   }
 ];
