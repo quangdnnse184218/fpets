@@ -134,7 +134,7 @@ function LoginForm() {
           } else if (profile?.role === "admin" || profile?.role === "kho" || profile?.role === "cskh") {
             router.push("/admin/dashboard");
           } else {
-            router.push("/my-account");
+            router.push("/my-account/pets");
           }
         }, 800);
       }

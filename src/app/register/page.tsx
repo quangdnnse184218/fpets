@@ -24,7 +24,7 @@ import {
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect") || "/my-account";
+  const redirectUrl = searchParams.get("redirect") || "/my-account/pets";
   const { refreshUser } = useApp();
 
   // Form states
