@@ -3,7 +3,7 @@
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured, getSupabaseConfigStatus } from "@/lib/supabase/client";
 import { useApp } from "@/context/AppContext";
 import BrandLogo from "@/components/common/BrandLogo";
 import { 
@@ -73,8 +73,9 @@ function RegisterForm() {
       return;
     }
 
-    if (!isSupabaseConfigured()) {
-      setErrorMessage("Hệ thống chưa được cấu hình biến môi trường Supabase trên Vercel. Vui lòng thêm NEXT_PUBLIC_SUPABASE_URL và NEXT_PUBLIC_SUPABASE_ANON_KEY trong Vercel Settings.");
+    const configStatus = getSupabaseConfigStatus();
+    if (!configStatus.isConfigured) {
+      setErrorMessage(`Chưa nhận được biến môi trường trên Vercel: [${configStatus.missing.join(", ")}]. Hãy đảm bảo bạn đã bấm Save ở Vercel và tích chọn môi trường "Production", sau đó Redeploy.`);
       return;
     }
 
