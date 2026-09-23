@@ -166,7 +166,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.subscription_plans (id, name, cycle_count, discount_percentage, free_shipping, birthday_gift, badge, description, is_active)
 VALUES
   (
-    's0000000-0000-0000-0000-000000000001',
+    '50000000-0000-0000-0000-000000000001',
     'Gói 1 hộp',
     1,
     0.00,
@@ -177,7 +177,7 @@ VALUES
     true
   ),
   (
-    's0000000-0000-0000-0000-000000000002',
+    '50000000-0000-0000-0000-000000000002',
     'Gói 3 hộp',
     3,
     10.00,
@@ -188,7 +188,7 @@ VALUES
     true
   ),
   (
-    's0000000-0000-0000-0000-000000000003',
+    '50000000-0000-0000-0000-000000000003',
     'Gói 6 hộp',
     6,
     15.00,
@@ -374,7 +374,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.vouchers (id, code, voucher_type, discount_value, min_order_value, max_discount, usage_limit_total, usage_limit_per_user, used_count, valid_from, valid_to, scope, is_active)
 VALUES
   (
-    'v0000000-0000-0000-0000-000000000001',
+    '60000000-0000-0000-0000-000000000001',
     'FPETSNEW',
     'percentage',
     10,
@@ -389,7 +389,7 @@ VALUES
     true
   ),
   (
-    'v0000000-0000-0000-0000-000000000002',
+    '60000000-0000-0000-0000-000000000002',
     'FREESHIP',
     'free_shipping',
     30000,
@@ -404,7 +404,7 @@ VALUES
     true
   ),
   (
-    'v0000000-0000-0000-0000-000000000003',
+    '60000000-0000-0000-0000-000000000003',
     'REVIEW20K',
     'fixed_amount',
     20000,
@@ -433,7 +433,7 @@ VALUES (
   'a0000000-0000-0000-0000-000000000004',
   'e0000000-0000-0000-0000-000000000002', -- Bé Miu
   'b0000000-0000-0000-0000-000000000003', -- Box Tiêu chuẩn cho Mèo
-  's0000000-0000-0000-0000-000000000002', -- Gói 3 hộp
+  '50000000-0000-0000-0000-000000000002', -- Gói 3 hộp
   3,
   2,
   2,
