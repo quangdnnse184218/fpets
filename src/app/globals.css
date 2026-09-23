@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #FAF9F6;
+  --foreground: #1C1917;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-vietnam), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tùy chỉnh focus state rõ ràng cho trợ năng (a11y) */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #17342C;
+  outline-offset: 2px;
+}
+
+/* Không cho ẩn cuộn ngang ngoài ý muốn trên mobile */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
