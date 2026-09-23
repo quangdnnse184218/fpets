@@ -25,16 +25,23 @@ export default function MyAccountLayout({ children }: { children: React.ReactNod
         </div>
         <h1 className="text-xl font-bold text-pine-950">Vui lòng đăng nhập</h1>
         <p className="text-xs text-bark-600">
-          Bạn đang ở chế độ khách vãng lai. Bấm nút bên dưới để đăng nhập bằng tài khoản mẫu của bạn.
+          Bạn cần đăng nhập tài khoản FPETS để quản lý hồ sơ thú cưng, xem lịch sử đơn hàng và gói định kỳ.
         </p>
-        <button
-          type="button"
-          onClick={login}
-          className="px-6 py-2.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white text-xs font-bold transition-colors inline-flex items-center gap-1.5"
-        >
-          <LogIn className="w-3.5 h-3.5 text-butter-200" />
-          <span>Đăng nhập mẫu ngay</span>
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
+          <Link
+            href="/login?redirect=/my-account/pets"
+            className="px-5 py-2.5 rounded-xl bg-pine-900 hover:bg-pine-800 text-white text-xs font-bold transition-colors inline-flex items-center justify-center gap-1.5 shadow-sm"
+          >
+            <LogIn className="w-3.5 h-3.5 text-honey-300" />
+            <span>Đăng nhập ngay</span>
+          </Link>
+          <Link
+            href="/register?redirect=/my-account/pets"
+            className="px-5 py-2.5 rounded-xl border border-surface-border bg-white hover:bg-surface-muted text-bark-800 text-xs font-semibold transition-colors inline-flex items-center justify-center gap-1.5"
+          >
+            <span>Đăng ký tài khoản</span>
+          </Link>
+        </div>
       </div>
     );
   }

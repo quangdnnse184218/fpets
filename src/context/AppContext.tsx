@@ -7,6 +7,7 @@ import { BoxType, BOX_TYPES } from "@/mock/boxTypes";
 import { Order, INITIAL_ORDERS } from "@/mock/orders";
 import { Subscription, INITIAL_SUBSCRIPTIONS } from "@/mock/subscriptions";
 import { CurationItem, INITIAL_CURATION_QUEUE } from "@/mock/curationQueue";
+import { createClient } from "@/lib/supabase/client";
 
 export interface CartItem {
   id: string; // unique cart line id
@@ -22,20 +23,24 @@ export interface CartItem {
 }
 
 export interface UserProfile {
+  id?: string;
   name: string;
   email: string;
   phone: string;
   address: string;
-  role: 'customer' | 'admin';
+  role: 'customer' | 'admin' | 'kho' | 'cskh';
+  avatarUrl?: string;
 }
 
 interface AppContextType {
   // Auth
   isLoggedIn: boolean;
+  isLoadingAuth: boolean;
   user: UserProfile;
   login: () => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   toggleRole: () => void;
+  refreshUser: () => Promise<void>;
 
   // Pets
   pets: Pet[];
@@ -78,15 +83,121 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Auth state
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
-  const [user, setUser] = useState<UserProfile>({
-    name: "Nguyễn Văn Quang",
-    email: "quang.nguyen@example.com",
-    phone: "0912345678",
-    address: "Số 24 ngõ 105 Xuân Thủy, Dịch Vọng Hậu, Cầu Giấy, Hà Nội",
+  // Default user profile khi chưa đăng nhập
+  const DEFAULT_USER: UserProfile = {
+    name: "Khách hàng",
+    email: "",
+    phone: "",
+    address: "",
     role: "customer"
-  });
+  };
+
+  // Auth state
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
+  const [user, setUser] = useState<UserProfile>(DEFAULT_USER);
+
+  // Hàm load profile người dùng từ Supabase
+  const fetchUserProfile = async (userId: string, email?: string) => {
+    try {
+      const supabase = createClient();
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (profile && !error) {
+        setUser({
+          id: profile.id,
+          name: profile.full_name || email?.split("@")[0] || "Thành viên",
+          email: profile.email || email || "",
+          phone: profile.phone || "",
+          address: "",
+          role: profile.role || "customer",
+          avatarUrl: profile.avatar_url || undefined,
+        });
+        setIsLoggedIn(true);
+      } else {
+        // Fallback khi bảng profiles chưa kịp sync hoặc trigger đang chạy
+        setUser({
+          id: userId,
+          name: email?.split("@")[0] || "Thành viên",
+          email: email || "",
+          phone: "",
+          address: "",
+          role: "customer",
+        });
+        setIsLoggedIn(true);
+      }
+    } catch (err) {
+      console.error("Lỗi tải thông tin người dùng:", err);
+      setIsLoggedIn(true);
+    }
+  };
+
+  // Khởi tạo và lắng nghe Supabase auth state change
+  useEffect(() => {
+    const supabase = createClient();
+
+    // 1. Kiểm tra session hiện tại
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchUserProfile(session.user.id, session.user.email);
+      } else {
+        setIsLoggedIn(false);
+        setUser(DEFAULT_USER);
+      }
+      setIsLoadingAuth(false);
+    });
+
+    // 2. Lắng nghe thay đổi auth (đăng nhập, đăng xuất, token refreshed)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          await fetchUserProfile(session.user.id, session.user.email);
+        } else {
+          setIsLoggedIn(false);
+          setUser(DEFAULT_USER);
+        }
+        setIsLoadingAuth(false);
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Auth actions
+  const login = () => setIsLoggedIn(true);
+
+  const logout = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Lỗi khi đăng xuất:", err);
+    } finally {
+      setIsLoggedIn(false);
+      setUser(DEFAULT_USER);
+    }
+  };
+
+  const refreshUser = async () => {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await fetchUserProfile(session.user.id, session.user.email);
+    }
+  };
+
+  const toggleRole = () => {
+    setUser(prev => ({
+      ...prev,
+      role: prev.role === 'customer' ? 'admin' : 'customer'
+    }));
+  };
 
   // Pets state
   const [pets, setPets] = useState<Pet[]>(INITIAL_PETS);
@@ -125,16 +236,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Admin Curation state
   const [curationQueue, setCurationQueue] = useState<CurationItem[]>(INITIAL_CURATION_QUEUE);
-
-  // Auth actions
-  const login = () => setIsLoggedIn(true);
-  const logout = () => setIsLoggedIn(false);
-  const toggleRole = () => {
-    setUser(prev => ({
-      ...prev,
-      role: prev.role === 'customer' ? 'admin' : 'customer'
-    }));
-  };
 
   // Pet actions
   const addPet = (newPetData: Omit<Pet, "id" | "receivedBoxesCount" | "avatarColor">): Pet => {
@@ -340,10 +441,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider
       value={{
         isLoggedIn,
+        isLoadingAuth,
         user,
         login,
         logout,
         toggleRole,
+        refreshUser,
         pets,
         addPet,
         updatePet,
