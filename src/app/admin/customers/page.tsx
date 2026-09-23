@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { MOCK_CUSTOMERS, Customer } from "@/mock/customers";
 import { formatVND } from "@/lib/formatters";
 import { Search, Lock, Unlock, Eye, Users, ShieldAlert, Phone, Mail, MapPin, Package, Heart, X } from "lucide-react";
+import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 
 export default function AdminCustomersPage() {
   const [customerList, setCustomerList] = useState<Customer[]>(MOCK_CUSTOMERS);
@@ -93,12 +94,13 @@ export default function AdminCustomersPage() {
                 <td className="p-3.5">
                   <div className="flex flex-wrap gap-1">
                     {customer.pets.map((p, idx) => (
-                      <span
+                      <PetSpeciesIcon
                         key={idx}
-                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-pine-50 text-pine-800 border border-pine-100"
-                      >
-                        {p.species === "dog" ? "🐶" : "🐱"} {p.name}
-                      </span>
+                        species={p.species}
+                        variant="badge"
+                        size="xs"
+                        label={p.name}
+                      />
                     ))}
                   </div>
                 </td>
@@ -216,8 +218,8 @@ export default function AdminCustomersPage() {
               <div className="grid grid-cols-1 gap-2">
                 {selectedCustomer.pets.map((p, idx) => (
                   <div key={idx} className="p-2.5 rounded-box border border-surface-border bg-white flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{p.species === "dog" ? "🐶" : "🐱"}</span>
+                    <div className="flex items-center gap-2.5">
+                      <PetSpeciesIcon species={p.species} variant="avatar" size="sm" />
                       <div>
                         <span className="font-bold text-pine-950">{p.name}</span>
                         <span className="text-[11px] text-bark-500 block">{p.breed}</span>

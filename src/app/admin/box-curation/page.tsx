@@ -8,6 +8,7 @@ import { formatVND } from "@/lib/formatters";
 import { PRODUCTS, Product } from "@/mock/products";
 import { CurationItem } from "@/mock/curationQueue";
 import { CheckCircle2, AlertTriangle, ShieldCheck, ShieldAlert, RefreshCw, Eye, HeartHandshake, Dog, Cat, PawPrint, UtensilsCrossed } from "lucide-react";
+import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 
 export default function AdminBoxCurationPage() {
   const { curationQueue, approveCuration, swapCurationItem } = useApp();
@@ -108,14 +109,8 @@ export default function AdminBoxCurationPage() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="p-1 rounded bg-surface-muted shrink-0">
-                    {item.species === 'Chó' ? (
-                      <Dog className="w-4 h-4 text-pine-900" />
-                    ) : (
-                      <Cat className="w-4 h-4 text-pine-900" />
-                    )}
-                  </div>
+                <div className="flex items-center gap-2.5 mt-2">
+                  <PetSpeciesIcon species={item.species} variant="avatar" size="sm" />
                   <div>
                     <h3 className="text-sm font-bold text-pine-950">Bé {item.petName}</h3>
                     <p className="text-[11px] text-bark-500">
@@ -140,9 +135,12 @@ export default function AdminBoxCurationPage() {
             {/* Header thông tin bé */}
             <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-surface-border">
               <div>
-                <span className="inline-block text-xs font-semibold text-pine-900 bg-pine-50 px-2.5 py-0.5 rounded-tag border border-pine-200">
-                  {activeCuration.boxType}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block text-xs font-semibold text-pine-900 bg-pine-50 px-2.5 py-0.5 rounded-tag border border-pine-200">
+                    {activeCuration.boxType}
+                  </span>
+                  <PetSpeciesIcon species={activeCuration.species} variant="badge" size="xs" />
+                </div>
                 <h2 className="text-xl font-extrabold text-pine-950 font-display mt-1">
                   Tuyển chọn hộp cho bé {activeCuration.petName}
                 </h2>

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { formatVND } from "@/lib/formatters";
 import { Search, Filter, Heart, AlertTriangle, Eye, ThumbsUp, Meh, ThumbsDown, Package, CheckCircle2, X } from "lucide-react";
+import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 
 interface AdminPetItem {
   id: string;
@@ -208,8 +209,8 @@ export default function AdminPetsPage() {
             className="px-3 py-2 rounded-box border border-surface-border bg-white text-bark-700 focus:outline-none"
           >
             <option value="all">Tất cả loài</option>
-            <option value="dog">🐶 Chỉ Chó</option>
-            <option value="cat">🐱 Chỉ Mèo</option>
+            <option value="dog">Chó</option>
+            <option value="cat">Mèo</option>
           </select>
 
           <select
@@ -244,12 +245,7 @@ export default function AdminPetsPage() {
               <tr key={pet.id} className="hover:bg-surface-muted/50 transition-colors">
                 <td className="p-3.5">
                   <div className="flex items-center gap-2.5">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-pine-900 shrink-0 text-sm"
-                      style={{ backgroundColor: pet.avatarColor }}
-                    >
-                      {pet.species === "dog" ? "🐶" : "🐱"}
-                    </div>
+                    <PetSpeciesIcon species={pet.species} variant="avatar" size="sm" />
                     <div>
                       <span className="font-bold text-pine-950 block">{pet.name}</span>
                       <span className="text-[10px] text-bark-400">{pet.ageLabel}</span>
@@ -318,12 +314,7 @@ export default function AdminPetsPage() {
           <div className="bg-surface-card rounded-container border border-surface-border p-6 max-w-xl w-full shadow-xl space-y-4 max-h-[90vh] overflow-y-auto text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-surface-border">
               <div className="flex items-center gap-2.5">
-                <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-base"
-                  style={{ backgroundColor: selectedPet.avatarColor }}
-                >
-                  {selectedPet.species === "dog" ? "🐶" : "🐱"}
-                </div>
+                <PetSpeciesIcon species={selectedPet.species} variant="avatar" size="md" />
                 <div>
                   <h3 className="font-bold text-pine-950 text-sm">
                     Lịch sử & Feedback của bé {selectedPet.name}

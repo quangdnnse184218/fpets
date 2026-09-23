@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { PRODUCTS, Product } from "@/mock/products";
 import { formatVND } from "@/lib/formatters";
 import ProductItemImage from "@/components/common/ProductItemImage";
+import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 import {
   Plus,
   Edit2,
@@ -279,9 +280,7 @@ export default function AdminProductsPage() {
                     </span>
                   </td>
                   <td className="p-3.5">
-                    <span className="text-bark-700">
-                      {prod.species === 'dog' ? '🐶 Chó' : prod.species === 'cat' ? '🐱 Mèo' : '🐶🐱 Chó & Mèo'}
-                    </span>
+                    <PetSpeciesIcon species={prod.species} variant="badge" size="xs" />
                   </td>
                   <td className="p-3.5 font-bold text-pine-950 font-display">
                     {formatVND(prod.price)}

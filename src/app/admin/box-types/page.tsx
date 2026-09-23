@@ -5,6 +5,7 @@ import Image from "next/image";
 import { BOX_TYPES, SUBSCRIPTION_PLANS, BoxType } from "@/mock/boxTypes";
 import { formatVND } from "@/lib/formatters";
 import { Plus, Edit2, Trash2, Check, Percent, Gift, Settings, ShieldAlert, Sparkles, X, AlertTriangle, CheckCircle2 } from "lucide-react";
+import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 
 export default function AdminBoxTypesPage() {
   const [boxList, setBoxList] = useState<BoxType[]>(BOX_TYPES);
@@ -246,9 +247,12 @@ export default function AdminBoxTypesPage() {
                     </div>
                   </td>
                   <td className="p-3.5">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-pine-50 text-pine-800">
-                      {box.species === "dog" ? "🐶 Chó" : "🐱 Mèo"} • {box.size === "small" ? "Nhỏ" : "Lớn"}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <PetSpeciesIcon species={box.species} variant="badge" size="xs" />
+                      <span className="text-[10px] font-medium text-bark-500 bg-surface-muted px-1.5 py-0.5 rounded border border-surface-border">
+                        {box.size === "small" ? "Nhỏ" : "Lớn"}
+                      </span>
+                    </div>
                   </td>
                   <td className="p-3.5 font-medium">{box.itemCount}</td>
                   <td className="p-3.5 font-bold text-bark-800">

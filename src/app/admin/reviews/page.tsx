@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { MOCK_REVIEWS, Review } from "@/mock/reviews";
 import { Star, Eye, EyeOff, MessageSquare, CheckCircle2, ThumbsUp, Meh, ThumbsDown, Search, X } from "lucide-react";
+import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 
 export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>(MOCK_REVIEWS);
@@ -166,8 +167,9 @@ export default function AdminReviewsPage() {
               <tr key={rev.id} className="hover:bg-surface-muted/50 transition-colors">
                 <td className="p-3.5">
                   <div className="font-bold text-pine-950 text-xs">{rev.customerName}</div>
-                  <div className="text-[11px] text-bark-500 mt-0.5">
-                    {rev.petSpecies === "dog" ? "🐶" : "🐱"} Bé <strong>{rev.petName}</strong> ({rev.petBreed})
+                  <div className="text-[11px] text-bark-600 mt-0.5 flex items-center gap-1.5">
+                    <PetSpeciesIcon species={rev.petSpecies} variant="inline" size="xs" label="" />
+                    <span>Bé <strong>{rev.petName}</strong> ({rev.petBreed})</span>
                   </div>
                   <div className="text-[10px] text-bark-400 mt-0.5">{rev.createdAt}</div>
                 </td>
