@@ -755,7 +755,8 @@ Kế hoạch được chia thành **11 Task độc lập**, mỗi task tương �
 
 ---
 
-### Task 1: Nền Móng Kỹ Thuật, Database Schema & Base Layout Mobile-First
+### Task 1: Nền Móng Kỹ Thuật, Database Schema & Base Layout Mobile-First `[ĐÃ HOÀN THÀNH - 24/09/2026]`
+- **Trạng thái**: ✅ **ĐÃ HOÀN THÀNH TOÀN DIỆN** (Bao gồm Base Layout, 100% Trang khách & Admin, Full Database Schema, Supabase Auth thật, Sanitize Error, Tinh gọn Role & Test Accounts).
 - **Mục tiêu**: Khởi tạo repo hoàn chỉnh, chạy được Next.js App Router, cấu hình Tailwind CSS, kết nối Supabase, chạy migration schema 20 bảng, tạo RLS policies, cấu hình RLS cho 3 Storage buckets có sẵn và tạo dữ liệu mẫu (seed data).
 - **Phạm vi thực hiện**:
   - Tạo cấu trúc thư mục chuẩn theo mục 1 (bao gồm helper `src/lib/supabase/storage.ts`).
@@ -950,4 +951,7 @@ Kế hoạch được chia thành **11 Task độc lập**, mỗi task tương �
 ---
 
 > [!NOTE]
-> **Kế hoạch triển khai đã được xem xét và phê duyệt chính thức. Sẵn sàng bắt đầu Task 1.**
+> **Tiến độ hiện tại (Cập nhật ngày 24/09/2026):**
+> - **Task 1 (Nền móng, Database Schema, Supabase Auth & Layout)**: ✅ **ĐÃ HOÀN THÀNH**.
+> - **Giao diện người dùng & Quản trị**: Hoàn thành 100% các trang còn thiếu (`/about`, `/faq`, `/contact`, `/subscription`, `/reviews`) và toàn bộ module Admin với Lucide icons.
+> - **Tiếp theo**: Thực hiện kết nối dữ liệu database thực tế cho **Task 2: Pet Quiz, Pet Profile & Quản Lý Thú Cưng** và **Task 3: Cửa Hàng Bán Lẻ & Mystery Box**.

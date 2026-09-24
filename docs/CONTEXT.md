@@ -6,10 +6,13 @@ Mua lẻ 1 hộp hoặc gói định kỳ 1/3/6 hộp. Kèm shop bán lẻ và a
 Dự án làm cho khách hàng thật. Tài liệu: docs/SPEC.md (nghiệp vụ), docs/PLAN.md (schema + task).
 
 ## Trạng thái hiện tại
-- Giao diện demo xong, chạy bằng mock data trong src/mock/, chưa nối Supabase.
-- Deploy: https://fpets.vercel.app (tự deploy khi push nhánh main).
+- Giao diện người dùng và Admin hoàn chỉnh: 100% các trang khách hàng (/about, /faq, /contact, /subscription, /reviews) và các module Admin đã hoàn thiện giao diện, chuẩn vector icon từ Lucide.
+- Đã nối Supabase Auth: Đăng ký, Đăng nhập, Quên mật khẩu hoạt động với Supabase Auth thật, bảo mật thông báo lỗi, tự động liên kết Profile.
+- Phân quyền tối giản: Tinh gọn còn 2 vai trò chính (Super Admin & Customer) giúp vận hành đơn giản, bảo mật cao. Danh sách tài khoản mẫu lưu tại docs/tk,mk account.txt.
+- Database: Bộ script SQL hoàn chỉnh (init_full_database.sql, seed.sql) đã sửa lỗi UUID, fix duplicate product IDs, đồng bộ auth.identities và token GoTrue tương thích hoàn toàn Supabase.
+- Deploy: https://fpets.vercel.app (tự deploy khi push nhánh main), có cơ chế fallback an toàn khi thiếu biến môi trường.
 - Repo: github.com/quangdnnse184218/fpets
-- Supabase project: fpets, ref dmrcjuoxfbzepeyffxwn, region Singapore. Database còn TRỐNG.
+- Supabase project: fpets, ref dmrcjuoxfbzepeyffxwn, region Singapore.
 
 ## Supabase Storage (đã tạo sẵn, KHÔNG tạo lại)
 - product-images (public): product-images/<ten-file>.jpg
@@ -28,6 +31,7 @@ CẦN LÀM: siết quyền ghi product-images về chỉ admin (hiện đang m�
 5. Email giao dịch: Resend.
 6. Hủy gói: vẫn giao hết hộp đã trả, không hoàn tiền.
 7. Cut-off 7 ngày trước đợt giao. Pause tối đa 2 kỳ. Quá hạn có 5 ngày grace.
+8. Vai trò người dùng: Giữ 2 vai trò cơ bản (admin: Quản trị viên toàn quyền, customer: Khách hàng) để tối ưu vận hành.
 
 ## Quy ước thiết kế (khách đã duyệt, đừng đổi)
 - Font: Bricolage Grotesque (tiêu đề) + Be Vietnam Pro (nội dung), subset vietnamese.
@@ -46,12 +50,13 @@ CẦN LÀM: siết quyền ghi product-images về chỉ admin (hiện đang m�
 3. Supabase KHÔNG cho tạo function trong schema auth. Dùng public.is_admin(), public.is_staff().
 4. next/image dùng fill thì phần tử cha phải có chiều cao ở MỌI breakpoint, và luôn có prop sizes.
 5. cart_items.pet_id phải ON DELETE CASCADE, không phải SET NULL.
+6. Seed auth trong Supabase: Bắt buộc chèn vào cả auth.users và auth.identities, các trường token (confirmation_token, recovery_token, email_change_token_new/current) phải là chuỗi rỗng '' thay vì NULL để GoTrue không báo lỗi 500 Database Error.
 
 ## Còn phải làm
-- 5 trang khách: /faq /about /contact /subscription /reviews (footer có link /faq nhưng đang 404).
-- 7 module admin: Mystery Box, Khách hàng, Pet Profile, Subscription, Voucher, Review, Thống kê.
-- Ảnh thật cho 12 sản phẩm lẻ (đang là placeholder).
-- Toàn bộ backend theo docs/PLAN.md, bắt đầu từ Task 1.
+- Kết nối dữ liệu Supabase Database thật cho các trang người dùng: Pet Quiz & Pet Profile (Task 2), Shop & Mystery Box (Task 3), Giỏ hàng & Checkout (Task 4).
+- Kết nối dữ liệu Supabase Database thật cho Admin Dashboard và các module CRUD (Task 5).
+- Tích hợp cổng thanh toán Mock / MoMo / VNPay (Task 8).
+- Tự động hóa Cron Jobs (Task 9), Review unbox & Voucher (Task 10), Email Resend & Báo cáo (Task 11).
 
 ## Ưu tiên bảo mật (web có tiền và dữ liệu khách thật)
 - RLS phải test thật: giả lập user A truy vấn dữ liệu user B, phải bị chặn.
