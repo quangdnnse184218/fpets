@@ -1,54 +1,127 @@
 "use client";
 
-import React, { useState } from "react";
-import { useApp } from "@/context/AppContext";
+import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 import { formatVND } from "@/lib/formatters";
-import { SUBSCRIPTION_PLANS } from "@/mock/boxTypes";
-import { RefreshCw, Pause, Play, XCircle, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Pause, Play, CheckCircle2, AlertTriangle } from "lucide-react";
+
+type SubStatus = "cho_thanh_toan" | "dang_hoat_dong" | "tam_dung" | "qua_han" | "het_han" | "da_huy";
+
+const STATUS_LABEL: Record<SubStatus, string> = {
+  cho_thanh_toan: "Chờ thanh toán",
+  dang_hoat_dong: "Đang hoạt động",
+  tam_dung: "Tạm dừng",
+  qua_han: "Quá hạn",
+  het_han: "Hết hạn",
+  da_huy: "Đã hủy",
+};
+
+interface SubscriptionRow {
+  id: string;
+  subscription_code: string;
+  status: SubStatus;
+  total_cycles: number;
+  remaining_cycles: number;
+  current_cycle: number;
+  next_delivery_date: string;
+  cutoff_date: string;
+  total_prepaid_amount: number;
+  paused_cycles_left: number;
+  pets: { name: string; breed: string | null } | null;
+  box_types: { name: string } | null;
+  subscription_plans: { name: string } | null;
+}
 
 export default function MySubscriptionsPage() {
-  const { subscriptions, pauseSubscription, resumeSubscription, cancelSubscription, renewSubscription } = useApp();
+  const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [pauseModalSubId, setPauseModalSubId] = useState<string | null>(null);
   const [cancelModalSubId, setCancelModalSubId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("Bé đi du lịch cùng gia đình");
-  const [renewModalSubId, setRenewModalSubId] = useState<string | null>(null);
-  const [selectedRenewPlan, setSelectedRenewPlan] = useState("plan-3");
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const loadSubs = useCallback(async () => {
+    setLoading(true);
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .select("id, subscription_code, status, total_cycles, remaining_cycles, current_cycle, next_delivery_date, cutoff_date, total_prepaid_amount, paused_cycles_left, pets(name, breed), box_types(name), subscription_plans(name)")
+      .order("created_at", { ascending: false });
+    if (!error && data) setSubscriptions(data as unknown as SubscriptionRow[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadSubs();
+  }, [loadSubs]);
 
   const showNotification = (msg: string) => {
     setActionNotice(msg);
-    setTimeout(() => setActionNotice(null), 3000);
+    setActionError(null);
+    setTimeout(() => setActionNotice(null), 4000);
+  };
+  const showError = (msg: string) => {
+    setActionError(msg);
+    setTimeout(() => setActionError(null), 4000);
   };
 
-  const handleConfirmPause = () => {
+  const handleConfirmPause = async () => {
     if (!pauseModalSubId) return;
-    pauseSubscription(pauseModalSubId, 1);
+    setBusy(true);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("pause_subscription", { p_subscription_id: pauseModalSubId, p_cycles: 1 });
+    setBusy(false);
     setPauseModalSubId(null);
+    if (error) {
+      showError(error.message.includes("ERR_PAST_CUTOFF") ? "Đã qua ngày chốt, không thể tạm dừng kỳ này." : "Không thể tạm dừng gói này.");
+      return;
+    }
     showNotification("Đã tạm dừng 1 kỳ giao tiếp theo. Lịch nhận hộp tự động dời sang tháng sau!");
+    loadSubs();
   };
 
-  const handleConfirmCancel = () => {
+  const handleResume = async (id: string) => {
+    setBusy(true);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("resume_subscription", { p_subscription_id: id });
+    setBusy(false);
+    if (error) {
+      showError("Không thể tiếp tục gói này.");
+      return;
+    }
+    showNotification("Gói đã hoạt động trở lại bình thường!");
+    loadSubs();
+  };
+
+  const handleConfirmCancel = async () => {
     if (!cancelModalSubId) return;
-    cancelSubscription(cancelModalSubId, cancelReason);
+    setBusy(true);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("cancel_subscription", { p_subscription_id: cancelModalSubId, p_reason: cancelReason });
+    setBusy(false);
     setCancelModalSubId(null);
+    if (error) {
+      showError("Không thể hủy gói này.");
+      return;
+    }
     showNotification("Đã hủy gia hạn gói. Các hộp bạn đã trả trước vẫn sẽ được chuẩn bị và giao đầy đủ.");
+    loadSubs();
   };
 
-  const handleConfirmRenew = () => {
-    if (!renewModalSubId) return;
-    const plan = SUBSCRIPTION_PLANS.find(p => p.id === selectedRenewPlan) || SUBSCRIPTION_PLANS[1];
-    renewSubscription(renewModalSubId, `${plan.name} (Gia hạn)`, 807000);
-    setRenewModalSubId(null);
-    showNotification("Gia hạn thành công! Gói mới sẽ tự động kích hoạt nối tiếp sau kỳ cuối cùng.");
-  };
+  if (loading) {
+    return <div className="py-16 text-center text-xs text-bark-500">Đang tải gói định kỳ...</div>;
+  }
 
   return (
     <div className="space-y-6">
       <div className="space-y-1">
         <h2 className="text-lg font-bold text-pine-950">Gói Mystery Box định kỳ của bạn</h2>
         <p className="text-xs text-bark-500">
-          Quản lý lịch giao hằng tháng, tạm dừng khi bận đi vắng hoặc gia hạn để duy trì ưu đãi.
+          Quản lý lịch giao hằng tháng, tạm dừng khi bận đi vắng hoặc hủy gói.
         </p>
       </div>
 
@@ -58,141 +131,96 @@ export default function MySubscriptionsPage() {
           <span>{actionNotice}</span>
         </div>
       )}
+      {actionError && (
+        <div className="p-3.5 rounded-box bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>{actionError}</span>
+        </div>
+      )}
+
+      {subscriptions.length === 0 && (
+        <div className="p-10 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border space-y-2">
+          <p>Bạn chưa có gói định kỳ nào.</p>
+          <Link href="/boxes" className="text-pine-800 font-semibold hover:underline">Xem các loại Mystery Box</Link>
+        </div>
+      )}
 
       {subscriptions.map((sub) => {
-        const isPaused = sub.status === 'tam_dung';
-        const isCancelled = sub.status === 'da_huy';
-        const isLastBox = sub.remainingCycles <= 1;
+        const isPaused = sub.status === "tam_dung";
+        const isCancelled = sub.status === "da_huy" || sub.status === "het_han";
+        const completedCycles = sub.total_cycles - sub.remaining_cycles;
 
         return (
-          <div
-            key={sub.id}
-            className={`p-6 rounded-container bg-surface-card border space-y-5 shadow-xs ${
-              isPaused ? "border-amber-400 bg-amber-50/20" : isCancelled ? "border-bark-300 opacity-90" : "border-surface-border"
-            }`}
-          >
-            {/* Header gói */}
+          <div key={sub.id} className={`p-6 rounded-container bg-surface-card border space-y-5 shadow-xs ${isPaused ? "border-amber-400 bg-amber-50/20" : isCancelled ? "border-bark-300 opacity-90" : "border-surface-border"}`}>
             <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-surface-border">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-pine-950 text-sm">{sub.code}</span>
-                  <span className={`px-2.5 py-0.5 rounded-tag text-xs font-bold ${
-                    isPaused ? "bg-amber-100 text-amber-800" : isCancelled ? "bg-bark-200 text-bark-700" : "bg-grass-100 text-grass-800"
-                  }`}>
-                    {sub.statusLabel}
+                  <span className="font-mono font-bold text-pine-950 text-sm">{sub.subscription_code}</span>
+                  <span className={`px-2.5 py-0.5 rounded-tag text-xs font-bold ${isPaused ? "bg-amber-100 text-amber-800" : isCancelled ? "bg-bark-200 text-bark-700" : "bg-grass-100 text-grass-800"}`}>
+                    {STATUS_LABEL[sub.status]}
                   </span>
                 </div>
-                <h3 className="text-base font-extrabold text-pine-950">{sub.boxName}</h3>
+                <h3 className="text-base font-extrabold text-pine-950">{sub.box_types?.name}</h3>
                 <p className="text-xs text-bark-600">
-                  Dành cho bé: <strong>{sub.petName}</strong> ({sub.petBreed}) · {sub.planName}
+                  Dành cho bé: <strong>{sub.pets?.name}</strong> ({sub.pets?.breed}) · {sub.subscription_plans?.name}
                 </p>
               </div>
-
               <div className="text-right">
                 <div className="text-xs text-bark-500">Tổng tiền đã trả:</div>
-                <div className="text-base font-bold text-pine-950 font-display">
-                  {formatVND(sub.prepaidAmount)}
-                </div>
+                <div className="text-base font-bold text-pine-950 font-display">{formatVND(sub.total_prepaid_amount)}</div>
               </div>
             </div>
 
-            {/* Tiến độ các kỳ */}
             <div className="space-y-2">
               <div className="flex justify-between text-xs font-bold text-pine-950">
-                <span>Tiến độ giao hộp ({sub.completedCycles}/{sub.totalCycles} hộp):</span>
-                <span className="text-honey-700">Còn lại {sub.remainingCycles} hộp chưa giao</span>
+                <span>Tiến độ giao hộp ({completedCycles}/{sub.total_cycles} hộp):</span>
+                <span className="text-honey-700">Còn lại {sub.remaining_cycles} hộp chưa giao</span>
               </div>
               <div className="w-full h-3 rounded-full bg-surface-muted overflow-hidden flex gap-1 p-0.5 border border-surface-border">
-                {[...Array(sub.totalCycles)].map((_, i) => (
-                  <div
-                    key={i}
-                    className={`h-full flex-1 rounded-full ${
-                      i < sub.completedCycles
-                        ? "bg-grass-600"
-                        : i === sub.completedCycles && !isPaused && !isCancelled
-                        ? "bg-honey-500 animate-pulse"
-                        : "bg-surface-border"
-                    }`}
-                  />
+                {[...Array(sub.total_cycles)].map((_, i) => (
+                  <div key={i} className={`h-full flex-1 rounded-full ${i < completedCycles ? "bg-grass-600" : i === completedCycles && !isPaused && !isCancelled ? "bg-honey-500 animate-pulse" : "bg-surface-border"}`} />
                 ))}
               </div>
             </div>
 
-            {/* Thông tin kỳ giao kế tiếp & Cut-off date */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-box bg-surface-muted text-xs">
-              <div>
-                <span className="text-bark-500 block">Đợt giao hằng tháng:</span>
-                <strong className="text-pine-950">{sub.deliveryScheduleLabel}</strong>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-box bg-surface-muted text-xs">
               <div>
                 <span className="text-bark-500 block">Ngày giao dự kiến tiếp theo:</span>
-                <strong className="text-pine-950">{sub.nextDeliveryDate}</strong>
+                <strong className="text-pine-950">{new Date(sub.next_delivery_date).toLocaleDateString("vi-VN")}</strong>
               </div>
               <div>
                 <span className="text-bark-500 block">Hạn chốt thay đổi (Cut-off):</span>
-                <strong className="text-honey-800">{sub.cutoffDate}</strong>
+                <strong className="text-honey-800">{new Date(sub.cutoff_date).toLocaleDateString("vi-VN")}</strong>
               </div>
             </div>
 
-            {/* Các nút can thiệp gói (Pause, Cancel, Resume, Renew) */}
-            <div className="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs border-t border-surface-border">
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Nút Pause / Resume */}
-                {!isCancelled && (
-                  <>
-                    {isPaused ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          resumeSubscription(sub.id);
-                          showNotification("Gói đã hoạt động trở lại bình thường!");
-                        }}
-                        className="px-3.5 py-2 rounded-box bg-grass-700 hover:bg-grass-800 text-white font-bold flex items-center gap-1.5 transition-colors"
-                      >
-                        <Play className="w-3.5 h-3.5" />
-                        <span>Tiếp tục nhận hộp ngay</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setPauseModalSubId(sub.id)}
-                        className="px-3.5 py-2 rounded-box bg-surface-card hover:bg-surface-muted text-bark-800 border border-surface-border font-bold flex items-center gap-1.5 transition-colors"
-                      >
-                        <Pause className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Tạm dừng 1 kỳ</span>
-                      </button>
-                    )}
-                  </>
-                )}
+            {!isCancelled && (
+              <div className="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs border-t border-surface-border">
+                <div className="flex flex-wrap items-center gap-2">
+                  {isPaused ? (
+                    <button type="button" disabled={busy} onClick={() => handleResume(sub.id)}
+                      className="px-3.5 py-2 rounded-box bg-grass-700 hover:bg-grass-800 text-white font-bold flex items-center gap-1.5 transition-colors disabled:opacity-60">
+                      <Play className="w-3.5 h-3.5" />
+                      <span>Tiếp tục nhận hộp ngay</span>
+                    </button>
+                  ) : sub.status === "dang_hoat_dong" ? (
+                    <button type="button" onClick={() => setPauseModalSubId(sub.id)}
+                      className="px-3.5 py-2 rounded-box bg-surface-card hover:bg-surface-muted text-bark-800 border border-surface-border font-bold flex items-center gap-1.5 transition-colors">
+                      <Pause className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Tạm dừng 1 kỳ</span>
+                    </button>
+                  ) : null}
+                </div>
 
-                {/* Nút Gia hạn */}
-                {!isCancelled && (
-                  <button
-                    type="button"
-                    onClick={() => setRenewModalSubId(sub.id)}
-                    className="px-3.5 py-2 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold transition-colors"
-                  >
-                    <span>Gia hạn tiếp nối</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Nút Hủy gói */}
-              {!isCancelled && (
-                <button
-                  type="button"
-                  onClick={() => setCancelModalSubId(sub.id)}
-                  className="text-bark-500 hover:text-red-600 font-semibold transition-colors"
-                >
+                <button type="button" onClick={() => setCancelModalSubId(sub.id)} className="text-bark-500 hover:text-red-600 font-semibold transition-colors">
                   Hủy gói định kỳ
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         );
       })}
 
-      {/* Modal Tạm Dừng */}
       {pauseModalSubId && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-surface-card rounded-container p-6 space-y-4 shadow-xl border border-surface-border text-xs">
@@ -201,24 +229,16 @@ export default function MySubscriptionsPage() {
               <span>Xác nhận tạm dừng kỳ giao kế tiếp</span>
             </h3>
             <p className="text-bark-600 leading-relaxed">
-              Bạn có thể bỏ qua 1 kỳ giao tháng 10. Hộp đã trả trước của bạn sẽ được giữ nguyên và tự động dời sang tháng 11/2026.
+              Hộp đã trả trước của bạn sẽ được giữ nguyên và tự động dời sang tháng sau.
             </p>
             <div className="p-3 rounded-box bg-amber-50 border border-amber-200 text-amber-900">
-              * Giới hạn tạm dừng tối đa 2 kỳ liên tiếp. Bạn có thể bấm "Tiếp tục ngay" bất kỳ lúc nào để nhận lại hộp sớm hơn.
+              * Giới hạn tạm dừng tối đa 2 kỳ liên tiếp. Bạn có thể bấm &quot;Tiếp tục ngay&quot; bất kỳ lúc nào.
             </div>
             <div className="flex justify-end gap-2 pt-2 border-t border-surface-border">
-              <button
-                type="button"
-                onClick={() => setPauseModalSubId(null)}
-                className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold"
-              >
+              <button type="button" onClick={() => setPauseModalSubId(null)} className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold">
                 Không, giữ nguyên lịch
               </button>
-              <button
-                type="button"
-                onClick={handleConfirmPause}
-                className="px-5 py-2 rounded-box bg-amber-600 hover:bg-amber-700 text-white font-bold"
-              >
+              <button type="button" disabled={busy} onClick={handleConfirmPause} className="px-5 py-2 rounded-box bg-amber-600 hover:bg-amber-700 text-white font-bold disabled:opacity-60">
                 Xác nhận tạm dừng
               </button>
             </div>
@@ -226,115 +246,37 @@ export default function MySubscriptionsPage() {
         </div>
       )}
 
-      {/* Modal Hủy Gói */}
       {cancelModalSubId && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-surface-card rounded-container p-6 space-y-4 shadow-xl border border-surface-border text-xs">
             <h3 className="text-base font-bold text-pine-950 flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4 text-red-600" />
-              <span>Hủy gia hạn gói định kỳ?</span>
+              <span>Hủy gói định kỳ?</span>
             </h3>
             <div className="p-3 rounded-box bg-surface-muted border border-surface-border space-y-1">
               <div className="font-bold text-pine-950">Gợi ý từ FPETS:</div>
               <p className="text-bark-600">
-                Nếu bạn sắp đi vắng hoặc bé chưa dùng hết món cũ, bạn có thể chọn <strong>Tạm dừng</strong> thay vì hủy để vẫn giữ ưu đãi chiết khấu 10%!
+                Nếu bạn sắp đi vắng, bạn có thể chọn <strong>Tạm dừng</strong> thay vì hủy hẳn.
               </p>
             </div>
-
             <div>
               <label className="font-bold text-bark-800 block mb-1">Vui lòng cho FPETS biết lý do hủy:</label>
-              <select
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full p-2.5 rounded-box border border-surface-border bg-white"
-              >
+              <select value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} className="w-full p-2.5 rounded-box border border-surface-border bg-white">
                 <option value="Bé đi du lịch cùng gia đình">Bé đi vắng / Du lịch</option>
                 <option value="Đồ chơi và bánh thưởng còn nhiều">Bánh thưởng trong hộp còn nhiều chưa dùng hết</option>
                 <option value="Muốn đổi sang gói khác">Muốn đổi sang gói khác hoặc mua lẻ</option>
                 <option value="Lý do cá nhân khác">Lý do cá nhân khác</option>
               </select>
             </div>
-
             <p className="text-[11px] text-bark-500">
-              * Khi bấm hủy, FPETS sẽ không nhắc gia hạn nữa. Toàn bộ số hộp bạn đã trả trước vẫn sẽ được giao đầy đủ đến hết kỳ.
+              * Khi bấm hủy, toàn bộ số hộp bạn đã trả trước vẫn sẽ được giao đầy đủ đến hết kỳ, không hoàn tiền.
             </p>
-
             <div className="flex justify-end gap-2 pt-2 border-t border-surface-border">
-              <button
-                type="button"
-                onClick={() => setCancelModalSubId(null)}
-                className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold"
-              >
+              <button type="button" onClick={() => setCancelModalSubId(null)} className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold">
                 Giữ gói
               </button>
-              <button
-                type="button"
-                onClick={handleConfirmCancel}
-                className="px-5 py-2 rounded-box bg-red-600 hover:bg-red-700 text-white font-bold"
-              >
+              <button type="button" disabled={busy} onClick={handleConfirmCancel} className="px-5 py-2 rounded-box bg-red-600 hover:bg-red-700 text-white font-bold disabled:opacity-60">
                 Xác nhận hủy
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Gia Hạn Gói */}
-      {renewModalSubId && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-surface-card rounded-container p-6 space-y-4 shadow-xl border border-surface-border text-xs">
-            <h3 className="text-base font-bold text-pine-950 flex items-center gap-1.5">
-              <RefreshCw className="w-4 h-4 text-pine-900" />
-              <span>Gia hạn gói Mystery Box nối tiếp</span>
-            </h3>
-
-            <p className="text-bark-600">
-              Chọn gói bạn muốn tiếp tục nhận cho bé. Lịch giao sẽ tự động nối tiếp ngay sau khi kỳ cuối hiện tại hoàn thành.
-            </p>
-
-            <div className="space-y-2">
-              {SUBSCRIPTION_PLANS.map((plan) => (
-                <label
-                  key={plan.id}
-                  className={`p-3 rounded-box border flex items-center justify-between cursor-pointer ${
-                    selectedRenewPlan === plan.id ? "border-pine-900 bg-pine-50" : "border-surface-border hover:bg-surface-muted"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="renewPlan"
-                      value={plan.id}
-                      checked={selectedRenewPlan === plan.id}
-                      onChange={() => setSelectedRenewPlan(plan.id)}
-                      className="accent-pine-900"
-                    />
-                    <div>
-                      <span className="font-bold text-pine-950">{plan.name}</span>
-                      <span className="text-[11px] text-bark-500 block">{plan.description}</span>
-                    </div>
-                  </div>
-                  <span className="font-extrabold text-pine-950">
-                    {plan.cycles === 1 ? "299.000₫" : plan.cycles === 3 ? "807.000₫" : "1.525.000₫"}
-                  </span>
-                </label>
-              ))}
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-surface-border">
-              <button
-                type="button"
-                onClick={() => setRenewModalSubId(null)}
-                className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmRenew}
-                className="px-5 py-2 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold"
-              >
-                Thanh toán gia hạn
               </button>
             </div>
           </div>

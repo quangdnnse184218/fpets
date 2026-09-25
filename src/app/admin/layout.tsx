@@ -21,6 +21,7 @@ import {
   BarChart3,
   ExternalLink,
   ShieldCheck,
+  History,
 } from "lucide-react";
 import BrandLogo from "@/components/common/BrandLogo";
 
@@ -34,6 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: "/admin/box-curation", label: "Hàng chờ tuyển chọn Box", icon: PackageSearch, highlight: true },
     { href: "/admin/orders", label: "Quản lý Đơn hàng", icon: ClipboardList },
     { href: "/admin/products", label: "Sản phẩm & Tồn kho", icon: Warehouse },
+    { href: "/admin/inventory", label: "Lịch sử Nhập/Xuất kho", icon: History },
     { href: "/admin/box-types", label: "Quản lý Mystery Box", icon: Gift },
     { href: "/admin/subscriptions", label: "Quản lý Subscription", icon: Calendar },
     { href: "/admin/customers", label: "Quản lý Khách hàng", icon: Users },

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Calendar,
@@ -18,14 +18,25 @@ import {
   HeartHandshake,
 } from "lucide-react";
 import { formatVND } from "@/lib/formatters";
-import { SUBSCRIPTION_PLANS, BOX_TYPES } from "@/mock/boxTypes";
+import { fetchBoxTypes, fetchSubscriptionPlans } from "@/lib/catalog";
 
 export default function SubscriptionIntroPage() {
-  const [selectedSpecies, setSelectedSpecies] = useState<'dog' | 'cat'>('dog');
   const [selectedBoxLevel, setSelectedBoxLevel] = useState<'standard' | 'premium'>('standard');
+  const [standardPrice, setStandardPrice] = useState(299000);
+  const [premiumPrice, setPremiumPrice] = useState(499000);
+  const [plans, setPlans] = useState<{ id: string; name: string; cycle_count: number; discount_percentage: number; free_shipping: boolean; birthday_gift: boolean; badge: string | null; description: string | null }[]>([]);
 
-  // Giá cơ bản: Tiêu chuẩn 299k, Premium 499k
-  const baseBoxPrice = selectedBoxLevel === 'standard' ? 299000 : 499000;
+  useEffect(() => {
+    fetchBoxTypes().then((boxes) => {
+      const standard = boxes.find((b) => b.slug.includes("tieu-chuan")) || boxes[0];
+      const premium = boxes.find((b) => b.slug.includes("premium")) || boxes[boxes.length - 1];
+      if (standard) setStandardPrice(standard.basePrice);
+      if (premium) setPremiumPrice(premium.basePrice);
+    });
+    fetchSubscriptionPlans().then(setPlans);
+  }, []);
+
+  const baseBoxPrice = selectedBoxLevel === 'standard' ? standardPrice : premiumPrice;
 
   return (
     <div className="min-h-screen bg-surface-muted py-8 sm:py-14 space-y-12 sm:space-y-20">
@@ -83,7 +94,7 @@ export default function SubscriptionIntroPage() {
                   selectedBoxLevel === 'standard' ? 'bg-pine-900 text-white' : 'text-bark-600 hover:text-pine-950'
                 }`}
               >
-                Hộp Tiêu chuẩn (299k/hộp)
+                Hộp Tiêu chuẩn ({formatVND(standardPrice)}/hộp)
               </button>
               <button
                 type="button"
@@ -92,20 +103,20 @@ export default function SubscriptionIntroPage() {
                   selectedBoxLevel === 'premium' ? 'bg-pine-900 text-white' : 'text-bark-600 hover:text-pine-950'
                 }`}
               >
-                Hộp Premium (499k/hộp)
+                Hộp Premium ({formatVND(premiumPrice)}/hộp)
               </button>
             </div>
           </div>
 
           {/* 3 Thẻ so sánh gói */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-            {SUBSCRIPTION_PLANS.map((plan) => {
-              const isPopular = plan.cycles === 3;
-              const isBest = plan.cycles === 6;
-              const originalTotal = baseBoxPrice * plan.cycles;
-              const discountAmount = (originalTotal * plan.discountPercent) / 100;
+            {plans.map((plan) => {
+              const isPopular = plan.cycle_count === 3;
+              const isBest = plan.cycle_count === 6;
+              const originalTotal = baseBoxPrice * plan.cycle_count;
+              const discountAmount = (originalTotal * plan.discount_percentage) / 100;
               const finalTotal = originalTotal - discountAmount;
-              const perBoxPrice = Math.round(finalTotal / plan.cycles);
+              const perBoxPrice = Math.round(finalTotal / plan.cycle_count);
 
               return (
                 <div
@@ -148,17 +159,17 @@ export default function SubscriptionIntroPage() {
                         <span className="text-xs text-bark-500">/ hộp</span>
                       </div>
 
-                      {plan.discountPercent > 0 && (
+                      {plan.discount_percentage > 0 && (
                         <div className="text-xs text-bark-500 mt-1 flex items-center gap-1.5">
                           <span className="line-through">{formatVND(baseBoxPrice)}</span>
                           <span className="font-bold text-grass-700 bg-grass-100 px-1.5 py-0.5 rounded">
-                            Giảm {plan.discountPercent}%
+                            Giảm {plan.discount_percentage}%
                           </span>
                         </div>
                       )}
 
                       <div className="text-[11px] text-bark-500 mt-2">
-                        Tổng trả trước: <strong className="text-pine-950 font-bold">{formatVND(finalTotal)}</strong> cho {plan.cycles} kỳ
+                        Tổng trả trước: <strong className="text-pine-950 font-bold">{formatVND(finalTotal)}</strong> cho {plan.cycle_count} kỳ
                       </div>
                     </div>
 
@@ -173,15 +184,15 @@ export default function SubscriptionIntroPage() {
                         <span>Tuyển chọn riêng theo sở thích & dị ứng</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <CheckCircle2 className={`w-4 h-4 shrink-0 ${plan.freeShipping ? 'text-grass-700' : 'text-bark-300'}`} />
-                        <span className={plan.freeShipping ? 'font-bold text-grass-800' : 'text-bark-400'}>
-                          {plan.freeShipping ? 'Miễn phí vận chuyển toàn bộ kỳ' : 'Phí ship đồng giá 25k/35k'}
+                        <CheckCircle2 className={`w-4 h-4 shrink-0 ${plan.free_shipping ? 'text-grass-700' : 'text-bark-300'}`} />
+                        <span className={plan.free_shipping ? 'font-bold text-grass-800' : 'text-bark-400'}>
+                          {plan.free_shipping ? 'Miễn phí vận chuyển toàn bộ kỳ' : 'Phí ship đồng giá 25k/35k'}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <CheckCircle2 className={`w-4 h-4 shrink-0 ${plan.birthdayGift ? 'text-honey-600' : 'text-bark-300'}`} />
-                        <span className={plan.birthdayGift ? 'font-bold text-honey-800' : 'text-bark-400'}>
-                          {plan.birthdayGift ? 'Tặng kèm Quà sinh nhật đặc biệt cho bé' : 'Chưa có quà sinh nhật'}
+                        <CheckCircle2 className={`w-4 h-4 shrink-0 ${plan.birthday_gift ? 'text-honey-600' : 'text-bark-300'}`} />
+                        <span className={plan.birthday_gift ? 'font-bold text-honey-800' : 'text-bark-400'}>
+                          {plan.birthday_gift ? 'Tặng kèm Quà sinh nhật đặc biệt cho bé' : 'Chưa có quà sinh nhật'}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -193,7 +204,7 @@ export default function SubscriptionIntroPage() {
 
                   <div className="pt-6 mt-4">
                     <Link
-                      href={`/quiz?plan=${plan.cycles}`}
+                      href={`/quiz?plan=${plan.cycle_count}`}
                       className={`w-full py-3 rounded-box text-center font-bold text-xs flex items-center justify-center gap-1.5 transition-colors ${
                         isPopular
                           ? "bg-pine-900 hover:bg-pine-800 text-white shadow-xs"

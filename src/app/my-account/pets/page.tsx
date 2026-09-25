@@ -22,9 +22,9 @@ export default function MyPetsPage() {
   const [allergiesText, setAllergiesText] = useState("");
   const [preferencesText, setPreferencesText] = useState("");
 
-  const handleCreatePet = (e: React.FormEvent) => {
+  const handleCreatePet = async (e: React.FormEvent) => {
     e.preventDefault();
-    addPet({
+    await addPet({
       name: name.trim() || "Bé cưng",
       species: species,
       breed: breed.trim() || (species === 'dog' ? "Chó cỏ" : "Mèo ta"),
@@ -46,11 +46,11 @@ export default function MyPetsPage() {
     setShowAddModal(false);
   };
 
-  const handleUpdatePet = (e: React.FormEvent) => {
+  const handleUpdatePet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPet) return;
 
-    updatePet(editingPet.id, {
+    await updatePet(editingPet.id, {
       name: editingPet.name,
       breed: editingPet.breed,
       weight: Number(editingPet.weight),

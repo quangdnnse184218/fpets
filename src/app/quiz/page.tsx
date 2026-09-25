@@ -1,16 +1,23 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useApp } from "@/context/AppContext";
-import { BOX_TYPES } from "@/mock/boxTypes";
+import { BoxType } from "@/mock/boxTypes";
+import { fetchBoxTypes } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { ArrowLeft, CheckCircle2, Gift, Dog, Cat, PackageOpen, PawPrint, Baby, Zap, Moon } from "lucide-react";
 
 export default function PetQuizPage() {
   const router = useRouter();
-  const { addPet, addToCart } = useApp();
+  const { addPet, addToCart, isLoggedIn } = useApp();
+  const [boxTypes, setBoxTypes] = useState<BoxType[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchBoxTypes().then(setBoxTypes);
+  }, []);
 
   // Trạng thái Form 5 câu hỏi
   const [step, setStep] = useState(1);
@@ -49,20 +56,13 @@ export default function PetQuizPage() {
     }
   };
 
-  // Thuật toán đề xuất Mystery Box từ 5 câu trả lời
-  const getRecommendedBox = () => {
+  // Thuật toán đề xuất Mystery Box từ 5 câu trả lời (dựa trên box_types thật)
+  const getRecommendedBox = (): BoxType | undefined => {
     if (species === 'cat') {
-      if (ageGroup === 'puppy_kitten') {
-        return BOX_TYPES[4]; // Mèo Con Tinh Nghịch
-      }
-      return BOX_TYPES[2]; // Mèo Cưng Khỏe Mạnh
+      return boxTypes.find((b) => b.species === 'cat');
     }
-
-    // Chó
-    if (weight <= 10) {
-      return BOX_TYPES[0]; // Chó Nhỏ Nhí Nhảnh
-    }
-    return BOX_TYPES[1]; // Chó Lớn Năng Động
+    const size = weight <= 10 ? 'small' : 'large';
+    return boxTypes.find((b) => b.species === 'dog' && b.size === size) || boxTypes.find((b) => b.species === 'dog');
   };
 
   const recommendedBox = getRecommendedBox();
@@ -71,40 +71,52 @@ export default function PetQuizPage() {
     setShowResult(true);
   };
 
-  const handleSaveAndOrder = () => {
+  const handleSaveAndOrder = async () => {
+    if (!recommendedBox) return;
+
+    if (!isLoggedIn) {
+      router.push("/register?redirect=/quiz");
+      return;
+    }
+
     const ageLabelMap = {
       puppy_kitten: species === 'dog' ? 'Dưới 1 tuổi (Chó con)' : 'Dưới 1 tuổi (Mèo con)',
       adult: '1 - 7 tuổi (Trưởng thành)',
       senior: 'Trên 7 tuổi (Lớn tuổi)',
     };
 
-    // 1. Tạo Pet mới và lưu vào Context
-    const createdPet = addPet({
-      name: petName.trim() || (species === 'dog' ? "Cún Cưng" : "Miu Con"),
-      species,
-      breed: breed.trim() || (species === 'dog' ? "Chó Cảnh" : "Mèo Cảnh"),
-      weight,
-      size: weight <= 10 ? 'small' : 'large',
-      ageGroup,
-      ageLabel: ageLabelMap[ageGroup],
-      gender,
-      allergies: selectedAllergies,
-      preferences: selectedPreferences,
-    });
+    setSaving(true);
+    try {
+      // 1. Tạo Pet mới (lưu thật vào Supabase)
+      const createdPet = await addPet({
+        name: petName.trim() || (species === 'dog' ? "Cún Cưng" : "Miu Con"),
+        species,
+        breed: breed.trim() || (species === 'dog' ? "Chó Cảnh" : "Mèo Cảnh"),
+        weight,
+        size: weight <= 10 ? 'small' : 'large',
+        ageGroup,
+        ageLabel: ageLabelMap[ageGroup],
+        gender,
+        allergies: selectedAllergies,
+        preferences: selectedPreferences,
+      });
 
-    // 2. Thêm Box đề xuất vào giỏ hàng gắn với bé vừa tạo
-    addToCart({
-      type: 'box',
-      boxTypeId: recommendedBox.id,
-      boxType: recommendedBox,
-      petId: createdPet.id,
-      petName: createdPet.name,
-      quantity: 1,
-      unitPrice: recommendedBox.basePrice,
-    });
+      // 2. Thêm Box đề xuất vào giỏ hàng gắn với bé vừa tạo
+      addToCart({
+        type: 'box',
+        boxTypeId: recommendedBox.id,
+        boxType: recommendedBox,
+        petId: createdPet.id,
+        petName: createdPet.name,
+        quantity: 1,
+        unitPrice: recommendedBox.basePrice,
+      });
 
-    // 3. Chuyển thẳng vào giỏ hàng
-    router.push("/cart");
+      // 3. Chuyển thẳng vào giỏ hàng
+      router.push("/cart");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -494,7 +506,10 @@ export default function PetQuizPage() {
       )}
 
       {/* MÀN HÌNH KẾT QUẢ: 1 khoảnh khắc chuyển động có chủ đích */}
-      {showResult && (
+      {showResult && !recommendedBox && (
+        <div className="p-10 text-center text-xs text-bark-500">Đang tải danh sách box...</div>
+      )}
+      {showResult && recommendedBox && (
         <div className="p-6 sm:p-10 rounded-container bg-surface-card border-2 border-pine-900 shadow-xl space-y-6 animate-[scaleIn_0.35s_ease-out]">
           <div className="text-center space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-tag bg-grass-100 text-grass-700 text-xs font-bold">
@@ -561,10 +576,17 @@ export default function PetQuizPage() {
             <button
               type="button"
               onClick={handleSaveAndOrder}
-              className="w-full py-4 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              disabled={saving}
+              className="w-full py-4 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
             >
               <Gift className="w-4 h-4 text-pine-200" />
-              <span>Lưu hồ sơ bé {petName || "cưng"} & Đặt thử hộp này ({formatVND(recommendedBox.basePrice)})</span>
+              <span>
+                {saving
+                  ? "Đang lưu..."
+                  : isLoggedIn
+                  ? `Lưu hồ sơ bé ${petName || "cưng"} & Đặt thử hộp này (${formatVND(recommendedBox.basePrice)})`
+                  : `Đăng ký để lưu hồ sơ bé ${petName || "cưng"} & đặt hộp này`}
+              </span>
             </button>
 
             <button

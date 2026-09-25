@@ -1,38 +1,58 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
+import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import {
-  Star,
-  Camera,
-  Heart,
-  Smile,
-  Frown,
-  CheckCircle2,
-  Filter,
-  MessageSquare,
-  Gift,
-  ArrowRight,
-  ShieldCheck,
-  Dog,
-  Cat,
+  Star, Camera, Filter, MessageSquare, Gift,
 } from "lucide-react";
-import { MOCK_REVIEWS, Review } from "@/mock/reviews";
+import { createClient } from "@/lib/supabase/client";
+
+interface ReviewRow {
+  id: string;
+  rating: number;
+  comment: string | null;
+  images: string[];
+  admin_reply: string | null;
+  admin_reply_at: string | null;
+  created_at: string;
+  profiles: { full_name: string | null } | null;
+  orders: { order_type: string } | null;
+}
 
 export default function ReviewsPage() {
+  const [reviews, setReviews] = useState<ReviewRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [starFilter, setStarFilter] = useState<number | 'all'>('all');
-  const [speciesFilter, setSpeciesFilter] = useState<'all' | 'dog' | 'cat'>('all');
   const [hasPhotoOnly, setHasPhotoOnly] = useState<boolean>(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
-  const filteredReviews = MOCK_REVIEWS.filter((rev) => {
-    if (!rev.isPublished) return false;
+  const loadReviews = useCallback(async () => {
+    setLoading(true);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("reviews")
+      .select("id, rating, comment, images, admin_reply, admin_reply_at, created_at, profiles(full_name), orders(order_type)")
+      .eq("status", "published")
+      .order("created_at", { ascending: false });
+    setReviews((data as unknown as ReviewRow[]) || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadReviews(); }, [loadReviews]);
+
+  // Chưa liên kết loài thú cưng trực tiếp trên reviews (chỉ liên kết qua box_curations
+  // của đơn, không phải mọi đơn đều là box) nên bộ lọc loài tạm không áp dụng lọc cứng.
+  const filteredReviews = reviews.filter((rev) => {
     if (starFilter !== 'all' && rev.rating !== starFilter) return false;
-    if (speciesFilter !== 'all' && rev.petSpecies !== speciesFilter) return false;
     if (hasPhotoOnly && rev.images.length === 0) return false;
     return true;
   });
+
+  const avgRating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : "0.0";
+  const starCounts = [5, 4, 3, 2, 1].map((star) => ({
+    star,
+    count: reviews.filter((r) => r.rating === star).length,
+  }));
 
   return (
     <div className="min-h-screen bg-surface-muted py-8 sm:py-12">
@@ -57,7 +77,7 @@ export default function ReviewsPage() {
         <div className="p-6 sm:p-8 rounded-container bg-surface-card border border-surface-border shadow-xs grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
           <div className="md:col-span-4 text-center md:text-left space-y-2 md:border-r border-surface-border md:pr-6">
             <div className="text-4xl sm:text-5xl font-extrabold text-pine-950 font-display flex items-center justify-center md:justify-start gap-2">
-              <span>4.9</span>
+              <span>{avgRating}</span>
               <span className="text-base text-bark-400 font-normal">/ 5.0</span>
             </div>
             <div className="flex items-center justify-center md:justify-start gap-1">
@@ -66,33 +86,24 @@ export default function ReviewsPage() {
               ))}
             </div>
             <p className="text-xs text-bark-500">
-              Dựa trên hơn <strong>620+</strong> lượt đánh giá của khách hàng đã nhận hộp
+              Dựa trên <strong>{reviews.length}</strong> lượt đánh giá của khách hàng đã nhận hộp
             </p>
           </div>
 
           {/* Phân bổ số sao */}
           <div className="md:col-span-5 space-y-1.5 text-xs text-bark-600">
-            <div className="flex items-center gap-2">
-              <span className="w-12 text-right">5 sao</span>
-              <div className="flex-1 h-2 rounded-full bg-surface-muted overflow-hidden">
-                <div className="h-full bg-honey-500 rounded-full w-[92%]" />
-              </div>
-              <span className="w-8 text-right font-semibold">92%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-12 text-right">4 sao</span>
-              <div className="flex-1 h-2 rounded-full bg-surface-muted overflow-hidden">
-                <div className="h-full bg-honey-500 rounded-full w-[7%]" />
-              </div>
-              <span className="w-8 text-right font-semibold">7%</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-12 text-right">3 sao</span>
-              <div className="flex-1 h-2 rounded-full bg-surface-muted overflow-hidden">
-                <div className="h-full bg-honey-500 rounded-full w-[1%]" />
-              </div>
-              <span className="w-8 text-right font-semibold">1%</span>
-            </div>
+            {starCounts.map(({ star, count }) => {
+              const pct = reviews.length > 0 ? Math.round((count / reviews.length) * 100) : 0;
+              return (
+                <div key={star} className="flex items-center gap-2">
+                  <span className="w-12 text-right">{star} sao</span>
+                  <div className="flex-1 h-2 rounded-full bg-surface-muted overflow-hidden">
+                    <div className="h-full bg-honey-500 rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="w-8 text-right font-semibold">{pct}%</span>
+                </div>
+              );
+            })}
           </div>
 
           {/* Banner tặng voucher unbox */}
@@ -142,41 +153,9 @@ export default function ReviewsPage() {
             ))}
           </div>
 
-          {/* Lọc theo loài và ảnh */}
+          {/* Lọc theo ảnh */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 bg-surface-muted p-1 rounded-box">
-              <button
-                type="button"
-                onClick={() => setSpeciesFilter('all')}
-                className={`px-2 py-1 rounded text-[11px] font-bold ${
-                  speciesFilter === 'all' ? 'bg-white text-pine-950 shadow-2xs' : 'text-bark-600'
-                }`}
-              >
-                Tất cả loài
-              </button>
-              <button
-                type="button"
-                onClick={() => setSpeciesFilter('dog')}
-                className={`px-2 py-1 rounded text-[11px] font-bold flex items-center gap-1 ${
-                  speciesFilter === 'dog' ? 'bg-white text-pine-950 shadow-2xs' : 'text-bark-600'
-                }`}
-              >
-                <Dog className="w-3 h-3" />
-                <span>Chó</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSpeciesFilter('cat')}
-                className={`px-2 py-1 rounded text-[11px] font-bold flex items-center gap-1 ${
-                  speciesFilter === 'cat' ? 'bg-white text-pine-950 shadow-2xs' : 'text-bark-600'
-                }`}
-              >
-                <Cat className="w-3 h-3" />
-                <span>Mèo</span>
-              </button>
-            </div>
-
-            <label className="flex items-center gap-1.5 cursor-pointer text-bark-700 select-none pl-2 border-l border-surface-border">
+            <label className="flex items-center gap-1.5 cursor-pointer text-bark-700 select-none">
               <input
                 type="checkbox"
                 checked={hasPhotoOnly}
@@ -202,17 +181,14 @@ export default function ReviewsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-surface-border pb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-pine-100 text-pine-900 font-extrabold flex items-center justify-center text-sm font-display">
-                      {rev.customerName.charAt(0)}
+                      {(rev.profiles?.full_name || "K").charAt(0)}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-pine-950">{rev.customerName}</span>
+                        <span className="font-bold text-sm text-pine-950">{rev.profiles?.full_name || "Khách hàng FPETS"}</span>
                         <span className="text-[11px] text-grass-700 font-semibold bg-grass-50 px-1.5 py-0.2 rounded border border-grass-200">
                           Đã mua hàng
                         </span>
-                      </div>
-                      <div className="text-[11px] text-bark-500">
-                        Bé: <strong className="text-pine-900">{rev.petName}</strong> ({rev.petBreed}) · Hộp: {rev.boxName}
                       </div>
                     </div>
                   </div>
@@ -228,7 +204,7 @@ export default function ReviewsPage() {
                         />
                       ))}
                     </div>
-                    <span className="text-xs text-bark-400">· {rev.createdAt}</span>
+                    <span className="text-xs text-bark-400">· {new Date(rev.created_at).toLocaleDateString("vi-VN")}</span>
                   </div>
                 </div>
 
@@ -254,7 +230,7 @@ export default function ReviewsPage() {
                           {/* TODO: thay bằng ảnh thật của FPETS khi có */}
                           <Image
                             src={img}
-                            alt={`Ảnh mở hộp ${rev.petName}`}
+                            alt="Ảnh mở hộp thực tế"
                             fill
                             sizes="96px"
                             className="object-cover"
@@ -265,54 +241,16 @@ export default function ReviewsPage() {
                   </div>
                 )}
 
-                {/* BẢNG CHẤM ĐIỂM TỪNG MÓN TRONG HỘP */}
-                {rev.itemReviews && rev.itemReviews.length > 0 && (
-                  <div className="p-3.5 rounded-box bg-surface-muted border border-surface-border text-xs space-y-2">
-                    <span className="font-bold text-pine-950 block text-[11px]">
-                      Phản hồi của bé với từng món trong hộp:
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {rev.itemReviews.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="p-2 rounded bg-surface-card border border-surface-border/60 flex items-center justify-between gap-2"
-                        >
-                          <span className="text-[11px] text-bark-800 font-medium truncate">
-                            {item.productName}
-                          </span>
-                          <span className="shrink-0 flex items-center gap-1 text-[11px] font-bold">
-                            {item.rating === 'like' && (
-                              <span className="text-grass-800 bg-grass-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <Heart className="w-3 h-3 fill-grass-700 text-grass-700" /> Bé thích
-                              </span>
-                            )}
-                            {item.rating === 'neutral' && (
-                              <span className="text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <Smile className="w-3 h-3 text-amber-700" /> Bình thường
-                              </span>
-                            )}
-                            {item.rating === 'dislike' && (
-                              <span className="text-red-700 bg-red-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <Frown className="w-3 h-3 text-red-600" /> Không thích
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Phản hồi từ Admin FPETS Care */}
-                {rev.adminReply && (
+                {rev.admin_reply && (
                   <div className="p-3.5 rounded-box bg-pine-50 border border-pine-200 text-xs space-y-1">
                     <div className="flex items-center gap-1.5 font-bold text-pine-900 text-[11px]">
                       <MessageSquare className="w-3.5 h-3.5 text-pine-800" />
-                      <span>{rev.adminReply.author}</span>
-                      <span className="text-pine-500 font-normal">· {rev.adminReply.createdAt}</span>
+                      <span>FPETS Care Team</span>
+                      {rev.admin_reply_at && <span className="text-pine-500 font-normal">· {new Date(rev.admin_reply_at).toLocaleDateString("vi-VN")}</span>}
                     </div>
                     <p className="text-[11px] text-pine-950 leading-relaxed">
-                      {rev.adminReply.content}
+                      {rev.admin_reply}
                     </p>
                   </div>
                 )}
@@ -324,7 +262,7 @@ export default function ReviewsPage() {
               <p className="text-sm font-semibold">Chưa có đánh giá nào phù hợp với bộ lọc hiện tại.</p>
               <button
                 type="button"
-                onClick={() => { setStarFilter('all'); setSpeciesFilter('all'); setHasPhotoOnly(false); }}
+                onClick={() => { setStarFilter('all'); setHasPhotoOnly(false); }}
                 className="text-xs text-pine-900 font-bold hover:underline"
               >
                 Xóa tất cả bộ lọc

@@ -1,71 +1,94 @@
 "use client";
 
-import React, { useState } from "react";
-import Image from "next/image";
+import React, { useState, useEffect, useCallback } from "react";
 import ProductItemImage from "@/components/common/ProductItemImage";
-import { useApp } from "@/context/AppContext";
+import { createClient } from "@/lib/supabase/client";
 import { formatVND } from "@/lib/formatters";
-import { PRODUCTS, Product } from "@/mock/products";
-import { CurationItem } from "@/mock/curationQueue";
-import { CheckCircle2, AlertTriangle, ShieldCheck, ShieldAlert, RefreshCw, Eye, HeartHandshake, Dog, Cat, PawPrint, UtensilsCrossed } from "lucide-react";
+import { fetchPendingCurations, fetchCandidateProducts, autoSuggest, CurationQueueRow, CandidateProduct } from "@/lib/curation";
+import { CheckCircle2, AlertTriangle, ShieldAlert, RefreshCw, PlusCircle, XCircle } from "lucide-react";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 
 export default function AdminBoxCurationPage() {
-  const { curationQueue, approveCuration, swapCurationItem } = useApp();
-
-  const [selectedCuration, setSelectedCuration] = useState<CurationItem | null>(curationQueue[0]);
-  const [swappingOldProductId, setSwappingOldProductId] = useState<string | null>(null);
+  const [queue, setQueue] = useState<CurationQueueRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [candidates, setCandidates] = useState<CandidateProduct[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
-  const handleApprove = (curationId: string) => {
-    approveCuration(curationId);
-    setNotice("Đã duyệt thành công hộp quà! Đơn hàng được chuyển sang trạng thái Đang chuẩn bị đóng gói.");
-    setTimeout(() => setNotice(null), 3500);
-  };
+  const loadQueue = useCallback(async () => {
+    setLoading(true);
+    const rows = await fetchPendingCurations();
+    setQueue(rows);
+    if (rows.length > 0) setSelectedId((prev) => prev && rows.some((r) => r.id === prev) ? prev : rows[0].id);
+    setLoading(false);
+  }, []);
 
-  const handleSwap = (newProduct: Product) => {
-    if (!selectedCuration || !swappingOldProductId) return;
-    swapCurationItem(selectedCuration.id, swappingOldProductId, newProduct);
+  useEffect(() => {
+    loadQueue();
+  }, [loadQueue]);
 
-    // Cập nhật state cục bộ của selectedCuration
-    setSelectedCuration((prev) => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        selectedProducts: prev.selectedProducts.map((p) =>
-          p.id === swappingOldProductId ? newProduct : p
-        ),
-      };
+  const active = queue.find((q) => q.id === selectedId) || null;
+
+  useEffect(() => {
+    if (!active) {
+      setCandidates([]);
+      setSelectedIds([]);
+      return;
+    }
+    fetchCandidateProducts(active.pets).then((list) => {
+      setCandidates(list);
+      const suggested = autoSuggest(list, active.box_types.min_retail_value);
+      setSelectedIds(suggested.map((s) => s.id));
     });
+  }, [active]);
 
-    setSwappingOldProductId(null);
-    setNotice(`Đã đổi món thành công sang: ${newProduct.name}`);
-    setTimeout(() => setNotice(null), 3000);
+  const selectedProducts = candidates.filter((c) => selectedIds.includes(c.id));
+  const totalValue = selectedProducts.reduce((s, p) => s + p.price, 0);
+  const isValueValid = totalValue >= (active?.box_types.min_retail_value || 0);
+  const hasAllergyViolation = selectedProducts.some((p) => p.isAllergic);
+
+  const handleApprove = async () => {
+    if (!active) return;
+    setApproving(true);
+    setError(null);
+    const supabase = createClient();
+    const { error: rpcError } = await supabase.rpc("approve_box_curation", {
+      p_curation_id: active.id,
+      p_product_ids: selectedIds,
+    });
+    setApproving(false);
+    if (rpcError) {
+      const map: Record<string, string> = {
+        ERR_BELOW_MIN_VALUE: "Chưa đạt giá trị tối thiểu, vui lòng thêm món.",
+        ERR_OUT_OF_STOCK: "Một món đã hết hàng, vui lòng chọn món khác.",
+        ERR_ALREADY_CURATED: "Hộp này đã được duyệt trước đó.",
+      };
+      const key = Object.keys(map).find((k) => rpcError.message.includes(k));
+      setError(key ? map[key] : rpcError.message);
+      return;
+    }
+    setNotice("Đã duyệt thành công! Đơn chuyển sang trạng thái Đang chuẩn bị, tồn kho đã được trừ.");
+    setTimeout(() => setNotice(null), 4000);
+    loadQueue();
   };
 
-  const activeCuration = curationQueue.find((c) => c.id === selectedCuration?.id) || curationQueue[0];
-  const totalValue = activeCuration.selectedProducts.reduce((s, p) => s + p.price, 0);
-  const isValueValid = totalValue >= activeCuration.minRetailValue;
+  const ageLabel: Record<string, string> = { puppy_kitten: "Dưới 1 tuổi", adult: "Trưởng thành", senior: "Trên 7 tuổi" };
 
-  // Kiểm tra dị ứng
-  const allergenViolations = activeCuration.selectedProducts.filter((prod) =>
-    prod.ingredients.some((ing) =>
-      activeCuration.allergies.some((all) => ing.toLowerCase().includes(all.toLowerCase()))
-    )
-  );
+  if (loading) {
+    return <div className="py-16 text-center text-xs text-bark-500">Đang tải hàng chờ tuyển chọn...</div>;
+  }
 
   return (
     <div className="space-y-6">
-      {/* Tiêu đề trang */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold text-pine-950 font-display">
-            Hàng chờ tuyển chọn Mystery Box
-          </h1>
-          <p className="text-xs text-bark-500">
-            Hệ thống tự động đề xuất danh sách món dựa trên hồ sơ bé. Nhân viên kho kiểm tra dị ứng, duyệt hoặc đổi món trước khi đóng hộp.
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-extrabold text-pine-950 font-display">Hàng chờ tuyển chọn Mystery Box</h1>
+        <p className="text-xs text-bark-500">
+          Hệ thống tự động đề xuất món dựa trên hồ sơ bé (loài/size/tuổi), loại trừ dị ứng và cảnh báo món đã gửi/bé không thích.
+        </p>
       </div>
 
       {notice && (
@@ -74,284 +97,208 @@ export default function AdminBoxCurationPage() {
           <span>{notice}</span>
         </div>
       )}
+      {error && (
+        <div className="p-3.5 rounded-box bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
-      {/* Giao diện 2 cột: Cột trái danh sách hàng chờ, Cột phải chi tiết tuyển chọn */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Cột Trái: Danh sách các hộp cần duyệt */}
-        <div className="lg:col-span-4 space-y-3">
-          <span className="text-xs font-bold text-bark-700 block">
-            Danh sách đợt giao ({curationQueue.length} hộp)
-          </span>
+      {queue.length === 0 ? (
+        <div className="p-10 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
+          Không có hộp nào đang chờ tuyển chọn.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-4 space-y-3">
+            <span className="text-xs font-bold text-bark-700 block">Danh sách chờ ({queue.length} hộp)</span>
+            {queue.map((item) => {
+              const isSelected = item.id === active?.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSelectedId(item.id)}
+                  className={`w-full p-4 rounded-container border text-left transition-all ${isSelected ? "border-pine-900 bg-surface-card ring-2 ring-pine-900/10 shadow-sm" : "border-surface-border bg-surface-card hover:bg-surface-muted"}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[11px] font-bold text-bark-600">{item.orders?.order_code}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-tag bg-amber-100 text-amber-800">Chờ duyệt</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 mt-2">
+                    <PetSpeciesIcon species={item.pets.species} variant="avatar" size="sm" />
+                    <div>
+                      <h3 className="text-sm font-bold text-pine-950">Bé {item.pets.name}</h3>
+                      <p className="text-[11px] text-bark-500">
+                        {item.pets.species === "dog" ? "Chó" : "Mèo"} · {item.pets.size === "small" ? "Nhỏ" : "Lớn"} · {item.box_types.name}
+                      </p>
+                    </div>
+                  </div>
+                  {item.pets.allergies?.length > 0 && (
+                    <div className="mt-2 text-[10px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded inline-block">
+                      Dị ứng: {item.pets.allergies.join(", ")}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-          {curationQueue.map((item) => {
-            const isSelected = item.id === activeCuration.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setSelectedCuration(item)}
-                className={`w-full p-4 rounded-container border text-left transition-all ${
-                  isSelected
-                    ? "border-pine-900 bg-surface-card ring-2 ring-pine-900/10 shadow-sm"
-                    : "border-surface-border bg-surface-card hover:bg-surface-muted"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] font-bold text-bark-600">{item.orderCode}</span>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-tag ${
-                      item.status === 'Đã duyệt'
-                        ? 'bg-grass-100 text-grass-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    {item.status}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2.5 mt-2">
-                  <PetSpeciesIcon species={item.species} variant="avatar" size="sm" />
+          <div className="lg:col-span-8 space-y-5">
+            {active && (
+              <div className="p-6 rounded-container bg-surface-card border border-surface-border space-y-5 shadow-xs">
+                <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-surface-border">
                   <div>
-                    <h3 className="text-sm font-bold text-pine-950">Bé {item.petName}</h3>
-                    <p className="text-[11px] text-bark-500">
-                      {item.species} · {item.size} ({item.weight}) · {item.orderType}
+                    <span className="inline-block text-xs font-semibold text-pine-900 bg-pine-50 px-2.5 py-0.5 rounded-tag border border-pine-200">
+                      {active.box_types.name}
+                    </span>
+                    <h2 className="text-xl font-extrabold text-pine-950 font-display mt-1">
+                      Tuyển chọn hộp cho bé {active.pets.name}
+                    </h2>
+                    <p className="text-xs text-bark-600 mt-1">
+                      Đơn hàng: <strong>{active.orders?.order_code}</strong> · {active.pets.breed} · {ageLabel[active.pets.age_group]}
                     </p>
                   </div>
                 </div>
 
-                {item.allergies.length > 0 && (
-                  <div className="mt-2 text-[10px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded inline-block">
-                    Dị ứng: {item.allergies.join(", ")}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Cột Phải: Bàn làm việc tuyển chọn món cho bé được chọn */}
-        <div className="lg:col-span-8 space-y-5">
-          <div className="p-6 rounded-container bg-surface-card border border-surface-border space-y-5 shadow-xs">
-            {/* Header thông tin bé */}
-            <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-surface-border">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-block text-xs font-semibold text-pine-900 bg-pine-50 px-2.5 py-0.5 rounded-tag border border-pine-200">
-                    {activeCuration.boxType}
-                  </span>
-                  <PetSpeciesIcon species={activeCuration.species} variant="badge" size="xs" />
-                </div>
-                <h2 className="text-xl font-extrabold text-pine-950 font-display mt-1">
-                  Tuyển chọn hộp cho bé {activeCuration.petName}
-                </h2>
-                <p className="text-xs text-bark-600 mt-1">
-                  Đơn hàng: <strong>{activeCuration.orderCode}</strong> · Đợt: {activeCuration.deliveryBatch}
-                </p>
-              </div>
-
-              <div className="text-right">
-                <span
-                  className={`text-xs font-bold px-3 py-1 rounded-tag ${
-                    activeCuration.status === 'Đã duyệt'
-                      ? 'bg-grass-100 text-grass-800'
-                      : 'bg-amber-100 text-amber-800'
-                  }`}
-                >
-                  {activeCuration.status}
-                </span>
-              </div>
-            </div>
-
-            {/* Hồ sơ dị ứng & Món đã gửi */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-3.5 rounded-box bg-surface-muted border border-surface-border space-y-1">
-                <span className="font-bold text-pine-950 block">Thành phần dị ứng cần tránh:</span>
-                {activeCuration.allergies.length > 0 ? (
-                  <span className="font-extrabold text-red-700 bg-red-100/70 px-2 py-0.5 rounded border border-red-200 inline-flex items-center gap-1">
-                    <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
-                    <span>{activeCuration.allergies.join(", ")}</span>
-                  </span>
-                ) : (
-                  <span className="text-grass-700 font-semibold">Không có khai báo dị ứng</span>
-                )}
-                <div className="text-[11px] text-bark-500 pt-1">
-                  Sở thích: {activeCuration.preferences.join(", ") || "Không có"}
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-box bg-surface-muted border border-surface-border space-y-1">
-                <span className="font-bold text-pine-950 block">Các món đã từng gửi kỳ trước:</span>
-                <p className="text-[11px] text-bark-600">
-                  {activeCuration.previouslySentItems.length > 0
-                    ? activeCuration.previouslySentItems.join(" • ")
-                    : "Đây là kỳ nhận hộp đầu tiên của bé."}
-                </p>
-              </div>
-            </div>
-
-            {/* Cảnh báo kiểm tra hợp lệ của thuật toán */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-pine-950">
-                <span>Danh sách món tự động đề xuất ({activeCuration.selectedProducts.length} món):</span>
-                <span className="text-bark-500 font-normal">
-                  Cam kết tối thiểu: <strong>{formatVND(activeCuration.minRetailValue)}</strong>
-                </span>
-              </div>
-
-              {allergenViolations.length > 0 ? (
-                <div className="p-3 rounded-box bg-red-50 border border-red-200 text-red-800 text-xs font-bold flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-                  <span>Cảnh báo dị ứng: Có món vi phạm thành phần dị ứng của bé! Vui lòng đổi món.</span>
-                </div>
-              ) : (
-                <div className="p-2.5 rounded-box bg-grass-50 border border-grass-200 text-grass-800 text-xs font-semibold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-grass-600 shrink-0" />
-                  <span>Đã kiểm tra an toàn: 100% không trùng thành phần dị ứng đã khai báo.</span>
-                </div>
-              )}
-            </div>
-
-            {/* Bảng các món được chọn */}
-            <div className="space-y-2">
-              {activeCuration.selectedProducts.map((prod) => (
-                <div
-                  key={prod.id}
-                  className="p-3 rounded-box bg-surface-muted border border-surface-border flex items-center justify-between gap-3 text-xs"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <div className="w-9 h-9 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
-                      <ProductItemImage
-                        src={prod.image}
-                        alt={prod.name}
-                        category={prod.category}
-                        placeholderColor={prod.placeholderColor}
-                        sizes="36px"
-                        showNote={false}
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <span className="font-bold text-pine-950 truncate block">{prod.name}</span>
-                      <span className="text-[10px] text-bark-500">
-                        {prod.categoryLabel} · Tồn kho: {prod.stock}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3.5 rounded-box bg-surface-muted border border-surface-border space-y-1">
+                    <span className="font-bold text-pine-950 block">Thành phần dị ứng cần tránh:</span>
+                    {active.pets.allergies?.length > 0 ? (
+                      <span className="font-extrabold text-red-700 bg-red-100/70 px-2 py-0.5 rounded border border-red-200 inline-flex items-center gap-1">
+                        <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                        <span>{active.pets.allergies.join(", ")}</span>
                       </span>
+                    ) : (
+                      <span className="text-grass-700 font-semibold">Không có khai báo dị ứng</span>
+                    )}
+                    <div className="text-[11px] text-bark-500 pt-1">
+                      Sở thích: {active.pets.preferences?.join(", ") || "Không có"}
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="font-bold text-pine-950">{formatVND(prod.price)}</span>
-                    <button
-                      type="button"
-                      onClick={() => setSwappingOldProductId(prod.id)}
-                      className="px-2 py-1 rounded bg-surface-card hover:bg-surface-border border border-surface-border text-[11px] font-semibold text-bark-700 flex items-center gap-1"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      <span>Đổi món</span>
-                    </button>
+                  <div className="p-3.5 rounded-box bg-surface-muted border border-surface-border space-y-1">
+                    <span className="font-bold text-pine-950 block">Ghi chú tuyển chọn:</span>
+                    <p className="text-[11px] text-bark-600">
+                      Món có nhãn &quot;Đã gửi trước&quot; hoặc &quot;Bé không thích&quot; nên tránh chọn lại nếu còn lựa chọn khác.
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
 
-            {/* Tổng giá trị & Nút Duyệt */}
-            <div className="pt-4 border-t border-surface-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="text-xs text-bark-500">Tổng giá trị thực tế các món:</div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-extrabold text-pine-950 font-display">
-                    {formatVND(totalValue)}
-                  </span>
-                  {isValueValid ? (
-                    <span className="text-xs font-bold text-grass-700">
-                      (Đạt chuẩn &gt; {formatVND(activeCuration.minRetailValue)})
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-pine-950">
+                    <span>Món đã chọn ({selectedProducts.length}):</span>
+                    <span className="text-bark-500 font-normal">
+                      Cam kết tối thiểu: <strong>{formatVND(active.box_types.min_retail_value)}</strong>
                     </span>
+                  </div>
+
+                  {hasAllergyViolation ? (
+                    <div className="p-3 rounded-box bg-red-50 border border-red-200 text-red-800 text-xs font-bold flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                      <span>Cảnh báo: có món chứa thành phần dị ứng của bé! Bắt buộc đổi món trước khi duyệt.</span>
+                    </div>
                   ) : (
-                    <span className="text-xs font-bold text-red-600">
-                      (Chưa đạt giá trị tối thiểu {formatVND(activeCuration.minRetailValue)})
-                    </span>
+                    <div className="p-2.5 rounded-box bg-grass-50 border border-grass-200 text-grass-800 text-xs font-semibold flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-grass-600 shrink-0" />
+                      <span>Không có món nào chứa thành phần dị ứng đã khai báo.</span>
+                    </div>
                   )}
                 </div>
-              </div>
 
-              <button
-                type="button"
-                onClick={() => handleApprove(activeCuration.id)}
-                disabled={activeCuration.status === 'Đã duyệt' || !isValueValid || allergenViolations.length > 0}
-                className={`px-6 py-3 rounded-box text-xs font-bold transition-colors flex items-center justify-center gap-2 ${
-                  activeCuration.status === 'Đã duyệt'
-                    ? "bg-surface-muted text-bark-400 cursor-not-allowed"
-                    : "bg-pine-900 hover:bg-pine-800 text-white shadow-sm"
-                }`}
-              >
-                <CheckCircle2 className="w-4 h-4 text-butter-200" />
-                <span>
-                  {activeCuration.status === 'Đã duyệt' ? "Hộp này đã được duyệt" : "Xác nhận duyệt tuyển chọn hộp"}
-                </span>
-              </button>
-            </div>
+                <div className="space-y-2">
+                  {selectedProducts.map((prod) => (
+                    <div key={prod.id} className="p-3 rounded-box bg-surface-muted border border-surface-border flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-9 h-9 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
+                          <ProductItemImage src={prod.image} alt={prod.name} category={prod.category} placeholderColor={prod.placeholderColor} sizes="36px" showNote={false} />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-bold text-pine-950 truncate block">{prod.name}</span>
+                          <span className="text-[10px] text-bark-500 flex items-center gap-1.5">
+                            {prod.categoryLabel} · Tồn kho: {prod.stock}
+                            {prod.isAllergic && <span className="text-red-600 font-bold">· Chứa dị ứng!</span>}
+                            {prod.wasSentBefore && <span className="text-amber-600 font-bold">· Đã gửi trước</span>}
+                            {prod.wasDisliked && <span className="text-amber-600 font-bold">· Bé không thích</span>}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="font-bold text-pine-950">{formatVND(prod.price)}</span>
+                        <button type="button" onClick={() => setSelectedIds((prev) => prev.filter((id) => id !== prod.id))}
+                          className="p-1.5 rounded text-bark-400 hover:text-red-600">
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button type="button" onClick={() => setPickerOpen(true)}
+                    className="w-full p-2.5 rounded-box border border-dashed border-surface-border text-bark-600 hover:bg-surface-muted text-xs font-semibold flex items-center justify-center gap-1.5">
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>Thêm / đổi món khác</span>
+                  </button>
+                </div>
+
+                <div className="pt-4 border-t border-surface-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <div className="text-xs text-bark-500">Tổng giá trị thực tế các món:</div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-extrabold text-pine-950 font-display">{formatVND(totalValue)}</span>
+                      {isValueValid ? (
+                        <span className="text-xs font-bold text-grass-700">(Đạt chuẩn)</span>
+                      ) : (
+                        <span className="text-xs font-bold text-red-600">(Chưa đạt tối thiểu {formatVND(active.box_types.min_retail_value)})</span>
+                      )}
+                    </div>
+                  </div>
+                  <button type="button" onClick={handleApprove} disabled={approving || !isValueValid || hasAllergyViolation}
+                    className="px-6 py-3 rounded-box text-xs font-bold transition-colors flex items-center justify-center gap-2 bg-pine-900 hover:bg-pine-800 text-white shadow-sm disabled:bg-surface-muted disabled:text-bark-400">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{approving ? "Đang xử lý..." : "Xác nhận duyệt tuyển chọn hộp"}</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Modal Đổi món trong kho */}
-      {swappingOldProductId && (
+      {pickerOpen && active && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="w-full max-w-lg bg-surface-card rounded-container p-6 space-y-4 shadow-xl border border-surface-border text-xs max-h-[80vh] flex flex-col">
-            <h3 className="text-base font-bold text-pine-950">
-              Chọn sản phẩm thay thế trong kho
-            </h3>
-            <p className="text-bark-500">
-              Chỉ chọn món phù hợp với loài của bé {activeCuration.petName} và không chứa thành phần dị ứng: {activeCuration.allergies.join(", ") || "Không có"}.
-            </p>
-
+            <h3 className="text-base font-bold text-pine-950">Chọn sản phẩm cho hộp bé {active.pets.name}</h3>
             <div className="space-y-2 overflow-y-auto flex-1 pr-1">
-              {PRODUCTS.filter(
-                (p) =>
-                  (p.species === 'both' || (activeCuration.species === 'Chó' ? p.species === 'dog' : p.species === 'cat')) &&
-                  !activeCuration.selectedProducts.some((sp) => sp.id === p.id)
-              ).map((prod) => (
-                <div
-                  key={prod.id}
-                  className="p-3 rounded-box border border-surface-border hover:bg-surface-muted flex items-center justify-between gap-3"
-                >
+              {candidates.filter((c) => !selectedIds.includes(c.id)).map((prod) => (
+                <div key={prod.id} className="p-3 rounded-box border border-surface-border hover:bg-surface-muted flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <div className="w-10 h-10 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
-                      <ProductItemImage
-                        src={prod.image}
-                        alt={prod.name}
-                        category={prod.category}
-                        placeholderColor={prod.placeholderColor}
-                        sizes="40px"
-                        showNote={false}
-                      />
+                      <ProductItemImage src={prod.image} alt={prod.name} category={prod.category} placeholderColor={prod.placeholderColor} sizes="40px" showNote={false} />
                     </div>
                     <div className="min-w-0">
                       <span className="font-bold text-pine-950 block truncate">{prod.name}</span>
-                      <span className="text-[11px] text-bark-500">
-                        {prod.categoryLabel} · Tồn: {prod.stock}
+                      <span className="text-[11px] text-bark-500 flex items-center gap-1.5">
+                        Tồn: {prod.stock}
+                        {prod.isAllergic && <span className="text-red-600 font-bold">Dị ứng!</span>}
+                        {prod.wasSentBefore && <span className="text-amber-600 font-bold">Đã gửi</span>}
+                        {prod.wasDisliked && <span className="text-amber-600 font-bold">Không thích</span>}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-pine-950">{formatVND(prod.price)}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleSwap(prod)}
-                      className="px-3 py-1.5 rounded-box bg-pine-900 text-white font-bold text-xs"
-                    >
-                      Chọn món này
+                    <button type="button" disabled={prod.isAllergic}
+                      onClick={() => { setSelectedIds((prev) => [...prev, prod.id]); setPickerOpen(false); }}
+                      className="px-3 py-1.5 rounded-box bg-pine-900 text-white font-bold text-xs disabled:opacity-40 flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Chọn</span>
                     </button>
                   </div>
                 </div>
               ))}
             </div>
-
             <div className="pt-2 border-t border-surface-border flex justify-end">
-              <button
-                type="button"
-                onClick={() => setSwappingOldProductId(null)}
-                className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold"
-              >
-                Hủy
+              <button type="button" onClick={() => setPickerOpen(false)} className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold">
+                Đóng
               </button>
             </div>
           </div>

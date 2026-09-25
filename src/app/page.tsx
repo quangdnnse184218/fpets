@@ -18,10 +18,42 @@ import {
   HeartHandshake,
   Check,
 } from "lucide-react";
-import { BOX_TYPES, SUBSCRIPTION_PLANS } from "@/mock/boxTypes";
+import { useEffect, useState } from "react";
+import { fetchBoxTypes, fetchSubscriptionPlans } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
+import { createClient } from "@/lib/supabase/client";
 
 export default function HomePage() {
+  const [standardBoxPrice, setStandardBoxPrice] = useState(299000);
+  const [premiumBoxPrice, setPremiumBoxPrice] = useState(499000);
+  const [plans, setPlans] = useState<{ id: string; name: string; cycle_count: number; discount_percentage: number; free_shipping: boolean; birthday_gift: boolean; badge: string | null; description: string | null }[]>([]);
+  const [stats, setStats] = useState({ pets: 0, delivered: 0, avgRating: 0, reviewCount: 0 });
+
+  useEffect(() => {
+    fetchBoxTypes().then((boxes) => {
+      const standard = boxes.find((b) => b.slug.includes("tieu-chuan")) || boxes[0];
+      const premium = boxes.find((b) => b.slug.includes("premium")) || boxes[boxes.length - 1];
+      if (standard) setStandardBoxPrice(standard.basePrice);
+      if (premium) setPremiumBoxPrice(premium.basePrice);
+    });
+    fetchSubscriptionPlans().then((data) => setPlans(data));
+
+    const supabase = createClient();
+    Promise.all([
+      supabase.from("pets").select("id", { count: "exact", head: true }),
+      supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "da_giao"),
+      supabase.from("reviews").select("rating").eq("status", "published"),
+    ]).then(([petsRes, deliveredRes, reviewsRes]) => {
+      const reviews = reviewsRes.data || [];
+      setStats({
+        pets: petsRes.count || 0,
+        delivered: deliveredRes.count || 0,
+        avgRating: reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0,
+        reviewCount: reviews.length,
+      });
+    });
+  }, []);
+
   return (
     <div className="space-y-16 sm:space-y-24">
       {/* 1. HERO SECTION: Trải nghiệm mở hộp quà bất ngờ nổi bật, tương phản cao */}
@@ -103,15 +135,15 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div>
-                  <span className="font-extrabold text-pine-950 block">1.200+</span>
-                  <span className="text-[11px] text-bark-500">Bé cưng hạnh phúc</span>
+                  <span className="font-extrabold text-pine-950 block">{stats.pets}</span>
+                  <span className="text-[11px] text-bark-500">Bé cưng đã tạo hồ sơ</span>
                 </div>
               </div>
 
               <div className="hidden sm:block w-px h-8 bg-surface-border" />
 
               <div>
-                <span className="font-extrabold text-pine-950 block">4.800+</span>
+                <span className="font-extrabold text-pine-950 block">{stats.delivered}</span>
                 <span className="text-[11px] text-bark-500">Hộp quà đã giao</span>
               </div>
 
@@ -120,9 +152,9 @@ export default function HomePage() {
               <div>
                 <div className="flex items-center gap-1 font-extrabold text-pine-950">
                   <Star className="w-3.5 h-3.5 text-honey-500 fill-honey-500" />
-                  <span>4.9 / 5</span>
+                  <span>{stats.reviewCount > 0 ? stats.avgRating.toFixed(1) : "—"} / 5</span>
                 </div>
-                <span className="text-[11px] text-bark-500">620+ đánh giá 5 sao</span>
+                <span className="text-[11px] text-bark-500">{stats.reviewCount} đánh giá từ khách hàng</span>
               </div>
             </div>
           </div>
@@ -243,7 +275,7 @@ export default function HomePage() {
                   </span>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold text-pine-950 font-display">299.000₫</span>
+                  <span className="text-3xl font-extrabold text-pine-950 font-display">{formatVND(standardBoxPrice)}</span>
                   <span className="text-xs text-bark-500">/ hộp</span>
                 </div>
                 <p className="text-xs text-grass-700 font-semibold">
@@ -293,7 +325,7 @@ export default function HomePage() {
                   </span>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold text-pine-950 font-display">499.000₫</span>
+                  <span className="text-3xl font-extrabold text-pine-950 font-display">{formatVND(premiumBoxPrice)}</span>
                   <span className="text-xs text-bark-500">/ hộp</span>
                 </div>
                 <p className="text-xs text-grass-700 font-semibold">
@@ -344,8 +376,9 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {SUBSCRIPTION_PLANS.map((plan) => {
-            const isBest = plan.cycles === 3;
+          {plans.map((plan) => {
+            const isBest = plan.cycle_count === 3;
+            const prepaid = Math.round(standardBoxPrice * (1 - plan.discount_percentage / 100)) * plan.cycle_count;
             return (
               <div
                 key={plan.id}
@@ -367,26 +400,22 @@ export default function HomePage() {
 
                   <div className="pt-3 border-t border-surface-border space-y-1">
                     <div className="text-xs text-bark-500">Giá trả trước (Box Tiêu chuẩn):</div>
-                    <div className="text-2xl font-extrabold text-pine-950 font-display">
-                      {plan.cycles === 1 && "299.000₫"}
-                      {plan.cycles === 3 && "807.000₫"}
-                      {plan.cycles === 6 && "1.525.000₫"}
-                    </div>
+                    <div className="text-2xl font-extrabold text-pine-950 font-display">{formatVND(prepaid)}</div>
                     <div className="text-xs text-grass-700 font-medium">
-                      {plan.discountPercent > 0 ? `Tiết kiệm ${plan.discountPercent}% mỗi hộp` : "Giá niêm yết chuẩn"}
+                      {plan.discount_percentage > 0 ? `Tiết kiệm ${plan.discount_percentage}% mỗi hộp` : "Giá niêm yết chuẩn"}
                     </div>
                   </div>
 
                   <div className="space-y-2 text-xs text-bark-700 pt-3 border-t border-surface-border">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-3.5 h-3.5 text-grass-600 shrink-0" />
-                      <span>Nhận 1 hộp mỗi tháng ({plan.cycles} tháng)</span>
+                      <span>Nhận 1 hộp mỗi tháng ({plan.cycle_count} tháng)</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-3.5 h-3.5 text-grass-600 shrink-0" />
-                      <span>{plan.freeShipping ? "Freeship toàn bộ các kỳ giao" : "Phí ship tiêu chuẩn theo tỉnh"}</span>
+                      <span>{plan.free_shipping ? "Freeship toàn bộ các kỳ giao" : "Phí ship tiêu chuẩn theo tỉnh"}</span>
                     </div>
-                    {plan.birthdayGift && (
+                    {plan.birthday_gift && (
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-3.5 h-3.5 text-honey-600 shrink-0" />
                         <span className="font-semibold text-honey-700">Tặng thêm quà sinh nhật bé cưng</span>

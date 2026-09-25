@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import { PRODUCTS } from "@/mock/products";
+import { Product } from "@/mock/products";
+import { fetchProductBySlug } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import ProductItemImage from "@/components/common/ProductItemImage";
 import { useApp } from "@/context/AppContext";
-import { Star, CheckCircle2, ShoppingCart, ArrowLeft, ShieldCheck, UtensilsCrossed, PawPrint, HeartHandshake } from "lucide-react";
+import { Star, ShoppingCart, ArrowLeft } from "lucide-react";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -16,11 +16,21 @@ export default function ProductDetailPage() {
   const slug = params?.slug as string;
   const { addToCart } = useApp();
 
-  const product = PRODUCTS.find((p) => p.slug === slug) || PRODUCTS[0];
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
+  useEffect(() => {
+    setLoading(true);
+    fetchProductBySlug(slug).then((data) => {
+      setProduct(data);
+      setLoading(false);
+    });
+  }, [slug]);
+
   const handleAdd = () => {
+    if (!product) return;
     addToCart({
       type: "retail",
       productId: product.id,
@@ -33,6 +43,21 @@ export default function ProductDetailPage() {
       router.push("/cart");
     }, 500);
   };
+
+  if (loading) {
+    return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 text-center text-xs text-bark-500">Đang tải sản phẩm...</div>;
+  }
+
+  if (!product) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 text-center space-y-4">
+        <h1 className="text-xl font-bold text-pine-950">Không tìm thấy sản phẩm</h1>
+        <Link href="/shop" className="text-pine-800 font-semibold text-sm hover:underline">
+          Quay lại Shop
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
@@ -74,14 +99,24 @@ export default function ProductDetailPage() {
               {product.name}
             </h1>
             <div className="flex items-center gap-2 mt-2 text-xs text-bark-500">
-              <div className="flex items-center text-honey-500">
-                <Star className="w-3.5 h-3.5 fill-honey-500" />
-                <span className="font-bold text-bark-800 ml-1">{product.rating}</span>
-              </div>
-              <span>·</span>
-              <span>{product.reviewCount} đánh giá từ ba mẹ</span>
-              <span>·</span>
-              <span className="text-grass-700 font-medium">Còn {product.stock} sản phẩm</span>
+              {product.reviewCount > 0 ? (
+                <>
+                  <div className="flex items-center text-honey-500">
+                    <Star className="w-3.5 h-3.5 fill-honey-500" />
+                    <span className="font-bold text-bark-800 ml-1">{product.rating}</span>
+                  </div>
+                  <span>{product.reviewCount} đánh giá từ ba mẹ</span>
+                  <span>·</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-bark-400">Chưa có đánh giá</span>
+                  <span>·</span>
+                </>
+              )}
+              <span className={product.stock > 0 ? "text-grass-700 font-medium" : "text-red-600 font-medium"}>
+                {product.stock > 0 ? `Còn ${product.stock} sản phẩm` : "Hết hàng"}
+              </span>
             </div>
           </div>
 
@@ -132,23 +167,29 @@ export default function ProductDetailPage() {
                 <span className="px-3 text-xs font-bold text-pine-950">{quantity}</span>
                 <button
                   type="button"
-                  onClick={() => setQuantity(Math.min(10, quantity + 1))}
+                  onClick={() => setQuantity(Math.min(10, product.stock, quantity + 1))}
                   className="px-3 py-1.5 text-bark-700 hover:bg-surface-muted text-sm font-bold"
                 >
                   +
                 </button>
               </div>
-              <span className="text-[11px] text-bark-500">(Tối đa 10 sản phẩm)</span>
+              <span className="text-[11px] text-bark-500">(Tối đa {Math.min(10, product.stock)} sản phẩm)</span>
             </div>
 
             <button
               type="button"
               onClick={handleAdd}
-              disabled={added}
-              className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2"
+              disabled={added || product.stock === 0}
+              className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <ShoppingCart className="w-4 h-4" />
-              <span>{added ? "Đang chuyển đến giỏ hàng..." : `Thêm vào giỏ hàng • ${formatVND(product.price * quantity)}`}</span>
+              <span>
+                {product.stock === 0
+                  ? "Hết hàng"
+                  : added
+                  ? "Đang chuyển đến giỏ hàng..."
+                  : `Thêm vào giỏ hàng • ${formatVND(product.price * quantity)}`}
+              </span>
             </button>
           </div>
         </div>

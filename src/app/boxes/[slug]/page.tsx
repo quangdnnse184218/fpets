@@ -1,43 +1,65 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { BOX_TYPES, SUBSCRIPTION_PLANS } from "@/mock/boxTypes";
+import { BoxType, SUBSCRIPTION_PLANS } from "@/mock/boxTypes";
+import { fetchBoxTypeBySlug } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
-import { CheckCircle2, ShieldCheck, Heart, PlusCircle, PackageOpen, PawPrint } from "lucide-react";
+import { CheckCircle2, ShieldCheck, PlusCircle, PawPrint } from "lucide-react";
 
 export default function BoxDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params?.slug as string;
-  const { pets, addToCart } = useApp();
+  const { pets, addToCart, isLoggedIn } = useApp();
 
-  const box = BOX_TYPES.find((b) => b.slug === slug) || BOX_TYPES[0];
+  const [box, setBox] = useState<BoxType | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // State chọn bé nhận box
-  const [selectedPetId, setSelectedPetId] = useState<string>(pets[0]?.id || "");
+  const [selectedPetId, setSelectedPetId] = useState<string>("");
   // State chọn hình thức: mua 1 lần hay đăng ký gói
   const [purchaseMode, setPurchaseMode] = useState<'once' | 'subscription'>('once');
   const [selectedPlanId, setSelectedPlanId] = useState<string>('plan-3');
   const [addedSuccess, setAddedSuccess] = useState(false);
 
+  useEffect(() => {
+    setLoading(true);
+    fetchBoxTypeBySlug(slug).then((data) => {
+      setBox(data);
+      setLoading(false);
+    });
+  }, [slug]);
+
+  useEffect(() => {
+    if (!selectedPetId && pets.length > 0) {
+      setSelectedPetId(pets[0].id);
+    }
+  }, [pets, selectedPetId]);
+
   const selectedPet = pets.find((p) => p.id === selectedPetId) || pets[0];
   const selectedPlan = SUBSCRIPTION_PLANS.find((p) => p.id === selectedPlanId) || SUBSCRIPTION_PLANS[1];
 
   // Tính giá khi chọn gói
-  const unitDiscountedPrice = Math.round(box.basePrice * (1 - selectedPlan.discountPercent / 100));
+  const unitDiscountedPrice = box ? Math.round(box.basePrice * (1 - selectedPlan.discountPercent / 100)) : 0;
   const planTotalPrice = unitDiscountedPrice * selectedPlan.cycles;
 
   const handleAddToCart = () => {
+    if (!box) return;
+    if (!isLoggedIn) {
+      router.push(`/login?redirect=/boxes/${slug}`);
+      return;
+    }
+    if (!selectedPet) return;
     addToCart({
       type: "box",
       boxTypeId: box.id,
       boxType: box,
-      petId: selectedPet?.id,
-      petName: selectedPet?.name || "Bé cưng",
+      petId: selectedPet.id,
+      petName: selectedPet.name,
       quantity: 1,
       unitPrice: box.basePrice,
     });
@@ -48,9 +70,27 @@ export default function BoxDetailPage() {
   };
 
   const handleSubscribeCheckout = () => {
+    if (!box) return;
+    if (!isLoggedIn) {
+      router.push(`/login?redirect=/boxes/${slug}`);
+      return;
+    }
     // Với subscription, dẫn thẳng vào checkout gói với các tham số
     router.push(`/checkout?type=subscription&box=${box.id}&pet=${selectedPet?.id}&plan=${selectedPlan.id}`);
   };
+
+  if (loading) {
+    return <div className="max-w-5xl mx-auto px-4 py-16 text-center text-xs text-bark-500">Đang tải thông tin box...</div>;
+  }
+
+  if (!box) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-16 text-center space-y-4">
+        <h1 className="text-xl font-bold text-pine-950">Không tìm thấy loại box này</h1>
+        <Link href="/boxes" className="text-pine-800 font-semibold text-sm hover:underline">Quay lại danh sách Box</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-10">
@@ -255,14 +295,16 @@ export default function BoxDetailPage() {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={addedSuccess}
-                className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                disabled={addedSuccess || (isLoggedIn && !selectedPet)}
+                className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {addedSuccess ? (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-grass-300" />
                     <span>Đã thêm vào giỏ hàng! Đang chuyển hướng...</span>
                   </>
+                ) : !isLoggedIn ? (
+                  <span>Đăng nhập để thêm Mystery Box vào giỏ ({formatVND(box.basePrice)})</span>
                 ) : (
                   <span>Thêm Mystery Box vào giỏ hàng ({formatVND(box.basePrice)})</span>
                 )}
@@ -271,9 +313,14 @@ export default function BoxDetailPage() {
               <button
                 type="button"
                 onClick={handleSubscribeCheckout}
-                className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                disabled={isLoggedIn && !selectedPet}
+                className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <span>Đăng ký {selectedPlan.name} cho bé {selectedPet?.name} ({formatVND(planTotalPrice)})</span>
+                <span>
+                  {!isLoggedIn
+                    ? `Đăng nhập để đăng ký ${selectedPlan.name}`
+                    : `Đăng ký ${selectedPlan.name} cho bé ${selectedPet?.name} (${formatVND(planTotalPrice)})`}
+                </span>
               </button>
             )}
           </div>

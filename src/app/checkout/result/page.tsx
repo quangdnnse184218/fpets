@@ -8,9 +8,20 @@ import { CheckCircle2, Package, Home } from "lucide-react";
 
 function CheckoutResultContent() {
   const searchParams = useSearchParams();
-  const orderCode = searchParams.get("code") || "FPET-20260922-8812";
-  const paymentMethod = searchParams.get("method") || "MoMo";
-  const amount = Number(searchParams.get("amount")) || 334000;
+  const orderCode = searchParams.get("code");
+  const paymentMethod = searchParams.get("method") || "";
+  const status = searchParams.get("status") || "";
+  const amount = Number(searchParams.get("amount")) || 0;
+
+  if (!orderCode) {
+    return (
+      <div className="max-w-xl mx-auto px-4 sm:px-6 py-16 text-center space-y-4">
+        <h1 className="text-xl font-bold text-pine-950">Không tìm thấy thông tin đơn hàng</h1>
+        <p className="text-xs text-bark-500">Liên kết không hợp lệ hoặc đã hết hạn.</p>
+        <Link href="/" className="text-pine-800 font-semibold text-sm hover:underline">Về trang chủ</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-xl mx-auto px-4 sm:px-6 py-12 text-center space-y-6">
@@ -43,7 +54,7 @@ function CheckoutResultContent() {
         <div className="flex justify-between pb-2 border-b border-surface-border">
           <span className="text-bark-500">Trạng thái thanh toán:</span>
           <span className="font-bold text-grass-700">
-            {paymentMethod === 'COD' ? 'Chờ thanh toán khi nhận hàng' : 'Đã thanh toán'}
+            {paymentMethod === 'cod' ? 'Chờ thanh toán khi nhận hàng' : status === 'paid' ? 'Đã thanh toán' : 'Chờ thanh toán'}
           </span>
         </div>
         <div className="flex justify-between">

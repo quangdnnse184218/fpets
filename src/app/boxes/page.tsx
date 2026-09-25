@@ -1,19 +1,33 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { BOX_TYPES } from "@/mock/boxTypes";
+import { BoxType } from "@/mock/boxTypes";
+import { fetchBoxTypes } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { CheckCircle2, Filter } from "lucide-react";
 
 export default function BoxesPage() {
+  const [boxTypes, setBoxTypes] = useState<BoxType[]>([]);
+  const [loading, setLoading] = useState(true);
   const [speciesFilter, setSpeciesFilter] = useState<'all' | 'dog' | 'cat'>('all');
 
-  const filteredBoxes = BOX_TYPES.filter((box) => {
+  useEffect(() => {
+    fetchBoxTypes().then((data) => {
+      setBoxTypes(data);
+      setLoading(false);
+    });
+  }, []);
+
+  const filteredBoxes = boxTypes.filter((box) => {
     if (speciesFilter === 'all') return true;
     return box.species === speciesFilter;
   });
+
+  if (loading) {
+    return <div className="max-w-7xl mx-auto px-4 py-16 text-center text-xs text-bark-500">Đang tải danh sách box...</div>;
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
@@ -40,7 +54,7 @@ export default function BoxesPage() {
               : 'bg-surface-card hover:bg-surface-muted text-bark-700 border border-surface-border'
           }`}
         >
-          Tất cả ({BOX_TYPES.length})
+          Tất cả ({boxTypes.length})
         </button>
         <button
           onClick={() => setSpeciesFilter('dog')}
@@ -50,7 +64,7 @@ export default function BoxesPage() {
               : 'bg-surface-card hover:bg-surface-muted text-bark-700 border border-surface-border'
           }`}
         >
-          Dành cho Chó ({BOX_TYPES.filter(b => b.species === 'dog').length})
+          Dành cho Chó ({boxTypes.filter(b => b.species === 'dog').length})
         </button>
         <button
           onClick={() => setSpeciesFilter('cat')}
@@ -60,7 +74,7 @@ export default function BoxesPage() {
               : 'bg-surface-card hover:bg-surface-muted text-bark-700 border border-surface-border'
           }`}
         >
-          Dành cho Mèo ({BOX_TYPES.filter(b => b.species === 'cat').length})
+          Dành cho Mèo ({boxTypes.filter(b => b.species === 'cat').length})
         </button>
       </div>
 

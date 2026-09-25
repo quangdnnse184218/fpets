@@ -1,16 +1,16 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { Pet, INITIAL_PETS } from "@/mock/pets";
-import { Product, PRODUCTS } from "@/mock/products";
-import { BoxType, BOX_TYPES } from "@/mock/boxTypes";
-import { Order, INITIAL_ORDERS } from "@/mock/orders";
-import { Subscription, INITIAL_SUBSCRIPTIONS } from "@/mock/subscriptions";
-import { CurationItem, INITIAL_CURATION_QUEUE } from "@/mock/curationQueue";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import { Pet } from "@/mock/pets";
+import { Product } from "@/mock/products";
+import { BoxType } from "@/mock/boxTypes";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { petRowToPet, productRowToProduct, boxTypeRowToBoxType, ProductWithCategory } from "@/lib/adapters";
+
+const GUEST_CART_KEY = "fpets_guest_cart";
 
 export interface CartItem {
-  id: string; // unique cart line id
+  id: string; // unique cart line id (id thật trong Supabase khi đã đăng nhập, id tạm khi là khách)
   type: 'box' | 'retail';
   productId?: string;
   product?: Product;
@@ -20,6 +20,11 @@ export interface CartItem {
   petName?: string;
   quantity: number;
   unitPrice: number;
+}
+
+interface GuestCartLine {
+  productId: string;
+  quantity: number;
 }
 
 export interface UserProfile {
@@ -39,51 +44,54 @@ interface AppContextType {
   user: UserProfile;
   login: () => void;
   logout: () => Promise<void>;
-  toggleRole: () => void;
   refreshUser: () => Promise<void>;
 
-  // Pets
+  // Pets (Supabase thật, chỉ có khi đã đăng nhập)
   pets: Pet[];
-  addPet: (pet: Omit<Pet, "id" | "receivedBoxesCount" | "avatarColor">) => Pet;
-  updatePet: (id: string, updated: Partial<Pet>) => void;
-  deletePet: (id: string) => void;
+  petsLoading: boolean;
+  addPet: (pet: Omit<Pet, "id" | "receivedBoxesCount" | "avatarColor">) => Promise<Pet>;
+  updatePet: (id: string, updated: Partial<Pet>) => Promise<void>;
+  deletePet: (id: string) => Promise<void>;
 
-  // Cart
+  // Cart (Supabase khi đăng nhập, localStorage khi là khách vãng lai)
   cart: CartItem[];
-  addToCart: (item: Omit<CartItem, "id">) => void;
-  updateQuantity: (id: string, delta: number) => void;
-  updatePetForBox: (cartItemId: string, petId: string, petName: string) => void;
-  removeFromCart: (id: string) => void;
-  clearCart: () => void;
+  cartLoading: boolean;
+  addToCart: (item: Omit<CartItem, "id">) => Promise<void>;
+  updateQuantity: (id: string, delta: number) => Promise<void>;
+  updatePetForBox: (cartItemId: string, petId: string, petName: string) => Promise<void>;
+  removeFromCart: (id: string) => Promise<void>;
+  clearCart: () => Promise<void>;
   voucherCode: string;
   voucherDiscount: number;
   voucherMessage: string;
-  applyVoucher: (code: string) => boolean;
+  applyVoucher: (code: string) => Promise<boolean>;
   subtotal: number;
   shippingFee: number;
   total: number;
-
-  // Orders
-  orders: Order[];
-  addOrder: (order: Order) => void;
-
-  // Subscriptions
-  subscriptions: Subscription[];
-  pauseSubscription: (id: string, cycles: number) => void;
-  resumeSubscription: (id: string) => void;
-  cancelSubscription: (id: string, reason: string) => void;
-  renewSubscription: (id: string, planName: string, prepaidAmount: number) => void;
-
-  // Admin Box Curation
-  curationQueue: CurationItem[];
-  approveCuration: (curationId: string) => void;
-  swapCurationItem: (curationId: string, oldProductId: string, newProduct: Product) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+function readGuestCart(): GuestCartLine[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(GUEST_CART_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeGuestCart(lines: GuestCartLine[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(GUEST_CART_KEY, JSON.stringify(lines));
+  } catch {
+    // localStorage có thể bị chặn (private mode) - bỏ qua, giỏ chỉ sống trong session
+  }
+}
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Default user profile khi chưa đăng nhập
   const DEFAULT_USER: UserProfile = {
     name: "Khách hàng",
     email: "",
@@ -92,12 +100,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     role: "customer"
   };
 
-  // Auth state
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
   const [user, setUser] = useState<UserProfile>(DEFAULT_USER);
+  const cartIdRef = useRef<string | null>(null);
 
-  // Hàm load profile người dùng từ Supabase
   const fetchUserProfile = async (userId: string, email?: string) => {
     try {
       const supabase = createClient();
@@ -119,7 +126,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         setIsLoggedIn(true);
       } else {
-        // Fallback khi bảng profiles chưa kịp sync hoặc trigger đang chạy
         setUser({
           id: userId,
           name: email?.split("@")[0] || "Thành viên",
@@ -136,7 +142,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Khởi tạo và lắng nghe Supabase auth state change (với cơ chế kiểm tra an toàn)
   useEffect(() => {
     if (!isSupabaseConfigured()) {
       setIsLoadingAuth(false);
@@ -146,7 +151,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const supabase = createClient();
 
-      // 1. Kiểm tra session hiện tại
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
           fetchUserProfile(session.user.id, session.user.email);
@@ -160,7 +164,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsLoadingAuth(false);
       });
 
-      // 2. Lắng nghe thay đổi auth (đăng nhập, đăng xuất, token refreshed)
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
           if (session?.user) {
@@ -182,7 +185,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // Auth actions
   const login = () => setIsLoggedIn(true);
 
   const logout = async () => {
@@ -194,6 +196,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } finally {
       setIsLoggedIn(false);
       setUser(DEFAULT_USER);
+      setPets([]);
+      setCart([]);
+      cartIdRef.current = null;
     }
   };
 
@@ -205,250 +210,382 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const toggleRole = () => {
-    setUser(prev => ({
-      ...prev,
-      role: prev.role === 'customer' ? 'admin' : 'customer'
-    }));
+  // ---------------------------------------------------------------------------
+  // PETS: dữ liệu thật từ Supabase, chỉ tồn tại khi đã đăng nhập (RLS pets_own_all).
+  // ---------------------------------------------------------------------------
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [petsLoading, setPetsLoading] = useState(false);
+
+  const loadPets = async () => {
+    setPetsLoading(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.from("pets").select("*").order("created_at", { ascending: false });
+      if (!error && data) {
+        setPets(data.map(petRowToPet));
+      }
+    } finally {
+      setPetsLoading(false);
+    }
   };
 
-  // Pets state
-  const [pets, setPets] = useState<Pet[]>(INITIAL_PETS);
+  const addPet = async (newPetData: Omit<Pet, "id" | "receivedBoxesCount" | "avatarColor">): Promise<Pet> => {
+    const supabase = createClient();
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) throw new Error("Cần đăng nhập để tạo hồ sơ thú cưng");
 
-  // Cart state
-  const [cart, setCart] = useState<CartItem[]>([
-    {
-      id: "cart-line-1",
-      type: "box",
-      boxTypeId: "box-std-dog-large",
-      boxType: BOX_TYPES[1],
-      petId: "pet-bo",
-      petName: "Bơ",
-      quantity: 1,
-      unitPrice: 299000
-    },
-    {
-      id: "cart-line-2",
-      type: "retail",
-      productId: "prod-02",
-      product: PRODUCTS[1],
-      quantity: 2,
-      unitPrice: 45000
+    const { data, error } = await supabase
+      .from("pets")
+      .insert({
+        user_id: authUser.id,
+        name: newPetData.name,
+        species: newPetData.species,
+        breed: newPetData.breed || null,
+        weight: newPetData.weight || null,
+        size: newPetData.size,
+        age_group: newPetData.ageGroup,
+        gender: newPetData.gender,
+        birthdate: newPetData.birthdate || null,
+        allergies: newPetData.allergies,
+        preferences: newPetData.preferences,
+        notes: newPetData.notes || null,
+      })
+      .select("*")
+      .single();
+
+    if (error || !data) throw error || new Error("Không thể tạo hồ sơ thú cưng");
+    const pet = petRowToPet(data);
+    setPets(prev => [pet, ...prev]);
+    return pet;
+  };
+
+  const updatePet = async (id: string, updated: Partial<Pet>) => {
+    const supabase = createClient();
+    const patch: import("@/types/database").TablesUpdate<"pets"> = {
+      ...(updated.name !== undefined && { name: updated.name }),
+      ...(updated.species !== undefined && { species: updated.species }),
+      ...(updated.breed !== undefined && { breed: updated.breed }),
+      ...(updated.weight !== undefined && { weight: updated.weight }),
+      ...(updated.size !== undefined && { size: updated.size }),
+      ...(updated.ageGroup !== undefined && { age_group: updated.ageGroup }),
+      ...(updated.gender !== undefined && { gender: updated.gender }),
+      ...(updated.birthdate !== undefined && { birthdate: updated.birthdate }),
+      ...(updated.allergies !== undefined && { allergies: updated.allergies }),
+      ...(updated.preferences !== undefined && { preferences: updated.preferences }),
+      ...(updated.notes !== undefined && { notes: updated.notes }),
+    };
+
+    const { error } = await supabase.from("pets").update(patch).eq("id", id);
+    if (error) throw error;
+    setPets(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p));
+  };
+
+  const deletePet = async (id: string) => {
+    const supabase = createClient();
+    const { error } = await supabase.from("pets").delete().eq("id", id);
+    if (error) throw error;
+    setPets(prev => prev.filter(p => p.id !== id));
+    setCart(prev => prev.filter(c => c.petId !== id));
+  };
+
+  // ---------------------------------------------------------------------------
+  // CART: khách vãng lai -> localStorage (chỉ hàng lẻ); đã đăng nhập -> Supabase
+  // carts/cart_items thật (đúng SPEC §4: "giỏ lưu theo tài khoản ... đăng nhập
+  // thì gộp giỏ").
+  // ---------------------------------------------------------------------------
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartLoading, setCartLoading] = useState(false);
+
+  const getOrCreateCartId = async (userId: string): Promise<string> => {
+    const supabase = createClient();
+    const { data: existing } = await supabase.from("carts").select("id").eq("user_id", userId).maybeSingle();
+    if (existing) return existing.id;
+    const { data: created, error } = await supabase.from("carts").insert({ user_id: userId }).select("id").single();
+    if (error || !created) throw error || new Error("Không thể tạo giỏ hàng");
+    return created.id;
+  };
+
+  type CartItemRow = {
+    id: string;
+    quantity: number;
+    product_id: string | null;
+    box_type_id: string | null;
+    pet_id: string | null;
+    products: ProductWithCategory | null;
+    box_types: import("@/types/database").Tables<"box_types"> | null;
+    pets: { name: string } | null;
+  };
+
+  const mapDbCartRow = (row: CartItemRow): CartItem => {
+    if (row.product_id && row.products) {
+      const product = productRowToProduct(row.products);
+      return {
+        id: row.id,
+        type: "retail",
+        productId: row.product_id,
+        product,
+        quantity: row.quantity,
+        unitPrice: product.price,
+      };
     }
-  ]);
+    const boxType = row.box_types ? boxTypeRowToBoxType(row.box_types) : undefined;
+    return {
+      id: row.id,
+      type: "box",
+      boxTypeId: row.box_type_id || undefined,
+      boxType,
+      petId: row.pet_id || undefined,
+      petName: row.pets?.name,
+      quantity: row.quantity,
+      unitPrice: boxType?.basePrice || 0,
+    };
+  };
+
+  const loadServerCart = async (userId: string) => {
+    const supabase = createClient();
+    const cartId = await getOrCreateCartId(userId);
+    cartIdRef.current = cartId;
+    const { data, error } = await supabase
+      .from("cart_items")
+      .select("id, quantity, product_id, box_type_id, pet_id, products(*, categories(name, slug)), box_types(*), pets(name)")
+      .eq("cart_id", cartId);
+
+    if (!error && data) {
+      setCart((data as unknown as CartItemRow[]).map(mapDbCartRow));
+    }
+  };
+
+  const mergeGuestCartIntoServer = async (userId: string) => {
+    const guestLines = readGuestCart();
+    if (guestLines.length === 0) return;
+    const supabase = createClient();
+    const cartId = cartIdRef.current || (await getOrCreateCartId(userId));
+    for (const line of guestLines) {
+      const { data: existingRow } = await supabase
+        .from("cart_items")
+        .select("id, quantity")
+        .eq("cart_id", cartId)
+        .eq("product_id", line.productId)
+        .maybeSingle();
+      if (existingRow) {
+        await supabase.from("cart_items").update({ quantity: Math.min(10, existingRow.quantity + line.quantity) }).eq("id", existingRow.id);
+      } else {
+        await supabase.from("cart_items").insert({ cart_id: cartId, product_id: line.productId, quantity: line.quantity });
+      }
+    }
+    writeGuestCart([]);
+  };
+
+  const loadGuestCart = async () => {
+    const guestLines = readGuestCart();
+    if (guestLines.length === 0) {
+      setCart([]);
+      return;
+    }
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("products")
+      .select("*, categories(name, slug)")
+      .in("id", guestLines.map((l) => l.productId));
+
+    const products = (data as unknown as ProductWithCategory[] | null) || [];
+    const items: CartItem[] = guestLines
+      .map((line): CartItem | null => {
+        const row = products.find((p) => p.id === line.productId);
+        if (!row) return null;
+        const product = productRowToProduct(row);
+        return {
+          id: "guest-" + line.productId,
+          type: "retail",
+          productId: line.productId,
+          product,
+          quantity: Math.min(line.quantity, product.stock || line.quantity),
+          unitPrice: product.price,
+        };
+      })
+      .filter((x): x is CartItem => x !== null);
+    setCart(items);
+  };
+
+  // Đồng bộ giỏ hàng theo trạng thái đăng nhập (và gộp giỏ khách vãng lai khi vừa login)
+  const prevLoggedIn = useRef(false);
+  useEffect(() => {
+    if (isLoadingAuth || !isSupabaseConfigured()) return;
+    (async () => {
+      setCartLoading(true);
+      try {
+        if (isLoggedIn && user.id) {
+          await loadPets();
+          if (!prevLoggedIn.current) {
+            await mergeGuestCartIntoServer(user.id);
+          }
+          await loadServerCart(user.id);
+        } else {
+          cartIdRef.current = null;
+          await loadGuestCart();
+        }
+      } finally {
+        setCartLoading(false);
+        prevLoggedIn.current = isLoggedIn;
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, isLoadingAuth, user.id]);
 
   const [voucherCode, setVoucherCode] = useState<string>("");
   const [voucherDiscount, setVoucherDiscount] = useState<number>(0);
   const [voucherMessage, setVoucherMessage] = useState<string>("");
 
-  // Orders state
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+  const addToCart = async (item: Omit<CartItem, "id">) => {
+    if (isLoggedIn && user.id) {
+      const supabase = createClient();
+      const cartId = cartIdRef.current || (await getOrCreateCartId(user.id));
+      cartIdRef.current = cartId;
 
-  // Subscriptions state
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>(INITIAL_SUBSCRIPTIONS);
-
-  // Admin Curation state
-  const [curationQueue, setCurationQueue] = useState<CurationItem[]>(INITIAL_CURATION_QUEUE);
-
-  // Pet actions
-  const addPet = (newPetData: Omit<Pet, "id" | "receivedBoxesCount" | "avatarColor">): Pet => {
-    const newPet: Pet = {
-      ...newPetData,
-      id: "pet-" + Date.now(),
-      receivedBoxesCount: 0,
-      avatarColor: newPetData.species === 'dog' ? '#E1EDE8' : '#FEF7E6'
-    };
-    setPets(prev => [newPet, ...prev]);
-    return newPet;
-  };
-
-  const updatePet = (id: string, updated: Partial<Pet>) => {
-    setPets(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p));
-  };
-
-  const deletePet = (id: string) => {
-    setPets(prev => prev.filter(p => p.id !== id));
-    // ON DELETE CASCADE: Xóa item box trong giỏ nếu pet bị xóa
-    setCart(prev => prev.filter(c => c.petId !== id));
-  };
-
-  // Cart actions
-  const addToCart = (item: Omit<CartItem, "id">) => {
-    setCart(prev => {
-      // Nếu đã có box cùng loại và cùng pet, hoặc cùng sản phẩm lẻ -> tăng số lượng
-      const existingIdx = prev.findIndex(c => {
-        if (item.type === 'box') {
-          return c.type === 'box' && c.boxTypeId === item.boxTypeId && c.petId === item.petId;
+      if (item.type === "retail" && item.productId) {
+        const maxQty = Math.min(10, item.product?.stock ?? 10);
+        const { data: existingRow } = await supabase
+          .from("cart_items")
+          .select("id, quantity")
+          .eq("cart_id", cartId)
+          .eq("product_id", item.productId)
+          .maybeSingle();
+        if (existingRow) {
+          await supabase.from("cart_items").update({ quantity: Math.min(maxQty, existingRow.quantity + item.quantity) }).eq("id", existingRow.id);
         } else {
-          return c.type === 'retail' && c.productId === item.productId;
+          await supabase.from("cart_items").insert({ cart_id: cartId, product_id: item.productId, quantity: Math.min(maxQty, item.quantity) });
         }
-      });
-
+      } else if (item.type === "box" && item.boxTypeId) {
+        const { data: existingRow } = await supabase
+          .from("cart_items")
+          .select("id, quantity")
+          .eq("cart_id", cartId)
+          .eq("box_type_id", item.boxTypeId)
+          .eq("pet_id", item.petId || "")
+          .maybeSingle();
+        if (existingRow) {
+          await supabase.from("cart_items").update({ quantity: Math.min(10, existingRow.quantity + item.quantity) }).eq("id", existingRow.id);
+        } else {
+          await supabase.from("cart_items").insert({ cart_id: cartId, box_type_id: item.boxTypeId, pet_id: item.petId || null, quantity: item.quantity });
+        }
+      }
+      await loadServerCart(user.id);
+    } else {
+      if (item.type !== "retail" || !item.productId) return; // box bắt buộc đăng nhập, đã gate ở UI
+      const lines = readGuestCart();
+      const existingIdx = lines.findIndex((l) => l.productId === item.productId);
+      const maxQty = Math.min(10, item.product?.stock ?? 10);
       if (existingIdx >= 0) {
-        const next = [...prev];
-        next[existingIdx].quantity = Math.min(10, next[existingIdx].quantity + item.quantity);
-        return next;
+        lines[existingIdx].quantity = Math.min(maxQty, lines[existingIdx].quantity + item.quantity);
+      } else {
+        lines.push({ productId: item.productId, quantity: Math.min(maxQty, item.quantity) });
       }
-
-      return [...prev, { ...item, id: "cart-" + Date.now() + Math.random() }];
-    });
+      writeGuestCart(lines);
+      await loadGuestCart();
+    }
   };
 
-  const updateQuantity = (id: string, delta: number) => {
-    setCart(prev => prev.map(c => {
-      if (c.id === id) {
-        const newQ = Math.max(1, Math.min(10, c.quantity + delta));
-        return { ...c, quantity: newQ };
+  const updateQuantity = async (id: string, delta: number) => {
+    const current = cart.find((c) => c.id === id);
+    if (!current) return;
+    const maxQty = Math.min(10, current.product?.stock ?? 10);
+    const newQ = Math.max(1, Math.min(maxQty, current.quantity + delta));
+
+    if (isLoggedIn && user.id) {
+      const supabase = createClient();
+      await supabase.from("cart_items").update({ quantity: newQ }).eq("id", id);
+      setCart((prev) => prev.map((c) => (c.id === id ? { ...c, quantity: newQ } : c)));
+    } else {
+      const lines = readGuestCart();
+      const line = lines.find((l) => l.productId === current.productId);
+      if (line) line.quantity = newQ;
+      writeGuestCart(lines);
+      setCart((prev) => prev.map((c) => (c.id === id ? { ...c, quantity: newQ } : c)));
+    }
+  };
+
+  const updatePetForBox = async (cartItemId: string, petId: string, petName: string) => {
+    if (isLoggedIn) {
+      const supabase = createClient();
+      await supabase.from("cart_items").update({ pet_id: petId }).eq("id", cartItemId);
+    }
+    setCart((prev) => prev.map((c) => (c.id === cartItemId ? { ...c, petId, petName } : c)));
+  };
+
+  const removeFromCart = async (id: string) => {
+    if (isLoggedIn && user.id) {
+      const supabase = createClient();
+      await supabase.from("cart_items").delete().eq("id", id);
+    } else {
+      const current = cart.find((c) => c.id === id);
+      if (current?.productId) {
+        writeGuestCart(readGuestCart().filter((l) => l.productId !== current.productId));
       }
-      return c;
-    }));
+    }
+    setCart((prev) => prev.filter((c) => c.id !== id));
   };
 
-  const updatePetForBox = (cartItemId: string, petId: string, petName: string) => {
-    setCart(prev => prev.map(c => {
-      if (c.id === cartItemId) {
-        return { ...c, petId, petName };
-      }
-      return c;
-    }));
-  };
-
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(c => c.id !== id));
-  };
-
-  const clearCart = () => {
+  const clearCart = async () => {
+    if (isLoggedIn && cartIdRef.current) {
+      const supabase = createClient();
+      await supabase.from("cart_items").delete().eq("cart_id", cartIdRef.current);
+    } else {
+      writeGuestCart([]);
+    }
     setCart([]);
     setVoucherCode("");
     setVoucherDiscount(0);
     setVoucherMessage("");
   };
 
-  const applyVoucher = (code: string): boolean => {
+  // Xem trước giảm giá bằng dữ liệu voucher THẬT trong Supabase (public select cho voucher active).
+  // Số tiền giảm cuối cùng luôn được checkout_create_order tính lại ở server, không tin giá trị này.
+  const applyVoucher = async (code: string): Promise<boolean> => {
     const clean = code.trim().toUpperCase();
     if (!clean) {
       setVoucherMessage("Vui lòng nhập mã giảm giá");
       return false;
     }
 
-    if (clean === "CHAOBANMOI" || clean === "FPET10" || clean === "CHAOMUNG10") {
-      const calcDiscount = Math.round(subtotal * 0.1);
-      setVoucherCode(clean);
-      setVoucherDiscount(calcDiscount);
-      setVoucherMessage("Áp dụng thành công mã chào mừng: Giảm 10%");
-      return true;
+    const supabase = createClient();
+    const { data: voucher } = await supabase
+      .from("vouchers")
+      .select("*")
+      .eq("code", clean)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!voucher) {
+      setVoucherMessage("Mã voucher không hợp lệ hoặc đã hết hạn");
+      setVoucherCode("");
+      setVoucherDiscount(0);
+      return false;
     }
 
-    if (clean === "FREESHIP") {
-      setVoucherCode(clean);
-      setVoucherDiscount(shippingFee);
-      setVoucherMessage("Áp dụng mã miễn phí vận chuyển thành công");
-      return true;
+    if (subtotal < voucher.min_order_value) {
+      setVoucherMessage(`Đơn tối thiểu ${voucher.min_order_value.toLocaleString("vi-VN")}₫ mới áp dụng được mã này`);
+      return false;
     }
 
-    setVoucherMessage("Mã voucher không hợp lệ hoặc đã hết hạn");
-    return false;
+    let discount = 0;
+    if (voucher.voucher_type === "percentage") {
+      discount = Math.round((subtotal * voucher.discount_value) / 100);
+      if (voucher.max_discount) discount = Math.min(discount, voucher.max_discount);
+    } else if (voucher.voucher_type === "fixed_amount") {
+      discount = Math.min(voucher.discount_value, subtotal);
+    } else if (voucher.voucher_type === "free_shipping") {
+      discount = shippingFee;
+    }
+
+    setVoucherCode(clean);
+    setVoucherDiscount(discount);
+    setVoucherMessage(`Áp dụng thành công mã ${clean}. Số tiền giảm chính xác sẽ hiện lại ở bước thanh toán.`);
+    return true;
   };
 
-  // Calculations
   const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const shippingFee = subtotal >= 500000 || subtotal === 0 ? 0 : 35000;
   const total = Math.max(0, subtotal + shippingFee - voucherDiscount);
-
-  // Orders
-  const addOrder = (order: Order) => {
-    setOrders(prev => [order, ...prev]);
-  };
-
-  // Subscriptions
-  const pauseSubscription = (id: string, cycles: number) => {
-    setSubscriptions(prev => prev.map(s => {
-      if (s.id === id) {
-        return {
-          ...s,
-          status: 'tam_dung',
-          statusLabel: 'Tạm dừng (Bỏ qua 1 kỳ)',
-          pausedCyclesLeft: cycles,
-          nextDeliveryDate: '02/11/2026' // dời 1 tháng
-        };
-      }
-      return s;
-    }));
-  };
-
-  const resumeSubscription = (id: string) => {
-    setSubscriptions(prev => prev.map(s => {
-      if (s.id === id) {
-        return {
-          ...s,
-          status: 'dang_hoat_dong',
-          statusLabel: 'Đang hoạt động',
-          pausedCyclesLeft: 0,
-          nextDeliveryDate: '02/10/2026'
-        };
-      }
-      return s;
-    }));
-  };
-
-  const cancelSubscription = (id: string, reason: string) => {
-    setSubscriptions(prev => prev.map(s => {
-      if (s.id === id) {
-        return {
-          ...s,
-          status: 'da_huy',
-          statusLabel: 'Đã hủy gói (Vẫn giao các hộp đã trả)'
-        };
-      }
-      return s;
-    }));
-  };
-
-  const renewSubscription = (id: string, planName: string, prepaidAmount: number) => {
-    const newSub: Subscription = {
-      id: "sub-" + Date.now(),
-      code: "SUB-2026-" + Math.floor(1000 + Math.random() * 9000),
-      petId: "pet-bo",
-      petName: "Bơ",
-      petBreed: "Golden Retriever",
-      boxName: "Box Tiêu chuẩn cho Chó lớn",
-      planName: planName,
-      totalCycles: 3,
-      completedCycles: 0,
-      remainingCycles: 3,
-      currentCycleIndex: 1,
-      status: "dang_hoat_dong",
-      statusLabel: "Đang hoạt động (Gia hạn nối tiếp)",
-      deliverySchedule: "dau_thang",
-      deliveryScheduleLabel: "Đầu tháng (Ngày 1–5)",
-      nextDeliveryDate: "02/11/2026", // Nối tiếp sau khi gói cũ kết thúc
-      cutoffDate: "25/10/2026",
-      prepaidAmount: prepaidAmount,
-      pausedCyclesLeft: 0,
-      shippingAddress: user.address
-    };
-    setSubscriptions(prev => [newSub, ...prev]);
-  };
-
-  // Curation
-  const approveCuration = (curationId: string) => {
-    setCurationQueue(prev => prev.map(c => {
-      if (c.id === curationId) {
-        return { ...c, status: 'Đã duyệt' };
-      }
-      return c;
-    }));
-  };
-
-  const swapCurationItem = (curationId: string, oldProductId: string, newProduct: Product) => {
-    setCurationQueue(prev => prev.map(c => {
-      if (c.id === curationId) {
-        const nextProds = c.selectedProducts.map(p => p.id === oldProductId ? newProduct : p);
-        return { ...c, selectedProducts: nextProds };
-      }
-      return c;
-    }));
-  };
 
   return (
     <AppContext.Provider
@@ -458,13 +595,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         user,
         login,
         logout,
-        toggleRole,
         refreshUser,
         pets,
+        petsLoading,
         addPet,
         updatePet,
         deletePet,
         cart,
+        cartLoading,
         addToCart,
         updateQuantity,
         updatePetForBox,
@@ -477,16 +615,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         subtotal,
         shippingFee,
         total,
-        orders,
-        addOrder,
-        subscriptions,
-        pauseSubscription,
-        resumeSubscription,
-        cancelSubscription,
-        renewSubscription,
-        curationQueue,
-        approveCuration,
-        swapCurationItem,
       }}
     >
       {children}

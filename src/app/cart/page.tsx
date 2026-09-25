@@ -30,9 +30,9 @@ export default function CartPage() {
 
   const [inputCode, setInputCode] = useState("");
 
-  const handleApply = (e: React.FormEvent) => {
+  const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
-    applyVoucher(inputCode);
+    await applyVoucher(inputCode);
   };
 
   const remainingForFreeship = Math.max(0, 500000 - subtotal);

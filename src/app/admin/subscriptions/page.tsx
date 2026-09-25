@@ -1,214 +1,116 @@
 "use client";
 
-import React, { useState } from "react";
-import { formatVND } from "@/lib/formatters";
-import { Search, Pause, Play, XCircle, RefreshCw, Calendar, Package, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { Search, Pause, Play, XCircle, AlertCircle, CheckCircle2 } from "lucide-react";
 
-interface AdminSubscription {
+type SubStatus = "cho_thanh_toan" | "dang_hoat_dong" | "tam_dung" | "qua_han" | "het_han" | "da_huy";
+
+const STATUS_LABEL: Record<SubStatus, string> = {
+  cho_thanh_toan: "Chờ thanh toán",
+  dang_hoat_dong: "Đang hoạt động",
+  tam_dung: "Tạm dừng",
+  qua_han: "Quá hạn",
+  het_han: "Hết hạn",
+  da_huy: "Đã hủy",
+};
+
+interface SubRow {
   id: string;
-  code: string;
-  customerName: string;
-  customerPhone: string;
-  petName: string;
-  petBreed: string;
-  boxName: string;
-  planName: string;
-  totalCycles: number;
-  currentCycleIndex: number;
-  status: 'dang_hoat_dong' | 'tam_dung' | 'qua_han' | 'da_huy';
-  statusLabel: string;
-  deliveryScheduleLabel: string;
-  nextDeliveryDate: string;
-  cutoffDate: string;
-  expiryDate: string;
-  prepaidAmount: number;
+  subscription_code: string;
+  status: SubStatus;
+  total_cycles: number;
+  remaining_cycles: number;
+  current_cycle: number;
+  next_delivery_date: string;
+  cutoff_date: string;
+  delivery_schedule: string;
+  pets: { name: string; breed: string | null } | null;
+  profiles: { full_name: string | null; phone: string | null } | null;
+  box_types: { name: string } | null;
+  subscription_plans: { name: string } | null;
 }
 
-const MOCK_ADMIN_SUBSCRIPTIONS: AdminSubscription[] = [
-  {
-    id: "sub-1",
-    code: "SUB-2026-8912",
-    customerName: "Nguyễn Văn Quang",
-    customerPhone: "0912345678",
-    petName: "Miu",
-    petBreed: "Mèo Anh Lông Ngắn",
-    boxName: "Box Tiêu chuẩn cho Mèo",
-    planName: "Gói 3 hộp (Tiết kiệm 10% + Freeship)",
-    totalCycles: 3,
-    currentCycleIndex: 2,
-    status: "dang_hoat_dong",
-    statusLabel: "Đang hoạt động",
-    deliveryScheduleLabel: "Đầu tháng (Ngày 1–5)",
-    nextDeliveryDate: "02/10/2026",
-    cutoffDate: "25/09/2026",
-    expiryDate: "05/11/2026",
-    prepaidAmount: 807000,
-  },
-  {
-    id: "sub-2",
-    code: "SUB-2026-5541",
-    customerName: "Hoàng Thảo My",
-    customerPhone: "0987654321",
-    petName: "Bánh Bao",
-    petBreed: "Mèo Munchkin",
-    boxName: "Box Tiêu chuẩn cho Mèo",
-    planName: "Gói 3 hộp (Tiết kiệm 10% + Freeship)",
-    totalCycles: 3,
-    currentCycleIndex: 1,
-    status: "dang_hoat_dong",
-    statusLabel: "Đang hoạt động",
-    deliveryScheduleLabel: "Giữa tháng (Ngày 15–20)",
-    nextDeliveryDate: "16/10/2026",
-    cutoffDate: "10/10/2026",
-    expiryDate: "20/12/2026",
-    prepaidAmount: 807000,
-  },
-  {
-    id: "sub-3",
-    code: "SUB-2026-3390",
-    customerName: "Trần Minh Đức",
-    customerPhone: "0905123987",
-    petName: "Rex",
-    petBreed: "Corgi Pembroke",
-    boxName: "Box Tiêu chuẩn cho Chó lớn",
-    planName: "Gói 6 hộp (Tiết kiệm 15% + Quà sinh nhật)",
-    totalCycles: 6,
-    currentCycleIndex: 3,
-    status: "tam_dung",
-    statusLabel: "Tạm dừng (Khách yêu cầu)",
-    deliveryScheduleLabel: "Đầu tháng (Ngày 1–5)",
-    nextDeliveryDate: "Tạm hoãn đến 01/11/2026",
-    cutoffDate: "25/10/2026",
-    expiryDate: "05/03/2027",
-    prepaidAmount: 1525000,
-  },
-  {
-    id: "sub-4",
-    code: "SUB-2026-1102",
-    customerName: "Lê Thu Hà",
-    customerPhone: "0933445566",
-    petName: "LuLu",
-    petBreed: "Poodle Tiny",
-    boxName: "Box Tiêu chuẩn cho Chó nhỏ",
-    planName: "Gói 3 hộp (Tiết kiệm 10% + Freeship)",
-    totalCycles: 3,
-    currentCycleIndex: 3,
-    status: "qua_han",
-    statusLabel: "Quá hạn thanh toán gia hạn",
-    deliveryScheduleLabel: "Giữa tháng (Ngày 15–20)",
-    nextDeliveryDate: "Chờ thanh toán kỳ mới",
-    cutoffDate: "10/09/2026",
-    expiryDate: "20/09/2026",
-    prepaidAmount: 807000,
-  },
-  {
-    id: "sub-5",
-    code: "SUB-2026-9044",
-    customerName: "Phạm Hải Long",
-    customerPhone: "0918776655",
-    petName: "KiKi",
-    petBreed: "Chó Phốc Sóc",
-    boxName: "Box Tiêu chuẩn cho Chó nhỏ",
-    planName: "Gói 1 hộp (Thử nghiệm)",
-    totalCycles: 1,
-    currentCycleIndex: 1,
-    status: "da_huy",
-    statusLabel: "Đã hủy gói",
-    deliveryScheduleLabel: "Đầu tháng (Ngày 1–5)",
-    nextDeliveryDate: "—",
-    cutoffDate: "—",
-    expiryDate: "05/08/2026",
-    prepaidAmount: 299000,
-  }
-];
-
 export default function AdminSubscriptionsPage() {
-  const [subs, setSubs] = useState<AdminSubscription[]>(MOCK_ADMIN_SUBSCRIPTIONS);
+  const [subs, setSubs] = useState<SubRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const showNotice = (msg: string) => {
-    setActionNotice(msg);
-    setTimeout(() => setActionNotice(null), 3000);
-  };
+  const loadSubs = useCallback(async () => {
+    setLoading(true);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("subscriptions")
+      .select("id, subscription_code, status, total_cycles, remaining_cycles, current_cycle, next_delivery_date, cutoff_date, delivery_schedule, pets(name, breed), profiles(full_name, phone), box_types(name), subscription_plans(name)")
+      .order("created_at", { ascending: false });
+    setSubs((data as unknown as SubRow[]) || []);
+    setLoading(false);
+  }, []);
 
-  // Nút Tạm dừng / Tiếp tục
-  const handleTogglePause = (id: string) => {
-    setSubs((prev) =>
-      prev.map((s) => {
-        if (s.id !== id) return s;
-        const isPaused = s.status === "tam_dung";
-        return {
-          ...s,
-          status: isPaused ? "dang_hoat_dong" : "tam_dung",
-          statusLabel: isPaused ? "Đang hoạt động" : "Tạm dừng (CSKH can thiệp)",
-        };
-      })
-    );
-    showNotice("Đã cập nhật trạng thái tạm dừng/tiếp tục gói!");
-  };
+  useEffect(() => { loadSubs(); }, [loadSubs]);
 
-  // Nút Hủy gói
-  const handleCancelSub = (id: string) => {
-    if (confirm("Bạn có chắc chắn muốn hủy gói định kỳ này hộ khách hàng không?")) {
-      setSubs((prev) =>
-        prev.map((s) =>
-          s.id === id ? { ...s, status: "da_huy", statusLabel: "Đã hủy bởi CSKH" } : s
-        )
-      );
-      showNotice("Đã hủy gói subscription thành công.");
+  const showNotice = (msg: string) => { setActionNotice(msg); setTimeout(() => setActionNotice(null), 3000); };
+
+  const handleTogglePause = async (sub: SubRow) => {
+    setBusyId(sub.id);
+    const supabase = createClient();
+    if (sub.status === "tam_dung") {
+      const { error } = await supabase.rpc("resume_subscription", { p_subscription_id: sub.id });
+      if (!error) showNotice("Đã tiếp tục gói cho khách.");
+    } else {
+      const { error } = await supabase.rpc("pause_subscription", { p_subscription_id: sub.id, p_cycles: 1 });
+      if (!error) showNotice("Đã tạm dừng 1 kỳ hộ khách.");
+      else showNotice("Không thể tạm dừng: " + error.message);
     }
+    setBusyId(null);
+    loadSubs();
   };
 
-  // Nút Gia hạn hộ khách
-  const handleRenewSub = (id: string) => {
-    setSubs((prev) =>
-      prev.map((s) => {
-        if (s.id !== id) return s;
-        return {
-          ...s,
-          totalCycles: s.totalCycles + 3,
-          status: "dang_hoat_dong",
-          statusLabel: "Đang hoạt động (Đã gia hạn +3 hộp)",
-          expiryDate: "05/02/2027",
-        };
-      })
-    );
-    showNotice("Đã gia hạn thêm 3 kỳ thành công cho gói!");
+  const handleCancelSub = async (sub: SubRow) => {
+    if (!confirm("Bạn có chắc chắn muốn hủy gói định kỳ này hộ khách hàng không?")) return;
+    setBusyId(sub.id);
+    const supabase = createClient();
+    const { error } = await supabase.rpc("cancel_subscription", { p_subscription_id: sub.id, p_reason: "Hủy bởi CSKH/Admin" });
+    setBusyId(null);
+    if (!error) showNotice("Đã hủy gói subscription thành công.");
+    loadSubs();
   };
 
   const filtered = subs.filter((s) => {
     const matchStatus = statusFilter === "all" || s.status === statusFilter;
     const matchSearch =
-      s.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.petName.toLowerCase().includes(searchTerm.toLowerCase());
+      s.subscription_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.profiles?.full_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.pets?.name || "").toLowerCase().includes(searchTerm.toLowerCase());
     return matchStatus && matchSearch;
   });
 
+  const STATUS_ICON: Record<SubStatus, typeof CheckCircle2> = {
+    dang_hoat_dong: CheckCircle2, tam_dung: Pause, qua_han: AlertCircle, het_han: XCircle, da_huy: XCircle, cho_thanh_toan: AlertCircle,
+  };
+  const STATUS_STYLE: Record<SubStatus, string> = {
+    dang_hoat_dong: "bg-grass-100 text-grass-800", tam_dung: "bg-honey-100 text-bark-800", qua_han: "bg-bark-100 text-bark-800",
+    het_han: "bg-surface-muted text-bark-500", da_huy: "bg-surface-muted text-bark-500", cho_thanh_toan: "bg-surface-muted text-bark-500",
+  };
+
+  if (loading) return <div className="py-16 text-center text-xs text-bark-500">Đang tải gói định kỳ...</div>;
+
   return (
     <div className="space-y-6">
-      {/* Tiêu đề & Thông báo hành động */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold text-pine-950 font-display">
-            Quản lý Gói Định Kỳ Subscription ({subs.length} gói)
-          </h1>
-          <p className="text-xs text-bark-500">
-            Theo dõi tiến trình từng kỳ giao, ngày chốt thay đổi (cutoff date) và hỗ trợ khách hàng tạm dừng, hủy hoặc gia hạn gói.
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-extrabold text-pine-950 font-display">Quản lý Gói Định Kỳ Subscription ({subs.length} gói)</h1>
+        <p className="text-xs text-bark-500">Theo dõi tiến trình từng kỳ giao, ngày chốt và hỗ trợ khách hàng tạm dừng hoặc hủy gói.</p>
       </div>
 
       {actionNotice && (
         <div className="p-3 bg-grass-100 border border-grass-200 text-grass-900 rounded-box text-xs font-semibold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-grass-700" />
-          <span>{actionNotice}</span>
+          <CheckCircle2 className="w-4 h-4 text-grass-700" /><span>{actionNotice}</span>
         </div>
       )}
 
-      {/* Thống kê nhanh */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div className="p-3.5 rounded-container bg-surface-card border border-surface-border">
           <span className="text-bark-500 block text-[11px]">Tổng số gói</span>
@@ -216,51 +118,34 @@ export default function AdminSubscriptionsPage() {
         </div>
         <div className="p-3.5 rounded-container bg-grass-50/60 border border-grass-200">
           <span className="text-grass-800 block text-[11px] font-medium">Đang hoạt động</span>
-          <span className="font-extrabold text-grass-900 text-lg">
-            {subs.filter((s) => s.status === "dang_hoat_dong").length}
-          </span>
+          <span className="font-extrabold text-grass-900 text-lg">{subs.filter((s) => s.status === "dang_hoat_dong").length}</span>
         </div>
         <div className="p-3.5 rounded-container bg-honey-50/60 border border-honey-200">
           <span className="text-bark-800 block text-[11px] font-medium">Đang tạm dừng</span>
-          <span className="font-extrabold text-bark-800 text-lg">
-            {subs.filter((s) => s.status === "tam_dung").length}
-          </span>
+          <span className="font-extrabold text-bark-800 text-lg">{subs.filter((s) => s.status === "tam_dung").length}</span>
         </div>
         <div className="p-3.5 rounded-container bg-surface-muted border border-surface-border">
           <span className="text-bark-500 block text-[11px]">Quá hạn / Đã hủy</span>
-          <span className="font-extrabold text-bark-700 text-lg">
-            {subs.filter((s) => s.status === "qua_han" || s.status === "da_huy").length}
-          </span>
+          <span className="font-extrabold text-bark-700 text-lg">{subs.filter((s) => ["qua_han", "het_han", "da_huy"].includes(s.status)).length}</span>
         </div>
       </div>
 
-      {/* Bộ lọc & Tìm kiếm */}
       <div className="p-4 rounded-container bg-surface-card border border-surface-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="w-4 h-4 text-bark-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            placeholder="Tìm theo mã gói, tên khách, tên bé cưng..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none"
-          />
+          <input type="text" placeholder="Tìm theo mã gói, tên khách, tên bé..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none" />
         </div>
-
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 rounded-box border border-surface-border bg-white text-bark-700 text-xs focus:outline-none"
-        >
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 rounded-box border border-surface-border bg-white text-bark-700 text-xs focus:outline-none">
           <option value="all">Tất cả trạng thái</option>
           <option value="dang_hoat_dong">Đang hoạt động</option>
           <option value="tam_dung">Tạm dừng</option>
           <option value="qua_han">Quá hạn</option>
+          <option value="het_han">Hết hạn</option>
           <option value="da_huy">Đã hủy</option>
         </select>
       </div>
 
-      {/* Bảng danh sách Subscription */}
       <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
@@ -270,132 +155,62 @@ export default function AdminSubscriptionsPage() {
               <th className="p-3.5">Loại Box & Gói</th>
               <th className="p-3.5">Tiến trình kỳ</th>
               <th className="p-3.5">Lịch giao kế tiếp</th>
-              <th className="p-3.5">Cutoff / Hết hạn</th>
-              <th className="p-3.5">Thao tác can thiệp</th>
+              <th className="p-3.5">Cutoff</th>
+              <th className="p-3.5">Thao tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-border text-bark-700">
-            {filtered.map((sub) => (
-              <tr key={sub.id} className="hover:bg-surface-muted/50 transition-colors">
-                <td className="p-3.5">
-                  <div className="font-bold text-pine-950 font-mono text-xs">{sub.code}</div>
-                  <div className="mt-1">
-                    {sub.status === "dang_hoat_dong" && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-grass-100 text-grass-800">
-                        <CheckCircle2 className="w-2.5 h-2.5" />
-                        <span>{sub.statusLabel}</span>
+            {filtered.map((sub) => {
+              const Icon = STATUS_ICON[sub.status];
+              const completed = sub.total_cycles - sub.remaining_cycles;
+              return (
+                <tr key={sub.id} className="hover:bg-surface-muted/50 transition-colors">
+                  <td className="p-3.5">
+                    <div className="font-bold text-pine-950 font-mono text-xs">{sub.subscription_code}</div>
+                    <div className="mt-1">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${STATUS_STYLE[sub.status]}`}>
+                        <Icon className="w-2.5 h-2.5" /><span>{STATUS_LABEL[sub.status]}</span>
                       </span>
-                    )}
-                    {sub.status === "tam_dung" && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-honey-100 text-bark-800">
-                        <Pause className="w-2.5 h-2.5" />
-                        <span>{sub.statusLabel}</span>
-                      </span>
-                    )}
-                    {sub.status === "qua_han" && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-bark-100 text-bark-800">
-                        <AlertCircle className="w-2.5 h-2.5" />
-                        <span>{sub.statusLabel}</span>
-                      </span>
-                    )}
-                    {sub.status === "da_huy" && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-surface-muted text-bark-500">
-                        <XCircle className="w-2.5 h-2.5" />
-                        <span>{sub.statusLabel}</span>
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="p-3.5">
-                  <div className="font-semibold text-pine-950">{sub.customerName}</div>
-                  <div className="text-[11px] text-bark-500 flex items-center gap-1 mt-0.5">
-                    <span>🐾 Bé: </span>
-                    <strong className="text-pine-900">{sub.petName}</strong>
-                    <span>({sub.petBreed})</span>
-                  </div>
-                </td>
-                <td className="p-3.5">
-                  <div className="font-medium text-bark-900">{sub.boxName}</div>
-                  <div className="text-[11px] text-grass-700 font-semibold">{sub.planName}</div>
-                </td>
-                <td className="p-3.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-pine-900 text-sm">
-                      Kỳ {sub.currentCycleIndex}/{sub.totalCycles}
-                    </span>
-                  </div>
-                  <div className="w-24 bg-surface-muted h-1.5 rounded-full overflow-hidden mt-1">
-                    <div
-                      className="bg-grass-600 h-full rounded-full"
-                      style={{ width: `${(sub.currentCycleIndex / sub.totalCycles) * 100}%` }}
-                    />
-                  </div>
-                </td>
-                <td className="p-3.5">
-                  <div className="font-semibold text-bark-900">{sub.nextDeliveryDate}</div>
-                  <div className="text-[10px] text-bark-500">{sub.deliveryScheduleLabel}</div>
-                </td>
-                <td className="p-3.5">
-                  <div className="text-[11px]">
-                    <span className="text-bark-500">Cutoff: </span>
-                    <strong className="text-bark-800">{sub.cutoffDate}</strong>
-                  </div>
-                  <div className="text-[10px] text-bark-400">
-                    Hết hạn: {sub.expiryDate}
-                  </div>
-                </td>
-                <td className="p-3.5">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {/* Nút Tạm dừng / Tiếp tục */}
-                    {sub.status !== "da_huy" && (
-                      <button
-                        onClick={() => handleTogglePause(sub.id)}
-                        className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded transition-colors ${
-                          sub.status === "tam_dung"
-                            ? "bg-grass-100 text-grass-800 hover:bg-grass-200"
-                            : "bg-surface-muted text-bark-700 hover:bg-bark-200"
-                        }`}
-                        title={sub.status === "tam_dung" ? "Tiếp tục chạy gói" : "Tạm dừng gói"}
-                      >
-                        {sub.status === "tam_dung" ? (
-                          <>
-                            <Play className="w-2.5 h-2.5" />
-                            <span>Tiếp tục</span>
-                          </>
-                        ) : (
-                          <>
-                            <Pause className="w-2.5 h-2.5" />
-                            <span>Tạm dừng</span>
-                          </>
-                        )}
-                      </button>
-                    )}
-
-                    {/* Nút Gia hạn */}
-                    <button
-                      onClick={() => handleRenewSub(sub.id)}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold bg-pine-50 text-pine-900 hover:bg-pine-100 rounded transition-colors"
-                      title="Gia hạn thêm 3 kỳ"
-                    >
-                      <RefreshCw className="w-2.5 h-2.5" />
-                      <span>Gia hạn</span>
-                    </button>
-
-                    {/* Nút Hủy */}
-                    {sub.status !== "da_huy" && (
-                      <button
-                        onClick={() => handleCancelSub(sub.id)}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold bg-bark-100 text-bark-700 hover:bg-bark-200 rounded transition-colors"
-                        title="Hủy gói subscription"
-                      >
-                        <XCircle className="w-2.5 h-2.5" />
-                        <span>Hủy</span>
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                    </div>
+                  </td>
+                  <td className="p-3.5">
+                    <div className="font-semibold text-pine-950">{sub.profiles?.full_name}</div>
+                    <div className="text-[11px] text-bark-500 mt-0.5">Bé: <strong className="text-pine-900">{sub.pets?.name}</strong> ({sub.pets?.breed})</div>
+                  </td>
+                  <td className="p-3.5">
+                    <div className="font-medium text-bark-900">{sub.box_types?.name}</div>
+                    <div className="text-[11px] text-grass-700 font-semibold">{sub.subscription_plans?.name}</div>
+                  </td>
+                  <td className="p-3.5">
+                    <span className="font-bold text-pine-900 text-sm">Kỳ {completed}/{sub.total_cycles}</span>
+                    <div className="w-24 bg-surface-muted h-1.5 rounded-full overflow-hidden mt-1">
+                      <div className="bg-grass-600 h-full rounded-full" style={{ width: `${(completed / sub.total_cycles) * 100}%` }} />
+                    </div>
+                  </td>
+                  <td className="p-3.5">
+                    <div className="font-semibold text-bark-900">{new Date(sub.next_delivery_date).toLocaleDateString("vi-VN")}</div>
+                    <div className="text-[10px] text-bark-500">{sub.delivery_schedule === "dau_thang" ? "Đầu tháng" : "Giữa tháng"}</div>
+                  </td>
+                  <td className="p-3.5"><div className="text-[11px]"><strong className="text-bark-800">{new Date(sub.cutoff_date).toLocaleDateString("vi-VN")}</strong></div></td>
+                  <td className="p-3.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {!["da_huy", "het_han"].includes(sub.status) && (
+                        <button onClick={() => handleTogglePause(sub)} disabled={busyId === sub.id}
+                          className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded transition-colors disabled:opacity-60 ${sub.status === "tam_dung" ? "bg-grass-100 text-grass-800 hover:bg-grass-200" : "bg-surface-muted text-bark-700 hover:bg-bark-200"}`}>
+                          {sub.status === "tam_dung" ? (<><Play className="w-2.5 h-2.5" /><span>Tiếp tục</span></>) : (<><Pause className="w-2.5 h-2.5" /><span>Tạm dừng</span></>)}
+                        </button>
+                      )}
+                      {!["da_huy", "het_han"].includes(sub.status) && (
+                        <button onClick={() => handleCancelSub(sub)} disabled={busyId === sub.id}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold bg-bark-100 text-bark-700 hover:bg-bark-200 rounded transition-colors disabled:opacity-60">
+                          <XCircle className="w-2.5 h-2.5" /><span>Hủy</span>
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

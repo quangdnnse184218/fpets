@@ -1,17 +1,47 @@
 "use client";
 
-import React, { useState } from "react";
-import { useApp } from "@/context/AppContext";
+import React, { useState, useEffect, useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { formatVND } from "@/lib/formatters";
-import { Order, OrderStatus } from "@/mock/orders";
-import { Package, Truck, Check, Eye, Search, Filter } from "lucide-react";
+import { Truck, Eye, Search, CheckCircle2 } from "lucide-react";
+
+type OrderStatus = "cho_thanh_toan" | "da_xac_nhan" | "dang_chuan_bi" | "dang_giao" | "da_giao" | "da_huy" | "doi_tra";
+
+const STATUS_LABEL: Record<OrderStatus, string> = {
+  cho_thanh_toan: "Chờ thanh toán",
+  da_xac_nhan: "Đã xác nhận",
+  dang_chuan_bi: "Đang chuẩn bị",
+  dang_giao: "Đang giao",
+  da_giao: "Đã giao",
+  da_huy: "Đã hủy",
+  doi_tra: "Đổi / Trả",
+};
+
+interface OrderRow {
+  id: string;
+  order_code: string;
+  order_type: string;
+  status: OrderStatus;
+  payment_method: string;
+  payment_status: string;
+  total_amount: number;
+  recipient_name: string;
+  recipient_phone: string;
+  shipping_address: string;
+  tracking_code: string | null;
+  created_at: string;
+  order_items: { id: string; product_name_snapshot: string; quantity: number; total_price: number; pets: { name: string } | null }[];
+}
 
 export default function AdminOrdersPage() {
-  const { orders } = useApp();
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [searchCode, setSearchCode] = useState<string>("");
-  const [localOrders, setLocalOrders] = useState<Order[]>(orders);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderRow | null>(null);
+  const [trackingInput, setTrackingInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const statuses: { id: string; label: string }[] = [
     { id: "all", label: "Tất cả đơn" },
@@ -24,49 +54,83 @@ export default function AdminOrdersPage() {
     { id: "doi_tra", label: "Đổi / Trả" },
   ];
 
-  const handleUpdateStatus = (orderId: string, newStatus: OrderStatus, label: string) => {
-    setLocalOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId
-          ? {
-              ...o,
-              status: newStatus,
-              statusLabel: label,
-              trackingCode: newStatus === 'dang_giao' ? 'GHN-99882211VN' : o.trackingCode,
-              carrier: newStatus === 'dang_giao' ? 'Giao Hàng Nhanh' : o.carrier,
-            }
-          : o
-      )
-    );
-    if (selectedOrder?.id === orderId) {
-      setSelectedOrder((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: newStatus,
-              statusLabel: label,
-              trackingCode: newStatus === 'dang_giao' ? 'GHN-99882211VN' : prev.trackingCode,
-            }
-          : null
-      );
-    }
-  };
+  const loadOrders = useCallback(async () => {
+    setLoading(true);
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id, order_code, order_type, status, payment_method, payment_status, total_amount, recipient_name, recipient_phone, shipping_address, tracking_code, created_at, order_items(id, product_name_snapshot, quantity, total_price, pets(name))")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (!error && data) setOrders(data as unknown as OrderRow[]);
+    setLoading(false);
+  }, []);
 
-  const filteredOrders = localOrders.filter((o) => {
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  const filteredOrders = orders.filter((o) => {
     const matchStatus = selectedStatus === "all" || o.status === selectedStatus;
     const matchSearch =
       !searchCode ||
-      o.orderCode.toLowerCase().includes(searchCode.toLowerCase()) ||
-      o.recipientName.toLowerCase().includes(searchCode.toLowerCase());
+      o.order_code.toLowerCase().includes(searchCode.toLowerCase()) ||
+      o.recipient_name.toLowerCase().includes(searchCode.toLowerCase());
     return matchStatus && matchSearch;
   });
+
+  const runAction = async (fn: () => PromiseLike<{ error: { message: string } | null }>) => {
+    setBusy(true);
+    setActionError(null);
+    const { error } = await fn();
+    setBusy(false);
+    if (error) {
+      setActionError(error.message);
+      return false;
+    }
+    await loadOrders();
+    return true;
+  };
+
+  const handleConfirmCod = async () => {
+    if (!selectedOrder) return;
+    const supabase = createClient();
+    const ok = await runAction(() => supabase.rpc("confirm_cod_order", { p_order_id: selectedOrder.id }));
+    if (ok) setSelectedOrder(null);
+  };
+
+  const handleMarkShipping = async () => {
+    if (!selectedOrder || !trackingInput.trim()) return;
+    const supabase = createClient();
+    const ok = await runAction(() => supabase.rpc("mark_order_shipping", { p_order_id: selectedOrder.id, p_tracking_code: trackingInput.trim() }));
+    if (ok) setSelectedOrder(null);
+  };
+
+  const handleMarkDelivered = async () => {
+    if (!selectedOrder) return;
+    const supabase = createClient();
+    const ok = await runAction(() => supabase.rpc("mark_order_delivered", { p_order_id: selectedOrder.id }));
+    if (ok) setSelectedOrder(null);
+  };
+
+  const handleCancel = async () => {
+    if (!selectedOrder) return;
+    if (!confirm("Xác nhận hủy đơn này? Tồn kho sẽ được hoàn lại nếu đã trừ.")) return;
+    const supabase = createClient();
+    const ok = await runAction(() => supabase.rpc("cancel_order_by_staff", { p_order_id: selectedOrder.id, p_reason: "Hủy bởi quản trị viên" }));
+    if (ok) setSelectedOrder(null);
+  };
+
+  if (loading) {
+    return <div className="py-16 text-center text-xs text-bark-500">Đang tải đơn hàng...</div>;
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-pine-950 font-display">
-            Quản lý Đơn hàng ({localOrders.length} đơn)
+            Quản lý Đơn hàng ({orders.length} đơn)
           </h1>
           <p className="text-xs text-bark-500">
             Xem danh sách, kiểm tra chi tiết, xác nhận đơn COD và cập nhật mã vận đơn giao hàng.
@@ -74,7 +138,6 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      {/* Thanh tìm kiếm & lọc trạng thái */}
       <div className="p-4 rounded-container bg-surface-card border border-surface-border space-y-3">
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="relative w-full sm:w-80">
@@ -87,25 +150,16 @@ export default function AdminOrdersPage() {
               className="w-full pl-9 pr-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none"
             />
           </div>
-
           <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 no-scrollbar">
             <span className="text-xs font-bold text-bark-500 whitespace-nowrap">Trạng thái:</span>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="text-xs font-bold py-2 px-3 rounded-box border border-surface-border bg-white text-bark-800"
-            >
-              {statuses.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
+            <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}
+              className="text-xs font-bold py-2 px-3 rounded-box border border-surface-border bg-white text-bark-800">
+              {statuses.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
           </div>
         </div>
       </div>
 
-      {/* Bảng danh sách đơn hàng */}
       <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
@@ -123,40 +177,34 @@ export default function AdminOrdersPage() {
           <tbody className="divide-y divide-surface-border">
             {filteredOrders.map((order) => (
               <tr key={order.id} className="hover:bg-surface-muted/60 transition-colors">
-                <td className="p-3.5 font-mono font-bold text-pine-950">
-                  {order.orderCode}
-                </td>
+                <td className="p-3.5 font-mono font-bold text-pine-950">{order.order_code}</td>
                 <td className="p-3.5">
-                  <div className="font-bold text-pine-950">{order.recipientName}</div>
-                  <div className="text-[11px] text-bark-500">{order.recipientPhone}</div>
+                  <div className="font-bold text-pine-950">{order.recipient_name}</div>
+                  <div className="text-[11px] text-bark-500">{order.recipient_phone}</div>
                 </td>
                 <td className="p-3.5">
                   <span className="px-2 py-0.5 rounded-tag bg-surface-muted font-bold text-[10px] text-bark-700">
-                    {order.orderType === 'mystery_box' ? 'Mystery Box' : order.orderType === 'subscription_cycle' ? 'Gói định kỳ' : 'Mua lẻ'}
+                    {order.order_type === "mystery_box" ? "Mystery Box" : order.order_type.startsWith("subscription") ? "Gói định kỳ" : "Mua lẻ"}
                   </span>
                 </td>
-                <td className="p-3.5 text-bark-600">{order.createdAt}</td>
+                <td className="p-3.5 text-bark-600">{new Date(order.created_at).toLocaleDateString("vi-VN")}</td>
                 <td className="p-3.5">
-                  <span className="font-semibold text-bark-800">{order.paymentMethod}</span>
-                  <span className={`block text-[10px] ${order.paymentStatus === 'Đã thanh toán' ? 'text-grass-700' : 'text-amber-700'}`}>
-                    {order.paymentStatus}
+                  <span className="font-semibold text-bark-800 uppercase">{order.payment_method}</span>
+                  <span className={`block text-[10px] ${order.payment_status === "paid" ? "text-grass-700" : "text-amber-700"}`}>
+                    {order.payment_status}
                   </span>
                 </td>
                 <td className="p-3.5 font-extrabold text-pine-950 font-display">
-                  {order.totalAmount === 0 ? "0₫ (Gói)" : formatVND(order.totalAmount)}
+                  {order.total_amount === 0 ? "0₫ (Gói)" : formatVND(order.total_amount)}
                 </td>
                 <td className="p-3.5">
                   <span className="px-2 py-0.5 rounded-tag bg-pine-100 text-pine-900 font-bold text-[11px]">
-                    {order.statusLabel}
+                    {STATUS_LABEL[order.status]}
                   </span>
                 </td>
-                <td className="p-3.5 text-right space-x-1">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedOrder(order)}
-                    className="p-1.5 rounded-box bg-surface-muted hover:bg-surface-border text-bark-700 font-semibold text-xs inline-flex items-center gap-1"
-                    title="Xem chi tiết"
-                  >
+                <td className="p-3.5 text-right">
+                  <button type="button" onClick={() => { setSelectedOrder(order); setTrackingInput(""); setActionError(null); }}
+                    className="p-1.5 rounded-box bg-surface-muted hover:bg-surface-border text-bark-700 font-semibold text-xs inline-flex items-center gap-1">
                     <Eye className="w-3.5 h-3.5" />
                     <span>Chi tiết</span>
                   </button>
@@ -167,71 +215,73 @@ export default function AdminOrdersPage() {
         </table>
       </div>
 
-      {/* Modal Xem chi tiết & Đổi trạng thái */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-surface-card rounded-container p-6 space-y-4 shadow-xl border border-surface-border text-xs">
+          <div className="w-full max-w-lg bg-surface-card rounded-container p-6 space-y-4 shadow-xl border border-surface-border text-xs max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-surface-border">
               <div>
-                <h3 className="text-base font-bold text-pine-950">
-                  Chi tiết đơn hàng {selectedOrder.orderCode}
-                </h3>
-                <p className="text-[11px] text-bark-500">Khách: {selectedOrder.recipientName} · {selectedOrder.recipientPhone}</p>
+                <h3 className="text-base font-bold text-pine-950">Chi tiết đơn hàng {selectedOrder.order_code}</h3>
+                <p className="text-[11px] text-bark-500">Khách: {selectedOrder.recipient_name} · {selectedOrder.recipient_phone}</p>
               </div>
-              <span className="px-2.5 py-1 rounded-tag bg-pine-100 text-pine-900 font-bold">
-                {selectedOrder.statusLabel}
-              </span>
+              <span className="px-2.5 py-1 rounded-tag bg-pine-100 text-pine-900 font-bold">{STATUS_LABEL[selectedOrder.status]}</span>
             </div>
+
+            {actionError && (
+              <div className="p-2.5 rounded-box bg-red-50 border border-red-200 text-red-700 font-semibold">{actionError}</div>
+            )}
 
             <div className="space-y-2">
               <div className="font-bold text-pine-950">Địa chỉ giao:</div>
-              <p className="text-bark-600 bg-surface-muted p-2 rounded-box">{selectedOrder.shippingAddress}</p>
+              <p className="text-bark-600 bg-surface-muted p-2 rounded-box">{selectedOrder.shipping_address}</p>
             </div>
 
             <div className="space-y-1.5">
               <div className="font-bold text-pine-950">Món trong đơn:</div>
-              {selectedOrder.items.map((it) => (
+              {selectedOrder.order_items.map((it) => (
                 <div key={it.id} className="flex justify-between p-2 rounded bg-surface-muted">
-                  <span>{it.quantity}x {it.name} {it.petName ? `(Bé ${it.petName})` : ''}</span>
-                  <span className="font-bold">{it.totalPrice === 0 ? "0₫" : formatVND(it.totalPrice)}</span>
+                  <span>{it.quantity}x {it.product_name_snapshot} {it.pets?.name ? `(Bé ${it.pets.name})` : ""}</span>
+                  <span className="font-bold">{it.total_price === 0 ? "0₫" : formatVND(it.total_price)}</span>
                 </div>
               ))}
             </div>
 
-            {/* Thao tác đổi trạng thái nhanh */}
             <div className="pt-3 border-t border-surface-border space-y-2">
-              <div className="font-bold text-pine-950">Cập nhật trạng thái đơn (Vận hành):</div>
+              <div className="font-bold text-pine-950">Thao tác vận hành:</div>
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleUpdateStatus(selectedOrder.id, 'dang_chuan_bi', 'Đang chuẩn bị')}
-                  className="px-3 py-1.5 rounded-box bg-pine-100 hover:bg-pine-200 text-pine-900 font-bold"
-                >
-                  Đang chuẩn bị đóng gói
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleUpdateStatus(selectedOrder.id, 'dang_giao', 'Đang giao hàng')}
-                  className="px-3 py-1.5 rounded-box bg-honey-600 hover:bg-honey-700 text-white font-bold flex items-center gap-1"
-                >
-                  <Truck className="w-3.5 h-3.5" /> Bàn giao GHN (Đang giao)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleUpdateStatus(selectedOrder.id, 'da_giao', 'Đã giao thành công')}
-                  className="px-3 py-1.5 rounded-box bg-grass-700 hover:bg-grass-800 text-white font-bold"
-                >
-                  Đã giao thành công
-                </button>
+                {selectedOrder.payment_method === "cod" && selectedOrder.status === "cho_thanh_toan" && (
+                  <button type="button" disabled={busy} onClick={handleConfirmCod}
+                    className="px-3 py-1.5 rounded-box bg-grass-700 hover:bg-grass-800 text-white font-bold flex items-center gap-1 disabled:opacity-60">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Xác nhận đơn COD
+                  </button>
+                )}
+                {selectedOrder.status === "dang_chuan_bi" && (
+                  <div className="w-full flex items-center gap-2">
+                    <input type="text" value={trackingInput} onChange={(e) => setTrackingInput(e.target.value)}
+                      placeholder="Nhập mã vận đơn (VD: GHN-123456)"
+                      className="flex-1 px-3 py-2 rounded-box border border-surface-border text-xs" />
+                    <button type="button" disabled={busy || !trackingInput.trim()} onClick={handleMarkShipping}
+                      className="px-3 py-1.5 rounded-box bg-honey-600 hover:bg-honey-700 text-white font-bold flex items-center gap-1 disabled:opacity-60">
+                      <Truck className="w-3.5 h-3.5" /> Bàn giao vận chuyển
+                    </button>
+                  </div>
+                )}
+                {selectedOrder.status === "dang_giao" && (
+                  <button type="button" disabled={busy} onClick={handleMarkDelivered}
+                    className="px-3 py-1.5 rounded-box bg-grass-700 hover:bg-grass-800 text-white font-bold disabled:opacity-60">
+                    Đã giao thành công
+                  </button>
+                )}
+                {!["da_huy", "da_giao"].includes(selectedOrder.status) && (
+                  <button type="button" disabled={busy} onClick={handleCancel}
+                    className="px-3 py-1.5 rounded-box bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold disabled:opacity-60">
+                    Hủy đơn
+                  </button>
+                )}
               </div>
             </div>
 
             <div className="flex justify-end pt-3 border-t border-surface-border">
-              <button
-                type="button"
-                onClick={() => setSelectedOrder(null)}
-                className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold"
-              >
+              <button type="button" onClick={() => setSelectedOrder(null)} className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold">
                 Đóng
               </button>
             </div>

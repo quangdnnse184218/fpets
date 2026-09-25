@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { PRODUCTS, Product } from "@/mock/products";
+import { Product } from "@/mock/products";
+import { fetchProducts } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
 import ProductItemImage from "@/components/common/ProductItemImage";
@@ -24,10 +24,19 @@ import {
 
 export default function ShopPage() {
   const { addToCart } = useApp();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedSpecies, setSelectedSpecies] = useState<string>("all");
   const [addedId, setAddedId] = useState<string | null>(null);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+
+  useEffect(() => {
+    fetchProducts().then((data) => {
+      setProducts(data);
+      setLoading(false);
+    });
+  }, []);
 
   const categories = [
     { id: "all", label: "Tất cả sản phẩm" },
@@ -42,7 +51,7 @@ export default function ShopPage() {
     { id: "cat", label: "Cho Mèo", icon: Cat },
   ];
 
-  const filteredProducts = PRODUCTS.filter((p) => {
+  const filteredProducts = products.filter((p) => {
     const matchCat = selectedCategory === "all" || p.category === selectedCategory;
     const matchSpecies =
       selectedSpecies === "all" || p.species === selectedSpecies || p.species === "both";
@@ -134,7 +143,7 @@ export default function ShopPage() {
                 {speciesOptions.map((sp) => {
                   const Icon = sp.icon;
                   const isSelected = selectedSpecies === sp.id;
-                  const count = PRODUCTS.filter((p) =>
+                  const count = products.filter((p) =>
                     sp.id === "all" ? true : p.species === sp.id || p.species === "both"
                   ).length;
 
@@ -173,7 +182,7 @@ export default function ShopPage() {
                 {categories.map((cat) => {
                   const Icon = cat.icon;
                   const isSelected = selectedCategory === cat.id;
-                  const count = PRODUCTS.filter((p) =>
+                  const count = products.filter((p) =>
                     cat.id === "all" ? true : p.category === cat.id
                   ).length;
 
@@ -238,7 +247,13 @@ export default function ShopPage() {
           </div>
 
           {/* Lưới sản phẩm */}
-          {filteredProducts.length === 0 ? (
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="aspect-square rounded-container bg-surface-muted animate-pulse" />
+              ))}
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div className="p-12 text-center rounded-container bg-surface-card border border-surface-border space-y-3">
               <div className="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center mx-auto text-bark-400">
                 <Filter className="w-6 h-6" />
@@ -293,9 +308,15 @@ export default function ShopPage() {
                       </div>
 
                       <div className="flex items-center gap-1 text-[11px] text-bark-500">
-                        <Star className="w-3 h-3 text-honey-500 fill-honey-500" />
-                        <span className="font-bold text-bark-800">{product.rating}</span>
-                        <span>({product.reviewCount})</span>
+                        {product.reviewCount > 0 ? (
+                          <>
+                            <Star className="w-3 h-3 text-honey-500 fill-honey-500" />
+                            <span className="font-bold text-bark-800">{product.rating}</span>
+                            <span>({product.reviewCount})</span>
+                          </>
+                        ) : (
+                          <span className="text-bark-400">Chưa có đánh giá</span>
+                        )}
                       </div>
                     </div>
 
