@@ -14,8 +14,6 @@ DO $$ BEGIN
     )
     VALUES
       ('a0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'admin@fpets.vn', crypt('Admin@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Admin Quản Trị"}', now(), now()),
-      ('a0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'kho@fpets.vn', crypt('Kho@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Thủ Kho Vận Hành"}', now(), now()),
-      ('a0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'cskh@fpets.vn', crypt('Cskh@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"CSKH Hỗ Trợ"}', now(), now()),
       ('a0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'khachhang@fpets.vn', crypt('Khach@123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Nguyễn Văn Quang","phone":"0988123456"}', now(), now())
     ON CONFLICT (id) DO NOTHING;
   END IF;
@@ -25,8 +23,6 @@ END $$;
 INSERT INTO public.profiles (id, email, full_name, phone, role, is_active)
 VALUES
   ('a0000000-0000-0000-0000-000000000001', 'admin@fpets.vn', 'Admin Quản Trị', '0901234567', 'admin', true),
-  ('a0000000-0000-0000-0000-000000000002', 'kho@fpets.vn', 'Thủ Kho Vận Hành', '0901234568', 'kho', true),
-  ('a0000000-0000-0000-0000-000000000003', 'cskh@fpets.vn', 'CSKH Hỗ Trợ', '0901234569', 'cskh', true),
   ('a0000000-0000-0000-0000-000000000004', 'khachhang@fpets.vn', 'Nguyễn Văn Quang', '0988123456', 'customer', true)
 ON CONFLICT (id) DO UPDATE SET
   role = EXCLUDED.role,
@@ -541,7 +537,7 @@ VALUES (
   'e0000000-0000-0000-0000-000000000001', -- Bé Bơ
   'b0000000-0000-0000-0000-000000000002', -- Box Chó lớn
   'packed',
-  'a0000000-0000-0000-0000-000000000002', -- Thủ kho
+  'a0000000-0000-0000-0000-000000000001', -- Admin (đã đơn giản hóa, không còn role kho riêng)
   380000,
   'Đã kiểm tra kỹ: loại trừ 100% thành phần gà và bắp theo đúng hồ sơ dị ứng của bé Bơ.',
   now() - interval '3 days',
