@@ -275,11 +275,7 @@ Admin có 11 module; "Hàng chờ tuyển chọn box" là module mới cần th�
 
 **Phân quyền**
 
-| Vai trò | Được dùng |
-| --- | --- |
-| Quản trị (chủ shop) | Tất cả, gồm tài khoản nhân viên và thống kê doanh thu |
-| Nhân viên kho | Hàng chờ tuyển chọn, tồn kho, sản phẩm, cập nhật trạng thái đơn |
-| Nhân viên CSKH | Đơn hàng, khách hàng, pet, subscription, review, voucher |
+Chỉ 1 vai trò quản trị (`admin`) có toàn quyền trên mọi module Admin, gồm cả tài khoản nhân viên và thống kê doanh thu. Không tách vai trò kho/CSKH riêng vì hệ thống chưa cần luồng đăng nhập/UI riêng cho từng bộ phận; cần thêm người quản trị thì tạo thêm tài khoản `role = 'admin'` khác.
 
 ## 10. Chính sách đổi trả
 
@@ -293,7 +289,7 @@ Mystery Box không đổi trả vì "không thích", nhưng FPETS đổi món mi
 | Bé không thích món | Không đổi; ghi nhận feedback để hộp sau tránh |
 | Sản phẩm lẻ còn nguyên seal | Đổi trả trong 7 ngày, khách chịu phí ship |
 
-Khách gửi yêu cầu từ trang chi tiết đơn (nút "Yêu cầu đổi / trả"), đơn chuyển sang trạng thái Đổi / Trả để CSKH xử lý.
+Khách gửi yêu cầu từ trang chi tiết đơn (nút "Yêu cầu đổi / trả"), đơn chuyển sang trạng thái Đổi / Trả để admin xử lý.
 
 ## 11. Phạm vi triển khai và điểm cần xác nhận
 

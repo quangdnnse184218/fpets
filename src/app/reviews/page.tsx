@@ -19,6 +19,13 @@ interface ReviewRow {
   orders: { order_type: string } | null;
 }
 
+// Ảnh review do khách tự upload chưa có Storage thật ở seed data (chỉ là path
+// giả lập), nên ảnh không hợp lệ (không phải URL tuyệt đối hoặc bắt đầu bằng "/")
+// sẽ bị bỏ qua thay vì cho next/image render và crash trang.
+function validImages(images: string[]): string[] {
+  return images.filter((img) => img.startsWith("http://") || img.startsWith("https://") || img.startsWith("/"));
+}
+
 export default function ReviewsPage() {
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +51,7 @@ export default function ReviewsPage() {
   // của đơn, không phải mọi đơn đều là box) nên bộ lọc loài tạm không áp dụng lọc cứng.
   const filteredReviews = reviews.filter((rev) => {
     if (starFilter !== 'all' && rev.rating !== starFilter) return false;
-    if (hasPhotoOnly && rev.images.length === 0) return false;
+    if (hasPhotoOnly && validImages(rev.images).length === 0) return false;
     return true;
   });
 
@@ -214,20 +221,19 @@ export default function ReviewsPage() {
                 </p>
 
                 {/* Ảnh unbox đính kèm */}
-                {rev.images.length > 0 && (
+                {validImages(rev.images).length > 0 && (
                   <div className="space-y-1.5">
                     <span className="text-[11px] font-bold text-bark-500 block">
                       Ảnh unbox thực tế:
                     </span>
                     <div className="flex flex-wrap gap-2.5">
-                      {rev.images.map((img, idx) => (
+                      {validImages(rev.images).map((img, idx) => (
                         <button
                           key={idx}
                           type="button"
                           onClick={() => setSelectedPhoto(img)}
                           className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-box overflow-hidden border border-surface-border hover:opacity-90 transition-opacity bg-surface-muted cursor-zoom-in"
                         >
-                          {/* TODO: thay bằng ảnh thật của FPETS khi có */}
                           <Image
                             src={img}
                             alt="Ảnh mở hộp thực tế"

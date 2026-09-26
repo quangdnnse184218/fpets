@@ -19,6 +19,13 @@ interface ReviewRow {
   orders: { order_code: string } | null;
 }
 
+// Ảnh review chưa có Storage thật ở seed data (chỉ là path giả lập), nên ảnh
+// không hợp lệ (không phải URL tuyệt đối hoặc bắt đầu bằng "/") sẽ bị bỏ qua
+// thay vì cho next/image render và crash trang.
+function validImages(images: string[] | null | undefined): string[] {
+  return (images || []).filter((img) => img.startsWith("http://") || img.startsWith("https://") || img.startsWith("/"));
+}
+
 export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,9 +153,9 @@ export default function AdminReviewsPage() {
                 </td>
                 <td className="p-3.5 max-w-xs">
                   <p className="text-bark-800 font-medium line-clamp-3 leading-relaxed">{rev.comment}</p>
-                  {rev.images?.length > 0 && (
+                  {validImages(rev.images).length > 0 && (
                     <div className="flex gap-1.5 mt-2">
-                      {rev.images.map((img, idx) => (
+                      {validImages(rev.images).map((img, idx) => (
                         <div key={idx} className="relative w-10 h-10 rounded border border-surface-border overflow-hidden shrink-0">
                           <Image src={img} alt="Ảnh unbox" fill sizes="40px" className="object-cover" />
                         </div>

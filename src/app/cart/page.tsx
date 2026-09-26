@@ -181,23 +181,29 @@ export default function CartPage() {
 
               {/* Tăng giảm số lượng & Thành tiền */}
               <div className="flex items-center justify-between sm:justify-end gap-5 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0 border-surface-border">
-                <div className="flex items-center border border-surface-border rounded-box bg-surface-muted">
-                  <button
-                    type="button"
-                    onClick={() => updateQuantity(item.id, -1)}
-                    className="px-2.5 py-1 text-bark-700 hover:bg-surface-border text-sm font-bold"
-                  >
-                    −
-                  </button>
-                  <span className="px-2.5 text-xs font-bold text-pine-950">{item.quantity}</span>
-                  <button
-                    type="button"
-                    onClick={() => updateQuantity(item.id, 1)}
-                    className="px-2.5 py-1 text-bark-700 hover:bg-surface-border text-sm font-bold"
-                  >
-                    +
-                  </button>
-                </div>
+                {item.type === 'box' ? (
+                  <div className="px-3 py-1 rounded-box bg-surface-muted text-xs font-bold text-bark-600" title="Mỗi đơn chỉ mua 1 Mystery Box">
+                    Số lượng: 1
+                  </div>
+                ) : (
+                  <div className="flex items-center border border-surface-border rounded-box bg-surface-muted">
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(item.id, -1)}
+                      className="px-2.5 py-1 text-bark-700 hover:bg-surface-border text-sm font-bold"
+                    >
+                      −
+                    </button>
+                    <span className="px-2.5 text-xs font-bold text-pine-950">{item.quantity}</span>
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(item.id, 1)}
+                      className="px-2.5 py-1 text-bark-700 hover:bg-surface-border text-sm font-bold"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
 
                 <div className="text-right min-w-[90px]">
                   <div className="text-sm font-extrabold text-pine-950 font-display">

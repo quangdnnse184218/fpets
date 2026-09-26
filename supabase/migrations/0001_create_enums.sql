@@ -4,9 +4,12 @@
 -- ==============================================================================
 
 -- 1. Vai trò người dùng trong hệ thống (RBAC)
+-- Chỉ 2 vai trò: 'customer' (khách hàng) và 'admin' (quản trị viên/chủ shop).
+-- Không tách riêng vai trò kho/cskh vì không có luồng đăng nhập/UI riêng cho
+-- từng vai trò - cần thêm người quản trị thì tạo thêm tài khoản role='admin'.
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
-    CREATE TYPE user_role AS ENUM ('customer', 'admin', 'kho', 'cskh');
+    CREATE TYPE user_role AS ENUM ('customer', 'admin');
   END IF;
 END $$;
 

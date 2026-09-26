@@ -23,13 +23,12 @@ RETURNS boolean AS $$
   );
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
--- 1.3. Kiểm tra có phải nhân viên nội bộ (Admin, Kho, CSKH)
+-- 1.3. is_staff(): giữ tên hàm vì được dùng ở nhiều policy phía dưới, nhưng
+-- hệ thống chỉ còn duy nhất vai trò 'admin' (không tách kho/cskh riêng) nên
+-- tương đương is_admin().
 CREATE OR REPLACE FUNCTION public.is_staff()
 RETURNS boolean AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() AND role IN ('admin', 'kho', 'cskh') AND is_active = true
-  );
+  SELECT public.is_admin();
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 -- ==============================================================================

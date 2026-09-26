@@ -33,7 +33,7 @@ export interface UserProfile {
   email: string;
   phone: string;
   address: string;
-  role: 'customer' | 'admin' | 'kho' | 'cskh';
+  role: 'customer' | 'admin';
   avatarUrl?: string;
 }
 
@@ -456,18 +456,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           await supabase.from("cart_items").insert({ cart_id: cartId, product_id: item.productId, quantity: Math.min(maxQty, item.quantity) });
         }
       } else if (item.type === "box" && item.boxTypeId) {
-        const { data: existingRow } = await supabase
+        // Mỗi đơn chỉ được chứa 1 Mystery Box (bảng box_curations ràng buộc
+        // UNIQUE theo order_id, và luồng đánh giá/feedback sau này cũng chỉ xử lý
+        // 1 box/đơn). Nếu khách đã có box khác trong giỏ, thay bằng box mới này
+        // thay vì cộng dồn thành nhiều dòng box - tránh vỡ khi tạo đơn.
+        const { data: otherBoxRows } = await supabase
           .from("cart_items")
-          .select("id, quantity")
+          .select("id")
           .eq("cart_id", cartId)
-          .eq("box_type_id", item.boxTypeId)
-          .eq("pet_id", item.petId || "")
-          .maybeSingle();
-        if (existingRow) {
-          await supabase.from("cart_items").update({ quantity: Math.min(10, existingRow.quantity + item.quantity) }).eq("id", existingRow.id);
-        } else {
-          await supabase.from("cart_items").insert({ cart_id: cartId, box_type_id: item.boxTypeId, pet_id: item.petId || null, quantity: item.quantity });
+          .not("box_type_id", "is", null);
+        if (otherBoxRows && otherBoxRows.length > 0) {
+          await supabase.from("cart_items").delete().in("id", otherBoxRows.map((r) => r.id));
         }
+        await supabase.from("cart_items").insert({ cart_id: cartId, box_type_id: item.boxTypeId, pet_id: item.petId || null, quantity: 1 });
       }
       await loadServerCart(user.id);
     } else {
@@ -488,7 +489,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateQuantity = async (id: string, delta: number) => {
     const current = cart.find((c) => c.id === id);
     if (!current) return;
-    const maxQty = Math.min(10, current.product?.stock ?? 10);
+    // Mystery Box luôn cố định số lượng 1 (mỗi đơn chỉ chứa 1 box, xem addToCart).
+    const maxQty = current.type === "box" ? 1 : Math.min(10, current.product?.stock ?? 10);
     const newQ = Math.max(1, Math.min(maxQty, current.quantity + delta));
 
     if (isLoggedIn && user.id) {

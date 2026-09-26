@@ -28,6 +28,7 @@ export async function fetchProductBySlug(slug: string): Promise<Product | null> 
     .select("*, categories(name, slug)")
     .eq("slug", slug)
     .eq("is_active", true)
+    .eq("is_retail", true)
     .maybeSingle();
 
   if (error || !data) return null;

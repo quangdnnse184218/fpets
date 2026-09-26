@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -1176,7 +1178,7 @@ export type Database = {
         }
         Returns: number
       }
-      cancel_expired_orders: { Args: Record<PropertyKey, never>; Returns: number }
+      cancel_expired_orders: { Args: never; Returns: number }
       cancel_order_by_staff: {
         Args: { p_order_id: string; p_reason: string }
         Returns: Json
@@ -1185,15 +1187,7 @@ export type Database = {
         Args: { p_reason: string; p_subscription_id: string }
         Returns: Json
       }
-      check_subscription_grace_periods: { Args: Record<PropertyKey, never>; Returns: number }
-      confirm_cod_order: { Args: { p_order_id: string }; Returns: Json }
-      generate_subscription_cycle_orders: { Args: Record<PropertyKey, never>; Returns: number }
-      mark_order_delivered: { Args: { p_order_id: string }; Returns: Json }
-      mark_order_shipping: {
-        Args: { p_carrier?: string; p_order_id: string; p_tracking_code: string }
-        Returns: Json
-      }
-      send_subscription_reminders: { Args: Record<PropertyKey, never>; Returns: number }
+      check_subscription_grace_periods: { Args: never; Returns: number }
       checkout_create_order: {
         Args: {
           p_customer_notes?: string
@@ -1209,16 +1203,18 @@ export type Database = {
         }
         Returns: Json
       }
+      confirm_cod_order: { Args: { p_order_id: string }; Returns: Json }
       confirm_order_payment: {
         Args: { p_order_code: string; p_order_id: string }
         Returns: Json
       }
+      generate_subscription_cycle_orders: { Args: never; Returns: number }
       get_user_role: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
-      is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
-      is_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_admin: { Args: never; Returns: boolean }
+      is_staff: { Args: never; Returns: boolean }
       lookup_order: {
         Args: { p_order_code: string; p_phone: string }
         Returns: {
@@ -1242,6 +1238,15 @@ export type Database = {
           ward: string
         }[]
       }
+      mark_order_delivered: { Args: { p_order_id: string }; Returns: Json }
+      mark_order_shipping: {
+        Args: {
+          p_carrier?: string
+          p_order_id: string
+          p_tracking_code: string
+        }
+        Returns: Json
+      }
       pause_subscription: {
         Args: { p_cycles: number; p_subscription_id: string }
         Returns: Json
@@ -1254,6 +1259,7 @@ export type Database = {
         Args: { p_subscription_id: string }
         Returns: Json
       }
+      send_subscription_reminders: { Args: never; Returns: number }
       subscribe_to_box: {
         Args: {
           p_box_type_id: string
@@ -1300,7 +1306,7 @@ export type Database = {
         | "qua_han"
         | "het_han"
         | "da_huy"
-      user_role: "customer" | "admin" | "kho" | "cskh"
+      user_role: "customer" | "admin"
       voucher_discount_type: "percentage" | "fixed_amount" | "free_shipping"
     }
     CompositeTypes: {
@@ -1460,7 +1466,7 @@ export const Constants = {
         "het_han",
         "da_huy",
       ],
-      user_role: ["customer", "admin", "kho", "cskh"],
+      user_role: ["customer", "admin"],
       voucher_discount_type: ["percentage", "fixed_amount", "free_shipping"],
     },
   },
