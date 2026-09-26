@@ -257,7 +257,7 @@ export default function BoxDetailPage() {
                 <div className="text-base font-extrabold text-pine-950 font-display mt-0.5">
                   Từ {formatVND(Math.round(box.basePrice * (1 - maxDiscount / 100)))}/hộp
                 </div>
-                <div className="text-[11px] text-grass-700 font-medium mt-1">Freeship + Nhắc gia hạn</div>
+                <div className="text-[11px] text-grass-700 font-medium mt-1">Freeship từ gói 3 hộp</div>
               </button>
             </div>
           </div>
