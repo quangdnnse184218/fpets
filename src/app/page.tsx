@@ -3,21 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  Gift,
-  CheckCircle2,
-  Heart,
-  Star,
-  ShieldCheck,
-  Truck,
-  RefreshCw,
-  PackageOpen,
-  UtensilsCrossed,
-  Bone,
-  PawPrint,
-  HeartHandshake,
-  Check,
-} from "lucide-react";
+import { Gift, CheckCircle2, Star, PackageOpen, PawPrint, Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchBoxTypes, fetchSubscriptionPlans } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
@@ -25,182 +11,152 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function HomePage() {
   const [standardBoxPrice, setStandardBoxPrice] = useState(299000);
+  const [standardMinValue, setStandardMinValue] = useState(380000);
   const [premiumBoxPrice, setPremiumBoxPrice] = useState(499000);
+  const [premiumMinValue, setPremiumMinValue] = useState(650000);
   const [plans, setPlans] = useState<{ id: string; name: string; cycle_count: number; discount_percentage: number; free_shipping: boolean; birthday_gift: boolean; badge: string | null; description: string | null }[]>([]);
-  const [stats, setStats] = useState({ pets: 0, delivered: 0, avgRating: 0, reviewCount: 0 });
+  const [stats, setStats] = useState({ delivered: 0, avgRating: 0, reviewCount: 0 });
+  const [topReviews, setTopReviews] = useState<{ id: string; rating: number; comment: string | null; created_at: string; profiles: { full_name: string | null } | null }[]>([]);
 
   useEffect(() => {
     fetchBoxTypes().then((boxes) => {
       const standard = boxes.find((b) => b.slug.includes("tieu-chuan")) || boxes[0];
       const premium = boxes.find((b) => b.slug.includes("premium")) || boxes[boxes.length - 1];
-      if (standard) setStandardBoxPrice(standard.basePrice);
-      if (premium) setPremiumBoxPrice(premium.basePrice);
+      if (standard) {
+        setStandardBoxPrice(standard.basePrice);
+        setStandardMinValue(standard.minRetailValue);
+      }
+      if (premium) {
+        setPremiumBoxPrice(premium.basePrice);
+        setPremiumMinValue(premium.minRetailValue);
+      }
     });
     fetchSubscriptionPlans().then((data) => setPlans(data));
 
     const supabase = createClient();
     Promise.all([
-      supabase.from("pets").select("id", { count: "exact", head: true }),
       supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "da_giao"),
       supabase.from("reviews").select("rating").eq("status", "published"),
-    ]).then(([petsRes, deliveredRes, reviewsRes]) => {
+      supabase
+        .from("reviews")
+        .select("id, rating, comment, created_at, profiles(full_name)")
+        .eq("status", "published")
+        .gte("rating", 4)
+        .not("comment", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(3),
+    ]).then(([deliveredRes, reviewsRes, topRes]) => {
       const reviews = reviewsRes.data || [];
       setStats({
-        pets: petsRes.count || 0,
         delivered: deliveredRes.count || 0,
         avgRating: reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0,
         reviewCount: reviews.length,
       });
+      setTopReviews((topRes.data as unknown as typeof topReviews) || []);
     });
   }, []);
 
   return (
     <div className="space-y-16 sm:space-y-24">
-      {/* 1. HERO SECTION: Trải nghiệm mở hộp quà bất ngờ nổi bật, tương phản cao */}
-      <section className="bg-surface-muted border-b border-surface-border pt-8 pb-14 sm:pt-16 sm:pb-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-          {/* Cột chữ Hero */}
+      {/* 1. HERO SECTION */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#F6F4EE] via-[#FAF9F6] to-[#F1EFE8] border-b border-surface-border/80 pt-8 pb-14 sm:pt-16 sm:pb-20">
+        <div className="absolute top-1/4 right-1/4 w-[420px] h-[420px] rounded-full bg-honey-200/35 blur-[100px] pointer-events-none animate-pulse-slow" />
+        <div className="absolute -bottom-16 -left-16 w-[380px] h-[380px] rounded-full bg-pine-100/40 blur-[90px] pointer-events-none" />
+
+        <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
+          <PawPrint className="absolute top-10 left-12 w-7 h-7 text-pine-900/5 animate-float-slow hidden md:block" />
+          <Gift className="absolute top-1/3 left-6 w-8 h-8 text-honey-600/10 animate-float-reverse hidden lg:block -rotate-12" />
+          <PawPrint className="absolute bottom-12 left-1/3 w-6 h-6 text-pine-900/5 animate-float-slow hidden md:block rotate-45" />
+          <Gift className="absolute top-12 right-12 w-8 h-8 text-honey-600/10 animate-float-slow hidden md:block rotate-12" />
+          <PawPrint className="absolute bottom-14 right-1/4 w-7 h-7 text-pine-900/5 animate-float-reverse hidden md:block -rotate-12" />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center relative z-10">
           <div className="lg:col-span-7 space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pine-50 border border-pine-100 text-pine-900 text-xs font-semibold">
+              <Gift className="w-3.5 h-3.5 text-pine-800" />
+              <span>Hộp quà thú cưng cá nhân hóa định kỳ</span>
+            </div>
+
             <h1 className="text-3xl sm:text-5xl lg:text-[52px] font-extrabold text-pine-950 font-display tracking-tight leading-[1.12]">
-              Mỗi tháng một hộp quà bất ngờ, tuyển chọn riêng cho bé cưng.
+              Hộp quà bất ngờ mỗi tháng cho bé cưng của bạn.
             </h1>
 
             <p className="text-base sm:text-lg text-bark-700 leading-relaxed max-w-xl">
-              Không còn mất công phân vân ở pet shop. FPETS gửi đến tận nhà Mystery Box định kỳ gồm thức ăn giàu dinh dưỡng, đồ chơi dai bền và phụ kiện hữu ích — được nhặt riêng theo đúng cân nặng, độ tuổi và sở thích dị ứng của từng bé.
+              Mỗi tháng, một chiếc Mystery Box chứa thức ăn thơm ngon, đồ chơi dai bền và phụ kiện hữu ích được đóng gói riêng theo đúng hồ sơ, cân nặng và sở thích của cún và mèo nhà bạn.
             </p>
 
-            {/* Các điểm cam kết nhanh */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs font-semibold text-bark-800">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-grass-700 shrink-0" />
-                <span>Tránh 100% món dị ứng</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <PackageOpen className="w-4 h-4 text-grass-700 shrink-0" />
-                <span>Trị giá cao hơn giá bán</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <RefreshCw className="w-4 h-4 text-grass-700 shrink-0" />
-                <span>Không tự động trừ tiền</span>
-              </div>
-            </div>
-
-            {/* Cụm CTA chính (không còn Sparkles trang trí) */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-1">
               <Link
                 href="/quiz"
-                className="inline-flex items-center justify-center px-6 py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-base shadow-sm transition-colors text-center"
+                className="inline-flex items-center justify-center px-7 py-3.5 rounded-xl bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm hover:shadow transition-all text-center"
               >
-                <span>Làm Quiz tìm Box cho bé</span>
+                Làm Quiz tìm Box cho bé
               </Link>
               <Link
                 href="/boxes"
-                className="inline-flex items-center justify-center px-6 py-3.5 rounded-box bg-surface-card hover:bg-white text-pine-950 border border-surface-border font-bold text-base transition-colors text-center"
+                className="inline-flex items-center justify-center px-7 py-3.5 rounded-xl bg-white hover:bg-surface-muted text-pine-950 border border-surface-border font-bold text-sm shadow-2xs hover:shadow-xs transition-all text-center"
               >
-                <span>Xem các loại Mystery Box</span>
+                Xem các loại Mystery Box
               </Link>
             </div>
 
-            {/* Thanh bảo chứng uy tín (Social Proof & Trust metrics) */}
-            <div className="pt-4 border-t border-surface-border/80 flex flex-wrap items-center gap-4 sm:gap-6 text-xs text-bark-600">
-              {/* Stack Avatar khách hàng & Pet */}
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2">
-                  <div className="w-8 h-8 rounded-full border-2 border-surface-muted overflow-hidden relative">
-                    <Image
-                      src="https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=100&q=80"
-                      alt="Corgi"
-                      fill
-                      sizes="40px"
-                      className="object-cover"
-                    />
+            {/* Số liệu lấy thật từ database; chỉ hiện khi đã có dữ liệu để tránh khoe số 0 */}
+            {(stats.delivered > 0 || stats.reviewCount > 0) && (
+              <div className="pt-4 border-t border-surface-border/70 flex flex-wrap items-center gap-4 sm:gap-6 text-xs text-bark-600">
+                {stats.delivered > 0 && (
+                  <div>
+                    <span className="font-extrabold text-pine-950 block leading-tight">{stats.delivered.toLocaleString("vi-VN")}</span>
+                    <span className="text-[11px] text-bark-500">Đơn hàng đã giao</span>
                   </div>
-                  <div className="w-8 h-8 rounded-full border-2 border-surface-muted overflow-hidden relative">
-                    <Image
-                      src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=100&q=80"
-                      alt="Mèo"
-                      fill
-                      sizes="40px"
-                      className="object-cover"
-                    />
+                )}
+                {stats.delivered > 0 && stats.reviewCount > 0 && <div className="hidden sm:block w-px h-7 bg-surface-border" />}
+                {stats.reviewCount > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1 font-extrabold text-pine-950 leading-tight">
+                      <Star className="w-3.5 h-3.5 text-honey-500 fill-honey-500" />
+                      <span>{stats.avgRating.toFixed(1)} / 5</span>
+                    </div>
+                    <span className="text-[11px] text-bark-500">Từ {stats.reviewCount} đánh giá</span>
                   </div>
-                  <div className="w-8 h-8 rounded-full border-2 border-surface-muted overflow-hidden relative">
-                    <Image
-                      src="https://images.unsplash.com/photo-1552053831-71594a27632d?w=100&q=80"
-                      alt="Golden"
-                      fill
-                      sizes="40px"
-                      className="object-cover"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <span className="font-extrabold text-pine-950 block">{stats.pets}</span>
-                  <span className="text-[11px] text-bark-500">Bé cưng đã tạo hồ sơ</span>
-                </div>
+                )}
               </div>
-
-              <div className="hidden sm:block w-px h-8 bg-surface-border" />
-
-              <div>
-                <span className="font-extrabold text-pine-950 block">{stats.delivered}</span>
-                <span className="text-[11px] text-bark-500">Hộp quà đã giao</span>
-              </div>
-
-              <div className="hidden sm:block w-px h-8 bg-surface-border" />
-
-              <div>
-                <div className="flex items-center gap-1 font-extrabold text-pine-950">
-                  <Star className="w-3.5 h-3.5 text-honey-500 fill-honey-500" />
-                  <span>{stats.reviewCount > 0 ? stats.avgRating.toFixed(1) : "—"} / 5</span>
-                </div>
-                <span className="text-[11px] text-bark-500">{stats.reviewCount} đánh giá từ khách hàng</span>
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Cột Hình ảnh minh họa hộp quà lớn & nổi bật */}
           <div className="lg:col-span-5">
-            <div className="relative rounded-container overflow-hidden border border-surface-border shadow-xl bg-surface-card">
-              {/* Ảnh chính lớn mở hộp thú cưng: Có chiều cao xác định ở mọi breakpoint */}
-              {/* TODO: thay bằng ảnh thật của FPETS khi có */}
-              <div className="relative w-full h-[260px] sm:h-[340px] md:h-[400px] lg:h-[430px]">
+            <div className="relative rounded-2xl overflow-hidden border border-surface-border/90 shadow-lg bg-white p-2 sm:p-2.5">
+              <div className="relative w-full h-[280px] sm:h-[350px] md:h-[390px] rounded-xl overflow-hidden bg-surface-muted">
                 <Image
-                  src="https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=1000&q=85"
+                  src="/images/fpets-hero-box.jpg"
                   alt="Ảnh chụp hộp quà Mystery Box FPETS mở ra cùng đồ ăn và đồ chơi cho thú cưng"
                   fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
+                  sizes="(max-width: 768px) 100vw, 45vw"
                   className="object-cover"
                   priority
                 />
-
-                {/* Gradient nhẹ phủ phía dưới chỉ từ md trở lên để làm nổi thẻ thông tin */}
-                <div className="hidden md:block absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent pointer-events-none" />
-
-                {/* Badge góc trên */}
-                <div className="absolute top-3 left-3 sm:top-4 sm:left-4 px-3 py-1 rounded-tag bg-white/95 backdrop-blur-xs text-pine-950 text-xs font-bold shadow-sm border border-white/50 flex items-center gap-1.5 z-10">
+                <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/95 backdrop-blur-xs text-pine-950 text-xs font-bold shadow-xs border border-white/80 flex items-center gap-1.5 z-10">
                   <PackageOpen className="w-3.5 h-3.5 text-pine-900" />
-                  <span>Hộp quà Tiêu chuẩn tháng này</span>
+                  <span>Hộp quà Mystery Box tuyển chọn</span>
                 </div>
               </div>
 
-              {/* Khối thông tin: ở mobile đẩy xuống dưới ảnh (không overlay để không che mặt thú cưng), từ md trở lên mới là overlay nổi */}
-              <div className="p-3.5 sm:p-4 bg-white border-t border-surface-border text-xs space-y-1.5 md:border-t-0 md:absolute md:bottom-4 md:inset-x-4 md:p-3.5 md:rounded-box md:bg-white/95 md:backdrop-blur-xs md:border md:border-white/60 md:shadow-lg z-10">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-pine-950">Gồm 4 – 5 món chọn lọc</span>
-                  <span className="px-2 py-0.5 rounded-tag bg-grass-100 text-grass-800 text-[11px] font-bold">
-                    Trị giá thực từ 380.000₫
+              <div className="p-3.5 sm:p-4 bg-[#FAF9F6] rounded-xl border border-surface-border/80 mt-2 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-pine-950 text-sm">Gồm 4 – 5 món dinh dưỡng & đồ chơi</span>
+                  <span className="px-2 py-0.5 rounded-full bg-grass-100 text-grass-800 text-[11px] font-bold shrink-0">
+                    Trị giá từ {formatVND(standardMinValue)}
                   </span>
                 </div>
                 <p className="text-[11px] text-bark-600 line-clamp-1">
-                  Pate cá hồi Na Uy · Dây thừng gặm răng · Bánh men sạch khuẩn · Đồ chơi bất ngờ
+                  Pate tươi · Bánh thưởng dinh dưỡng · Đồ chơi dai bền · Phụ kiện chăm sóc
                 </p>
-                <div className="pt-1 flex items-center gap-3 text-[10px] text-bark-500 border-t border-surface-border">
-                  <span className="flex items-center gap-1 text-grass-700 font-semibold">
-                    <Check className="w-3 h-3" /> Đổi món nếu dị ứng
+                <div className="pt-2 flex items-center justify-between gap-2 text-[11px] text-bark-500 border-t border-surface-border/70">
+                  {/* SPEC §10: chỉ đổi món khi dị ứng/lỗi của shop, KHÔNG đổi vì bé không thích */}
+                  <span className="text-grass-700 font-semibold flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5 stroke-[2.5]" /> Đổi món miễn phí nếu dị ứng
                   </span>
-                  <span>·</span>
-                  <span>Tiết kiệm 81.000₫</span>
+                  <span className="font-bold text-pine-950 shrink-0">Chỉ từ {formatVND(standardBoxPrice)}/hộp</span>
                 </div>
               </div>
             </div>
@@ -215,7 +171,7 @@ export default function HomePage() {
             Cách Mystery Box vận hành cho từng bé
           </h2>
           <p className="text-xs sm:text-sm text-bark-600">
-            Chúng tôi không đóng sẵn hàng loạt. Mỗi hộp được nhân viên kho nhặt riêng sát ngày giao dựa trên hồ sơ của bé.
+            Chúng tôi không đóng sẵn hàng loạt. Mỗi hộp được FPETS tuyển chọn riêng sát ngày giao dựa trên hồ sơ của bé.
           </p>
         </div>
 
@@ -224,9 +180,9 @@ export default function HomePage() {
             <div className="w-10 h-10 rounded-box bg-pine-900 text-white flex items-center justify-center font-bold text-base font-display">
               1
             </div>
-            <h3 className="text-base font-bold text-pine-950">Kể về bé cưng (Làm Quiz 2 phút)</h3>
+            <h3 className="text-base font-bold text-pine-950">Tạo hồ sơ riêng cho bé cưng</h3>
             <p className="text-xs sm:text-sm text-bark-600 leading-relaxed">
-              Bạn chia sẻ tên bé, loài (chó/mèo), cân nặng, sở thích và các thành phần dị ứng (như gà, bắp, hải sản...) qua bảng trắc nghiệm ngắn.
+              Chia sẻ tên bé, giống loài (chó/mèo), cân nặng, sở thích và các thành phần dị ứng (như gà, bắp, hải sản...) qua Quiz 2 phút để FPETS chuẩn bị đúng món.
             </p>
           </div>
 
@@ -236,7 +192,7 @@ export default function HomePage() {
             </div>
             <h3 className="text-base font-bold text-pine-950">FPETS chọn đồ riêng theo hồ sơ</h3>
             <p className="text-xs sm:text-sm text-bark-600 leading-relaxed">
-              Sát ngày giao, chuyên viên kho chọn 4–7 món đạt chuẩn an toàn, kiểm tra thành phần loại trừ dị ứng và cơ cấu đủ đồ ăn + đồ chơi + phụ kiện.
+              Sát ngày giao, FPETS chọn 4–7 món đạt chuẩn an toàn, kiểm tra thành phần loại trừ dị ứng và cơ cấu đủ đồ ăn + đồ chơi + phụ kiện.
             </p>
           </div>
 
@@ -279,7 +235,7 @@ export default function HomePage() {
                   <span className="text-xs text-bark-500">/ hộp</span>
                 </div>
                 <p className="text-xs text-grass-700 font-semibold">
-                  Giá trị hàng bên trong tối thiểu 380.000₫
+                  Giá trị hàng bên trong tối thiểu {formatVND(standardMinValue)}
                 </p>
                 <ul className="space-y-2.5 text-sm text-bark-700 pt-2 border-t border-surface-border">
                   <li className="flex items-center gap-2">
@@ -329,7 +285,7 @@ export default function HomePage() {
                   <span className="text-xs text-bark-500">/ hộp</span>
                 </div>
                 <p className="text-xs text-grass-700 font-semibold">
-                  Giá trị hàng bên trong tối thiểu 650.000₫
+                  Giá trị hàng bên trong tối thiểu {formatVND(premiumMinValue)}
                 </p>
                 <ul className="space-y-2.5 text-sm text-bark-700 pt-2 border-t border-surface-border">
                   <li className="flex items-center gap-2">
@@ -346,7 +302,7 @@ export default function HomePage() {
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-pine-700 shrink-0" />
-                    <span>Đặc quyền ưu tiên đổi món theo yêu cầu riêng</span>
+                    <span>Miễn phí đổi món nếu lỗi thuộc về shop</span>
                   </li>
                 </ul>
               </div>
@@ -426,7 +382,7 @@ export default function HomePage() {
 
                 <div className="pt-6 mt-6 border-t border-surface-border">
                   <Link
-                    href="/boxes"
+                    href="/subscription"
                     className={`block w-full py-2.5 rounded-box text-center text-xs font-bold transition-colors ${
                       isBest
                         ? "bg-pine-900 hover:bg-pine-800 text-white"
@@ -442,75 +398,44 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 5. FEEDBACK KHÁCH HÀNG: Trải nghiệm thật */}
-      <section className="bg-surface-muted border-y border-surface-border py-14">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
-              Niềm vui unbox của các bé tại Việt Nam
-            </h2>
-            <p className="text-sm text-bark-600">
-              Đánh giá thực tế từ các ba mẹ đã trải nghiệm dịch vụ Mystery Box FPETS.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-5 rounded-container bg-surface-card border border-surface-border space-y-3">
-              <div className="flex items-center gap-1 text-honey-500">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-honey-500" />
-                ))}
-              </div>
-              <p className="text-xs text-bark-700 leading-relaxed">
-                “Bé Golden nhà mình rất khó tính vụ ăn uống, hay bị dị ứng gà nổi mẩn ngứa. Đăng ký thử hộp tháng 9 shop nhặt toàn vị cừu với bò sấy, kèm sợi thừng cắn siêu dai. Bé mê tít luôn!”
+      {/* 5. FEEDBACK KHÁCH HÀNG: chỉ hiển thị review thật đã xuất bản, ẩn cả mục nếu chưa có */}
+      {topReviews.length > 0 && (
+        <section className="bg-surface-muted border-y border-surface-border py-14">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
+                Niềm vui unbox của các bé
+              </h2>
+              <p className="text-sm text-bark-600">
+                Đánh giá từ khách hàng đã nhận hàng từ FPETS.
               </p>
-              <div className="pt-2 border-t border-surface-border flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-bold text-pine-950">Chị Mai Anh</span>
-                  <span className="text-bark-500"> · Ba mẹ bé Bơ (Golden 18kg)</span>
-                </div>
-                <span className="text-[11px] text-grass-700 font-semibold">Box Tiêu chuẩn</span>
-              </div>
             </div>
 
-            <div className="p-5 rounded-container bg-surface-card border border-surface-border space-y-3">
-              <div className="flex items-center gap-1 text-honey-500">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-honey-500" />
-                ))}
-              </div>
-              <p className="text-xs text-bark-700 leading-relaxed">
-                “Hộp đóng gói chỉn chu có thiệp ghi tên bé Miu cưng xỉu. Con cá nhồi catnip có tiếng sột soạt bé ôm đá chân sau cả ngày. Giá 299k mà tính lẻ các món ra gần 400k.”
-              </p>
-              <div className="pt-2 border-t border-surface-border flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-bold text-pine-950">Anh Tuấn Hoàng</span>
-                  <span className="text-bark-500"> · Ba mẹ bé Miu (Mèo Anh)</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {topReviews.map((rev) => (
+                <div key={rev.id} className="p-5 rounded-container bg-surface-card border border-surface-border space-y-3">
+                  <div className="flex items-center gap-1 text-honey-500">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className={`w-4 h-4 ${i < rev.rating ? "fill-honey-500" : "fill-bark-200 text-bark-200"}`} />
+                    ))}
+                  </div>
+                  <p className="text-xs text-bark-700 leading-relaxed line-clamp-5">&ldquo;{rev.comment}&rdquo;</p>
+                  <div className="pt-2 border-t border-surface-border flex items-center justify-between text-xs">
+                    <span className="font-bold text-pine-950">{rev.profiles?.full_name || "Khách hàng FPETS"}</span>
+                    <span className="text-[11px] text-bark-500">{new Date(rev.created_at).toLocaleDateString("vi-VN")}</span>
+                  </div>
                 </div>
-                <span className="text-[11px] text-grass-700 font-semibold">Gói 3 hộp</span>
-              </div>
+              ))}
             </div>
 
-            <div className="p-5 rounded-container bg-surface-card border border-surface-border space-y-3">
-              <div className="flex items-center gap-1 text-honey-500">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-honey-500" />
-                ))}
-              </div>
-              <p className="text-xs text-bark-700 leading-relaxed">
-                “Thích nhất là không bị trừ tiền âm thầm như mấy dịch vụ nước ngoài. Hết gói shop nhắn nhắc gia hạn, tháng nào bận đi công tác thì bấm tạm dừng 1 kỳ rất tiện.”
-              </p>
-              <div className="pt-2 border-t border-surface-border flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-bold text-pine-950">Bạn Thùy Dương</span>
-                  <span className="text-bark-500"> · Ba mẹ bé Corgi Bắp</span>
-                </div>
-                <span className="text-[11px] text-grass-700 font-semibold">Box Premium</span>
-              </div>
+            <div className="text-center mt-8">
+              <Link href="/reviews" className="text-sm font-bold text-pine-900 hover:underline">
+                Xem tất cả đánh giá
+              </Link>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 6. CTA CUỐI TRANG: Banner Pet Quiz cảm xúc có ảnh cưng */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

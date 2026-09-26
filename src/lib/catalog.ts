@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { productRowToProduct, boxTypeRowToBoxType, ProductWithCategory } from "@/lib/adapters";
 import { Product } from "@/mock/products";
-import { BoxType } from "@/mock/boxTypes";
+import { BoxType, SubscriptionPlan } from "@/mock/boxTypes";
 
 // Lấy dữ liệu sản phẩm / box thật từ Supabase (bảng products/box_types),
 // thay cho việc đọc thẳng từ src/mock/*.
@@ -56,6 +56,21 @@ export async function fetchSubscriptionPlans() {
     .order("cycle_count", { ascending: true });
   if (error || !data) return [];
   return data;
+}
+
+// Gói định kỳ thật từ DB, map về shape SubscriptionPlan mà UI đang dùng
+export async function fetchPlanOptions(): Promise<SubscriptionPlan[]> {
+  const data = await fetchSubscriptionPlans();
+  return data.map((p) => ({
+    id: p.id,
+    name: p.name,
+    cycles: p.cycle_count,
+    discountPercent: p.discount_percentage,
+    freeShipping: p.free_shipping,
+    birthdayGift: p.birthday_gift,
+    badge: p.badge || undefined,
+    description: p.description || "",
+  }));
 }
 
 export async function fetchBoxTypeById(id: string): Promise<BoxType | null> {

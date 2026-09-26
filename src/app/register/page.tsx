@@ -4,6 +4,7 @@ import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient, isSupabaseConfigured, getSupabaseConfigStatus } from "@/lib/supabase/client";
+import { safeRedirect } from "@/lib/safeRedirect";
 import { useApp } from "@/context/AppContext";
 import BrandLogo from "@/components/common/BrandLogo";
 import { 
@@ -21,7 +22,7 @@ import {
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect") || "/my-account/pets";
+  const redirectUrl = safeRedirect(searchParams.get("redirect"), "/my-account/pets");
   const { refreshUser } = useApp();
 
   // Form states

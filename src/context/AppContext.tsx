@@ -5,6 +5,7 @@ import { Pet } from "@/mock/pets";
 import { Product } from "@/mock/products";
 import { BoxType } from "@/mock/boxTypes";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { calcShippingFee } from "@/lib/shipping";
 import { petRowToPet, productRowToProduct, boxTypeRowToBoxType, ProductWithCategory } from "@/lib/adapters";
 
 const GUEST_CART_KEY = "fpets_guest_cart";
@@ -63,6 +64,7 @@ interface AppContextType {
   clearCart: () => Promise<void>;
   voucherCode: string;
   voucherDiscount: number;
+  voucherFreeShip: boolean;
   voucherMessage: string;
   applyVoucher: (code: string) => Promise<boolean>;
   subtotal: number;
@@ -79,6 +81,27 @@ function readGuestCart(): GuestCartLine[] {
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
+  }
+}
+
+const VOUCHER_KEY = "fpets_voucher_code";
+
+function storeVoucherCode(code: string) {
+  if (typeof window === "undefined") return;
+  try {
+    if (code) window.sessionStorage.setItem(VOUCHER_KEY, code);
+    else window.sessionStorage.removeItem(VOUCHER_KEY);
+  } catch {
+    // sessionStorage bị chặn: voucher chỉ sống trong trang hiện tại
+  }
+}
+
+function readVoucherCode(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.sessionStorage.getItem(VOUCHER_KEY) || "";
+  } catch {
+    return "";
   }
 }
 
@@ -434,6 +457,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [voucherCode, setVoucherCode] = useState<string>("");
   const [voucherDiscount, setVoucherDiscount] = useState<number>(0);
+  const [voucherFreeShip, setVoucherFreeShip] = useState<boolean>(false);
   const [voucherMessage, setVoucherMessage] = useState<string>("");
 
   const addToCart = async (item: Omit<CartItem, "id">) => {
@@ -536,7 +560,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     setCart([]);
     setVoucherCode("");
+    storeVoucherCode("");
     setVoucherDiscount(0);
+    setVoucherFreeShip(false);
     setVoucherMessage("");
   };
 
@@ -557,36 +583,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .eq("is_active", true)
       .maybeSingle();
 
-    if (!voucher) {
+    const now = Date.now();
+    const expired = voucher && (new Date(voucher.valid_from).getTime() > now || new Date(voucher.valid_to).getTime() < now);
+    if (!voucher || expired || (voucher && voucher.used_count >= voucher.usage_limit_total)) {
       setVoucherMessage("Mã voucher không hợp lệ hoặc đã hết hạn");
       setVoucherCode("");
+      storeVoucherCode("");
       setVoucherDiscount(0);
+      setVoucherFreeShip(false);
       return false;
     }
 
-    if (subtotal < voucher.min_order_value) {
+    // Phạm vi voucher: giảm trên phần hàng thuộc phạm vi (khớp checkout_create_order)
+    const retailAmount = cart.filter((c) => c.type === "retail").reduce((s, c) => s + c.unitPrice * c.quantity, 0);
+    const boxAmount = cart.filter((c) => c.type === "box").reduce((s, c) => s + c.unitPrice * c.quantity, 0);
+    const base =
+      voucher.scope === "all" ? subtotal : voucher.scope === "retail" ? retailAmount : voucher.scope === "box" ? boxAmount : 0;
+    if (base <= 0) {
+      const scopeLabel: Record<string, string> = {
+        retail: "sản phẩm bán lẻ",
+        box: "Mystery Box",
+        first_subscription: "đăng ký gói định kỳ lần đầu",
+      };
+      setVoucherMessage(`Mã này chỉ áp dụng cho ${scopeLabel[voucher.scope] || "đơn phù hợp"}`);
+      setVoucherCode("");
+      storeVoucherCode("");
+      setVoucherDiscount(0);
+      setVoucherFreeShip(false);
+      return false;
+    }
+
+    if (base < voucher.min_order_value) {
       setVoucherMessage(`Đơn tối thiểu ${voucher.min_order_value.toLocaleString("vi-VN")}₫ mới áp dụng được mã này`);
+      setVoucherCode("");
+      storeVoucherCode("");
+      setVoucherDiscount(0);
+      setVoucherFreeShip(false);
       return false;
     }
 
     let discount = 0;
     if (voucher.voucher_type === "percentage") {
-      discount = Math.round((subtotal * voucher.discount_value) / 100);
+      discount = Math.round((base * voucher.discount_value) / 100);
       if (voucher.max_discount) discount = Math.min(discount, voucher.max_discount);
     } else if (voucher.voucher_type === "fixed_amount") {
-      discount = Math.min(voucher.discount_value, subtotal);
+      discount = Math.min(voucher.discount_value, base);
     } else if (voucher.voucher_type === "free_shipping") {
       discount = shippingFee;
     }
 
     setVoucherCode(clean);
+    storeVoucherCode(clean);
     setVoucherDiscount(discount);
+    setVoucherFreeShip(voucher.voucher_type === "free_shipping");
     setVoucherMessage(`Áp dụng thành công mã ${clean}. Số tiền giảm chính xác sẽ hiện lại ở bước thanh toán.`);
     return true;
   };
 
+  // Khôi phục voucher đã áp khi khách tải lại trang (giỏ tải xong mới tính lại được số tiền giảm)
+  const voucherRestored = useRef(false);
+  useEffect(() => {
+    if (voucherRestored.current || cartLoading || cart.length === 0 || voucherCode) return;
+    voucherRestored.current = true;
+    const stored = readVoucherCode();
+    if (stored) applyVoucher(stored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, cartLoading, voucherCode]);
+
   const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const shippingFee = subtotal >= 500000 || subtotal === 0 ? 0 : 35000;
+  // Giỏ chưa biết tỉnh nhận hàng: ước tính theo mức tỉnh khác, checkout tính lại theo tỉnh thật
+  const shippingFee = calcShippingFee("", subtotal);
   const total = Math.max(0, subtotal + shippingFee - voucherDiscount);
 
   return (
@@ -612,6 +678,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearCart,
         voucherCode,
         voucherDiscount,
+        voucherFreeShip,
         voucherMessage,
         applyVoucher,
         subtotal,

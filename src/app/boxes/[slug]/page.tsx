@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { BoxType, SUBSCRIPTION_PLANS } from "@/mock/boxTypes";
-import { fetchBoxTypeBySlug } from "@/lib/catalog";
+import { BoxType, SubscriptionPlan } from "@/mock/boxTypes";
+import { fetchBoxTypeBySlug, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
 import { CheckCircle2, ShieldCheck, PlusCircle, PawPrint } from "lucide-react";
@@ -23,29 +23,39 @@ export default function BoxDetailPage() {
   const [selectedPetId, setSelectedPetId] = useState<string>("");
   // State chọn hình thức: mua 1 lần hay đăng ký gói
   const [purchaseMode, setPurchaseMode] = useState<'once' | 'subscription'>('once');
-  const [selectedPlanId, setSelectedPlanId] = useState<string>('plan-3');
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const [addedSuccess, setAddedSuccess] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    fetchBoxTypeBySlug(slug).then((data) => {
+    Promise.all([fetchBoxTypeBySlug(slug), fetchPlanOptions()]).then(([data, planData]) => {
       setBox(data);
+      setPlans(planData);
+      const defaultPlan = planData.find((p) => p.cycles === 3) || planData[0];
+      if (defaultPlan) setSelectedPlanId(defaultPlan.id);
       setLoading(false);
     });
   }, [slug]);
 
+  // Chỉ bé cùng loài (và với chó: cùng size) mới nhận được loại box này — server cũng chặn lại
+  const eligiblePets = box
+    ? pets.filter((p) => p.species === box.species && (box.species !== "dog" || p.size === box.size))
+    : [];
+
   useEffect(() => {
-    if (!selectedPetId && pets.length > 0) {
-      setSelectedPetId(pets[0].id);
+    if (eligiblePets.length > 0 && !eligiblePets.some((p) => p.id === selectedPetId)) {
+      setSelectedPetId(eligiblePets[0].id);
     }
-  }, [pets, selectedPetId]);
+  }, [eligiblePets, selectedPetId]);
 
-  const selectedPet = pets.find((p) => p.id === selectedPetId) || pets[0];
-  const selectedPlan = SUBSCRIPTION_PLANS.find((p) => p.id === selectedPlanId) || SUBSCRIPTION_PLANS[1];
+  const selectedPet = eligiblePets.find((p) => p.id === selectedPetId);
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
 
-  // Tính giá khi chọn gói
-  const unitDiscountedPrice = box ? Math.round(box.basePrice * (1 - selectedPlan.discountPercent / 100)) : 0;
-  const planTotalPrice = unitDiscountedPrice * selectedPlan.cycles;
+  // Giá hiển thị để khách tham khảo; số tiền thật do server (subscribe_to_box) tính lại
+  const unitDiscountedPrice = box && selectedPlan ? Math.round(box.basePrice * (1 - selectedPlan.discountPercent / 100)) : 0;
+  const planTotalPrice = selectedPlan ? unitDiscountedPrice * selectedPlan.cycles : 0;
+  const maxDiscount = plans.reduce((m, p) => Math.max(m, p.discountPercent), 0);
 
   const handleAddToCart = () => {
     if (!box) return;
@@ -70,7 +80,7 @@ export default function BoxDetailPage() {
   };
 
   const handleSubscribeCheckout = () => {
-    if (!box) return;
+    if (!box || !selectedPlan) return;
     if (!isLoggedIn) {
       router.push(`/login?redirect=/boxes/${slug}`);
       return;
@@ -166,9 +176,9 @@ export default function BoxDetailPage() {
               </Link>
             </div>
 
-            {pets.length > 0 ? (
+            {eligiblePets.length > 0 ? (
               <div className="grid grid-cols-2 gap-2.5">
-                {pets.map((pet) => {
+                {eligiblePets.map((pet) => {
                   const isSelected = pet.id === selectedPetId;
                   return (
                     <button
@@ -199,7 +209,11 @@ export default function BoxDetailPage() {
               </div>
             ) : (
               <div className="text-xs text-bark-600 bg-surface-muted p-3 rounded-box">
-                Bạn chưa có hồ sơ bé nào. Vui lòng làm Quiz 2 phút để tạo hồ sơ bé trước khi đặt hộp.
+                {!isLoggedIn
+                  ? "Đăng nhập để chọn bé nhận hộp."
+                  : pets.length === 0
+                  ? "Bạn chưa có hồ sơ bé nào. Vui lòng làm Quiz 2 phút để tạo hồ sơ bé trước khi đặt hộp."
+                  : `Chưa có bé nào phù hợp với hộp này (dành cho ${box.species === "dog" ? "chó" : "mèo"}${box.species === "dog" ? ` ${box.sizeLabel.toLowerCase()}` : ""}). Hãy chọn loại box khác hoặc thêm hồ sơ bé mới.`}
               </div>
             )}
           </div>
@@ -237,11 +251,11 @@ export default function BoxDetailPage() {
                 }`}
               >
                 <span className="absolute -top-2 right-2 px-2 py-0.5 rounded-tag bg-honey-600 text-white text-[10px] font-bold">
-                  Tiết kiệm đến 15%
+                  Tiết kiệm đến {maxDiscount}%
                 </span>
                 <div className="text-xs font-bold text-pine-950">Gói định kỳ</div>
                 <div className="text-base font-extrabold text-pine-950 font-display mt-0.5">
-                  Từ {formatVND(Math.round(box.basePrice * 0.85))}/hộp
+                  Từ {formatVND(Math.round(box.basePrice * (1 - maxDiscount / 100)))}/hộp
                 </div>
                 <div className="text-[11px] text-grass-700 font-medium mt-1">Freeship + Nhắc gia hạn</div>
               </button>
@@ -256,7 +270,7 @@ export default function BoxDetailPage() {
               </label>
 
               <div className="grid grid-cols-3 gap-2">
-                {SUBSCRIPTION_PLANS.map((plan) => {
+                {plans.map((plan) => {
                   const isPlanSelected = plan.id === selectedPlanId;
                   const discountedPerBox = Math.round(box.basePrice * (1 - plan.discountPercent / 100));
 
@@ -284,7 +298,7 @@ export default function BoxDetailPage() {
               </div>
 
               <div className="text-[11px] text-bark-500 pt-1 leading-relaxed">
-                * {selectedPlan.description}
+                * {selectedPlan?.description}
               </div>
             </div>
           )}
@@ -318,8 +332,8 @@ export default function BoxDetailPage() {
               >
                 <span>
                   {!isLoggedIn
-                    ? `Đăng nhập để đăng ký ${selectedPlan.name}`
-                    : `Đăng ký ${selectedPlan.name} cho bé ${selectedPet?.name} (${formatVND(planTotalPrice)})`}
+                    ? `Đăng nhập để đăng ký ${selectedPlan?.name || "gói"}`
+                    : `Đăng ký ${selectedPlan?.name || "gói"} cho bé ${selectedPet?.name || ""} (${formatVND(planTotalPrice)})`}
                 </span>
               </button>
             )}

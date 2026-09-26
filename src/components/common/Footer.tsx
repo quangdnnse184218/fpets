@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Phone, MessageCircle, ShieldCheck } from "lucide-react";
+import { CONTACT_INFO } from "@/lib/contactInfo";
 import BrandLogo from "@/components/common/BrandLogo";
 
 export default function Footer() {
@@ -22,7 +23,7 @@ export default function Footer() {
           
           {/* CỘT 1: Logo & Thông điệp ngắn gọn */}
           <div className="md:col-span-5 space-y-2.5">
-            <BrandLogo variant="dark" size="sm" />
+            <BrandLogo variant="dark" size="md" />
             <p className="text-xs text-pine-300/85 leading-relaxed max-w-sm">
               Hộp quà bí ẩn cá nhân hóa đầu tiên tại Việt Nam, tuyển chọn riêng theo sở thích và thể trạng của từng bé cưng.
             </p>
@@ -61,12 +62,14 @@ export default function Footer() {
             <div className="space-y-2 text-xs text-pine-300">
               <div className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-pine-400 shrink-0" />
-                <span>Hotline: <strong className="text-white font-semibold">1900 6868</strong> (8h – 21h hàng ngày)</span>
+                <span>Hotline: <a href={`tel:${CONTACT_INFO.hotlineTel}`} className="text-white font-semibold hover:underline">{CONTACT_INFO.hotline}</a> ({CONTACT_INFO.hours} hàng ngày)</span>
               </div>
-              <div className="flex items-center gap-2">
-                <MessageCircle className="w-3.5 h-3.5 text-grass-400 shrink-0" />
-                <span>Zalo OA: <strong className="text-white font-semibold">FPETS Official</strong></span>
-              </div>
+              {CONTACT_INFO.zaloUrl && (
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="w-3.5 h-3.5 text-grass-400 shrink-0" />
+                  <a href={CONTACT_INFO.zaloUrl} target="_blank" rel="noopener noreferrer" className="text-white font-semibold hover:underline">Chat Zalo với FPETS</a>
+                </div>
+              )}
               <p className="text-[11px] text-pine-400/80 leading-normal">
                 Tư vấn thực đơn dinh dưỡng và hộp quà bất ngờ theo từng giống loài.
               </p>

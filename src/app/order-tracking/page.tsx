@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatVND } from "@/lib/formatters";
 import { Search, Truck, AlertCircle } from "lucide-react";
@@ -31,6 +31,12 @@ export default function OrderTrackingPage() {
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [foundOrder, setFoundOrder] = useState<LookupResult | null>(null);
+
+  // Điền sẵn mã đơn khi đến từ trang đặt hàng thành công (?code=...)
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("code");
+    if (code) setOrderCode(code);
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();

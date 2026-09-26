@@ -13,6 +13,7 @@ import {
   HelpCircle,
   ShieldCheck,
 } from "lucide-react";
+import { CONTACT_INFO } from "@/lib/contactInfo";
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -24,15 +25,19 @@ export default function ContactPage() {
   });
 
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
 
+  // Chưa có hệ thống ticket: mở ứng dụng email của khách với nội dung điền sẵn gửi tới hộp thư hỗ trợ
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSubmitted(true);
-    }, 800);
+    const body = [
+      `Họ tên: ${formData.fullName}`,
+      `SĐT: ${formData.phone}`,
+      `Email: ${formData.email}`,
+      "",
+      formData.message,
+    ].join("\n");
+    window.location.href = `mailto:${CONTACT_INFO.email}?subject=${encodeURIComponent(`[FPETS] ${formData.subject}`)}&body=${encodeURIComponent(body)}`;
+    setSubmitted(true);
   };
 
   return (
@@ -67,10 +72,9 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <span className="text-pine-400 block text-xs">Tổng đài hỗ trợ:</span>
-                    <a href="tel:19006868" className="font-bold text-white hover:text-honey-400 text-base">
-                      1900 6868
+                    <a href={`tel:${CONTACT_INFO.hotlineTel}`} className="font-bold text-white hover:text-honey-400 text-base">
+                      {CONTACT_INFO.hotline}
                     </a>
-                    <span className="text-[11px] text-pine-400 block mt-0.5">(Cước gọi 1.000đ/phút)</span>
                   </div>
                 </div>
 
@@ -78,10 +82,23 @@ export default function ContactPage() {
                   <div className="w-9 h-9 rounded-box bg-pine-850 flex items-center justify-center shrink-0 text-grass-400">
                     <MessageCircle className="w-4 h-4" />
                   </div>
-                  <div>
-                    <span className="text-pine-400 block text-xs">Zalo Doanh Nghiệp (OA):</span>
-                    <strong className="text-white block text-sm">FPETS Official</strong>
-                    <span className="text-[11px] text-pine-400 block mt-0.5">Phản hồi tin nhắn trong vòng 15 phút</span>
+                  <div className="space-y-1.5">
+                    <span className="text-pine-400 block text-xs">Nhắn tin trực tiếp:</span>
+                    <div className="flex flex-wrap gap-2">
+                      {CONTACT_INFO.zaloUrl && (
+                        <a href={CONTACT_INFO.zaloUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-box bg-[#0068FF] hover:bg-[#0057d6] text-white text-xs font-bold">
+                          Chat Zalo
+                        </a>
+                      )}
+                      {CONTACT_INFO.messengerUrl && (
+                        <a href={CONTACT_INFO.messengerUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-box bg-[#0084FF] hover:bg-[#0070d9] text-white text-xs font-bold">
+                          Chat Messenger
+                        </a>
+                      )}
+                      <a href={`tel:${CONTACT_INFO.hotlineTel}`} className="px-3 py-1.5 rounded-box bg-pine-800 hover:bg-pine-700 text-white text-xs font-bold">
+                        Gọi hotline
+                      </a>
+                    </div>
                   </div>
                 </div>
 
@@ -91,8 +108,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <span className="text-pine-400 block text-xs">Email CSKH:</span>
-                    <a href="mailto:hotro@fpets.vn" className="font-medium text-white hover:text-honey-400">
-                      hotro@fpets.vn
+                    <a href={`mailto:${CONTACT_INFO.email}`} className="font-medium text-white hover:text-honey-400">
+                      {CONTACT_INFO.email}
                     </a>
                   </div>
                 </div>
@@ -104,7 +121,7 @@ export default function ContactPage() {
                   <div>
                     <span className="text-pine-400 block text-xs">Văn phòng vận hành:</span>
                     <span className="text-pine-200 block text-xs leading-relaxed">
-                      Số 24 ngõ 105 Xuân Thủy, Phường Dịch Vọng Hậu, Quận Cầu Giấy, Hà Nội
+                      {CONTACT_INFO.address}
                     </span>
                   </div>
                 </div>
@@ -115,7 +132,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <span className="text-pine-400 block text-xs">Khung giờ phục vụ:</span>
-                    <span className="font-bold text-white block">8:00 – 21:00</span>
+                    <span className="font-bold text-white block">{CONTACT_INFO.hours}</span>
                     <span className="text-[11px] text-pine-400 block">Tất cả các ngày trong tuần (kể cả Thứ 7 & CN)</span>
                   </div>
                 </div>
@@ -125,7 +142,7 @@ export default function ContactPage() {
             {/* Thẻ cam kết */}
             <div className="p-4 rounded-box bg-surface-card border border-surface-border flex items-center gap-3 text-xs text-bark-700">
               <ShieldCheck className="w-5 h-5 text-grass-700 shrink-0" />
-              <span>Mọi yêu cầu đổi món do dị ứng đều được tiếp nhận và xử lý trong vòng <strong>24 giờ</strong>.</span>
+              <span>Yêu cầu đổi món do dị ứng hoặc lỗi của shop: gửi trong <strong>3 ngày</strong> sau khi nhận hàng, ngay tại mục Đơn hàng của tôi.</span>
             </div>
           </div>
 
@@ -138,10 +155,10 @@ export default function ContactPage() {
                     <CheckCircle2 className="w-8 h-8" />
                   </div>
                   <h3 className="text-xl font-bold text-pine-950 font-display">
-                    Cảm ơn bạn đã liên hệ với FPETS!
+                    Đã mở ứng dụng email của bạn
                   </h3>
                   <p className="text-sm text-bark-600 max-w-md mx-auto leading-relaxed">
-                    Yêu cầu của bạn đã được chuyển đến bộ phận CSKH. Chúng tôi sẽ liên hệ lại qua số điện thoại hoặc email của bạn trong thời gian sớm nhất.
+                    Nội dung đã được điền sẵn, bạn chỉ cần bấm <strong>Gửi</strong> trong ứng dụng email. Nếu ứng dụng không mở, hãy gửi thư trực tiếp tới <a className="font-bold text-pine-900 underline" href={`mailto:${CONTACT_INFO.email}`}>{CONTACT_INFO.email}</a> hoặc gọi {CONTACT_INFO.hotline}.
                   </p>
                   <button
                     type="button"
@@ -239,17 +256,10 @@ export default function ContactPage() {
 
                   <button
                     type="submit"
-                    disabled={loading}
                     className="w-full sm:w-auto px-6 py-3 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
                   >
-                    {loading ? (
-                      <span>Đang gửi tin nhắn...</span>
-                    ) : (
-                      <>
-                        <Send className="w-3.5 h-3.5" />
-                        <span>Gửi tin nhắn ngay</span>
-                      </>
-                    )}
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Gửi qua email</span>
                   </button>
                 </form>
               )}

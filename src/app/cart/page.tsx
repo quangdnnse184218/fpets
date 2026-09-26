@@ -37,6 +37,15 @@ export default function CartPage() {
 
   const remainingForFreeship = Math.max(0, 500000 - subtotal);
 
+  // Box chỉ đổi được sang bé cùng loài (chó: cùng size) — khớp ràng buộc ở server
+  const eligiblePetsFor = (item: (typeof cart)[number]) =>
+    pets.filter(
+      (p) =>
+        item.boxType &&
+        p.species === item.boxType.species &&
+        (item.boxType.species !== "dog" || p.size === item.boxType.size)
+    );
+
   if (cart.length === 0) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-center space-y-6">
@@ -155,7 +164,7 @@ export default function CartPage() {
                   </div>
 
                   {/* Cho phép đổi Pet ngay trong giỏ hàng nếu là dòng Box */}
-                  {item.type === 'box' && pets.length > 1 && (
+                  {item.type === 'box' && eligiblePetsFor(item).length > 1 && (
                     <div className="pt-1 flex items-center gap-2">
                       <span className="text-[11px] text-bark-500">Đổi bé nhận hộp:</span>
                       <select
@@ -168,7 +177,7 @@ export default function CartPage() {
                         }}
                         className="text-xs font-medium py-0.5 px-2 rounded border border-surface-border bg-surface-muted text-pine-950"
                       >
-                        {pets.map((pet) => (
+                        {eligiblePetsFor(item).map((pet) => (
                           <option key={pet.id} value={pet.id}>
                             {pet.name} ({pet.breed})
                           </option>
@@ -256,7 +265,7 @@ export default function CartPage() {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Nhập mã, VD: CHAOMUNG10"
+                  placeholder="Nhập mã giảm giá"
                   value={inputCode}
                   onChange={(e) => setInputCode(e.target.value)}
                   className="flex-1 px-3 py-2 text-xs rounded-box border border-surface-border focus:border-pine-900 focus:outline-none bg-surface-card"

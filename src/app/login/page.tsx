@@ -4,6 +4,7 @@ import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient, isSupabaseConfigured, getSupabaseConfigStatus } from "@/lib/supabase/client";
+import { safeRedirect } from "@/lib/safeRedirect";
 import { useApp } from "@/context/AppContext";
 import BrandLogo from "@/components/common/BrandLogo";
 import { 
@@ -20,7 +21,8 @@ import {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect");
+  const rawRedirect = searchParams.get("redirect");
+  const redirectUrl = rawRedirect ? safeRedirect(rawRedirect, "") : "";
   const { refreshUser } = useApp();
 
   // Form states

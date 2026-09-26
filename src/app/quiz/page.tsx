@@ -4,19 +4,53 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useApp } from "@/context/AppContext";
-import { BoxType } from "@/mock/boxTypes";
-import { fetchBoxTypes } from "@/lib/catalog";
+import { BoxType, SubscriptionPlan } from "@/mock/boxTypes";
+import { fetchBoxTypes, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { ArrowLeft, CheckCircle2, Gift, Dog, Cat, PackageOpen, PawPrint, Baby, Zap, Moon } from "lucide-react";
 
+// Câu trả lời quiz được giữ tạm khi khách phải đăng ký/đăng nhập giữa chừng,
+// quay lại /quiz?resume=1 sẽ tự tạo Pet Profile và tiếp tục đặt hộp (SPEC §3).
+const QUIZ_PENDING_KEY = "fpets_quiz_pending";
+
+interface QuizAnswers {
+  species: "dog" | "cat";
+  petName: string;
+  breed: string;
+  gender: "Đực" | "Cái";
+  weight: number;
+  ageGroup: "puppy_kitten" | "adult" | "senior";
+  allergies: string[];
+  preferences: string[];
+  planCycles: number | null;
+}
+
+// Box chó chia theo cân nặng: dưới 10kg là size nhỏ, từ 10kg trở lên là size lớn
+const sizeFromWeight = (w: number): "small" | "large" => (w >= 10 ? "large" : "small");
+
+function pickBox(boxTypes: BoxType[], species: "dog" | "cat", weight: number): BoxType | undefined {
+  const standard = boxTypes.filter((b) => b.slug.includes("tieu-chuan"));
+  const pool = standard.length > 0 ? standard : boxTypes;
+  if (species === "cat") return pool.find((b) => b.species === "cat");
+  const size = sizeFromWeight(weight);
+  return pool.find((b) => b.species === "dog" && b.size === size) || pool.find((b) => b.species === "dog");
+}
+
 export default function PetQuizPage() {
   const router = useRouter();
-  const { addPet, addToCart, isLoggedIn } = useApp();
+  const { addPet, addToCart, isLoggedIn, isLoadingAuth } = useApp();
   const [boxTypes, setBoxTypes] = useState<BoxType[]>([]);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [planCycles, setPlanCycles] = useState<number | null>(null);
+  const resumeHandled = React.useRef(false);
 
   useEffect(() => {
     fetchBoxTypes().then(setBoxTypes);
+    fetchPlanOptions().then(setPlans);
+    const plan = Number(new URLSearchParams(window.location.search).get("plan"));
+    if (plan > 0) setPlanCycles(plan);
   }, []);
 
   // Trạng thái Form 5 câu hỏi
@@ -56,68 +90,100 @@ export default function PetQuizPage() {
     }
   };
 
-  // Thuật toán đề xuất Mystery Box từ 5 câu trả lời (dựa trên box_types thật)
-  const getRecommendedBox = (): BoxType | undefined => {
-    if (species === 'cat') {
-      return boxTypes.find((b) => b.species === 'cat');
-    }
-    const size = weight <= 10 ? 'small' : 'large';
-    return boxTypes.find((b) => b.species === 'dog' && b.size === size) || boxTypes.find((b) => b.species === 'dog');
-  };
-
-  const recommendedBox = getRecommendedBox();
+  const recommendedBox = pickBox(boxTypes, species, weight);
+  const selectedPlan = planCycles ? plans.find((p) => p.cycles === planCycles) : undefined;
 
   const handleFinishQuiz = () => {
     setShowResult(true);
   };
 
-  const handleSaveAndOrder = async () => {
-    if (!recommendedBox) return;
+  const currentAnswers = (): QuizAnswers => ({
+    species, petName, breed, gender, weight, ageGroup,
+    allergies: selectedAllergies,
+    preferences: selectedPreferences,
+    planCycles,
+  });
 
-    if (!isLoggedIn) {
-      router.push("/register?redirect=/quiz");
-      return;
-    }
-
+  const createPetAndContinue = async (a: QuizAnswers) => {
+    const box = pickBox(boxTypes, a.species, a.weight);
+    if (!box) return;
     const ageLabelMap = {
-      puppy_kitten: species === 'dog' ? 'Dưới 1 tuổi (Chó con)' : 'Dưới 1 tuổi (Mèo con)',
-      adult: '1 - 7 tuổi (Trưởng thành)',
-      senior: 'Trên 7 tuổi (Lớn tuổi)',
+      puppy_kitten: a.species === "dog" ? "Dưới 1 tuổi (Chó con)" : "Dưới 1 tuổi (Mèo con)",
+      adult: "1 - 7 tuổi (Trưởng thành)",
+      senior: "Trên 7 tuổi (Lớn tuổi)",
     };
-
     setSaving(true);
+    setSaveError("");
     try {
-      // 1. Tạo Pet mới (lưu thật vào Supabase)
       const createdPet = await addPet({
-        name: petName.trim() || (species === 'dog' ? "Cún Cưng" : "Miu Con"),
-        species,
-        breed: breed.trim() || (species === 'dog' ? "Chó Cảnh" : "Mèo Cảnh"),
-        weight,
-        size: weight <= 10 ? 'small' : 'large',
-        ageGroup,
-        ageLabel: ageLabelMap[ageGroup],
-        gender,
-        allergies: selectedAllergies,
-        preferences: selectedPreferences,
+        name: a.petName.trim() || (a.species === "dog" ? "Cún Cưng" : "Miu Con"),
+        species: a.species,
+        breed: a.breed.trim() || (a.species === "dog" ? "Chó Cảnh" : "Mèo Cảnh"),
+        weight: a.weight,
+        size: sizeFromWeight(a.weight),
+        ageGroup: a.ageGroup,
+        ageLabel: ageLabelMap[a.ageGroup],
+        gender: a.gender,
+        allergies: a.allergies,
+        preferences: a.preferences,
       });
 
-      // 2. Thêm Box đề xuất vào giỏ hàng gắn với bé vừa tạo
-      addToCart({
-        type: 'box',
-        boxTypeId: recommendedBox.id,
-        boxType: recommendedBox,
+      const plan = a.planCycles ? plans.find((p) => p.cycles === a.planCycles) : undefined;
+      if (plan) {
+        router.push(`/checkout?type=subscription&box=${box.id}&pet=${createdPet.id}&plan=${plan.id}`);
+        return;
+      }
+      await addToCart({
+        type: "box",
+        boxTypeId: box.id,
+        boxType: box,
         petId: createdPet.id,
         petName: createdPet.name,
         quantity: 1,
-        unitPrice: recommendedBox.basePrice,
+        unitPrice: box.basePrice,
       });
-
-      // 3. Chuyển thẳng vào giỏ hàng
       router.push("/cart");
+    } catch {
+      setSaveError("Không lưu được hồ sơ bé, vui lòng thử lại.");
     } finally {
       setSaving(false);
     }
   };
+
+  const handleSaveAndOrder = async () => {
+    if (!recommendedBox) return;
+    if (!isLoggedIn) {
+      try {
+        window.sessionStorage.setItem(QUIZ_PENDING_KEY, JSON.stringify(currentAnswers()));
+      } catch {
+        // sessionStorage bị chặn: khách sẽ phải làm lại quiz sau khi đăng ký
+      }
+      router.push(`/register?redirect=${encodeURIComponent("/quiz?resume=1")}`);
+      return;
+    }
+    await createPetAndContinue(currentAnswers());
+  };
+
+  // Quay lại sau khi đăng ký/đăng nhập: tự lưu câu trả lời thành Pet Profile
+  useEffect(() => {
+    if (resumeHandled.current || isLoadingAuth || !isLoggedIn || boxTypes.length === 0 || plans.length === 0) return;
+    let raw: string | null = null;
+    try {
+      raw = window.sessionStorage.getItem(QUIZ_PENDING_KEY);
+      window.sessionStorage.removeItem(QUIZ_PENDING_KEY);
+    } catch {
+      raw = null;
+    }
+    if (!raw) return;
+    resumeHandled.current = true;
+    const a = JSON.parse(raw) as QuizAnswers;
+    setSpecies(a.species);
+    setPetName(a.petName);
+    setWeight(a.weight);
+    setShowResult(true);
+    createPetAndContinue(a);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoadingAuth, isLoggedIn, boxTypes, plans]);
 
   return (
     <div className="max-w-2xl mx-auto py-4 sm:py-8">
@@ -548,10 +614,21 @@ export default function PetQuizPage() {
             </div>
 
             <div className="text-center sm:text-right">
-              <div className="text-xs text-bark-500">Giá mua thử:</div>
-              <div className="text-2xl font-extrabold text-pine-950 font-display">
-                {formatVND(recommendedBox.basePrice)}
-              </div>
+              {selectedPlan ? (
+                <>
+                  <div className="text-xs text-bark-500">{selectedPlan.name} (trả trước):</div>
+                  <div className="text-2xl font-extrabold text-pine-950 font-display">
+                    {formatVND(Math.round(recommendedBox.basePrice * (1 - selectedPlan.discountPercent / 100)) * selectedPlan.cycles)}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-xs text-bark-500">Giá mua thử:</div>
+                  <div className="text-2xl font-extrabold text-pine-950 font-display">
+                    {formatVND(recommendedBox.basePrice)}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -584,11 +661,14 @@ export default function PetQuizPage() {
                 {saving
                   ? "Đang lưu..."
                   : isLoggedIn
-                  ? `Lưu hồ sơ bé ${petName || "cưng"} & Đặt thử hộp này (${formatVND(recommendedBox.basePrice)})`
+                  ? selectedPlan
+                    ? `Lưu hồ sơ bé ${petName || "cưng"} & Đăng ký ${selectedPlan.name}`
+                    : `Lưu hồ sơ bé ${petName || "cưng"} & Đặt thử hộp này (${formatVND(recommendedBox.basePrice)})`
                   : `Đăng ký để lưu hồ sơ bé ${petName || "cưng"} & đặt hộp này`}
               </span>
             </button>
 
+            {saveError && <p className="text-xs text-red-600 text-center font-semibold">{saveError}</p>}
             <button
               type="button"
               onClick={() => {

@@ -6,8 +6,9 @@ import Link from "next/link";
 import { useApp } from "@/context/AppContext";
 import { formatVND } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/client";
-import { fetchBoxTypeById, fetchSubscriptionPlans } from "@/lib/catalog";
-import { BoxType, SUBSCRIPTION_PLANS } from "@/mock/boxTypes";
+import { calcShippingFee } from "@/lib/shipping";
+import { fetchBoxTypeById, fetchPlanOptions } from "@/lib/catalog";
+import { BoxType, SubscriptionPlan } from "@/mock/boxTypes";
 import { CreditCard, Truck, ArrowLeft, Lock, Banknote, Smartphone } from "lucide-react";
 
 function CheckoutFormContent() {
@@ -18,11 +19,11 @@ function CheckoutFormContent() {
   const petId = searchParams.get("pet");
   const planId = searchParams.get("plan");
 
-  const { cart, user, subtotal, shippingFee, total, clearCart, pets, isLoggedIn } = useApp();
+  const { cart, user, subtotal, voucherCode, voucherDiscount, voucherFreeShip, clearCart, pets, isLoggedIn, isLoadingAuth } = useApp();
 
-  const [recipientName, setRecipientName] = useState(user.name);
-  const [phone, setPhone] = useState(user.phone);
-  const [address, setAddress] = useState(user.address);
+  const [recipientName, setRecipientName] = useState(user.id ? user.name : "");
+  const [phone, setPhone] = useState(user.id ? user.phone : "");
+  const [address, setAddress] = useState(user.id ? user.address : "");
   const [province, setProvince] = useState("TP. Hồ Chí Minh");
   const [district, setDistrict] = useState("");
   const [ward, setWard] = useState("");
@@ -34,28 +35,44 @@ function CheckoutFormContent() {
   const [paymentMethod, setPaymentMethod] = useState<'momo' | 'vnpay' | 'cod'>('momo');
 
   const [subBox, setSubBox] = useState<BoxType | null>(null);
-  const [realPlans, setRealPlans] = useState<Awaited<ReturnType<typeof fetchSubscriptionPlans>>>([]);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
 
-  const mockPlan = SUBSCRIPTION_PLANS.find((p) => p.id === planId) || SUBSCRIPTION_PLANS[1];
-  const subPet = pets.find((p) => p.id === petId) || pets[0];
+  // Thông tin khách tải xong sau lần render đầu: điền sẵn nếu ô còn trống
+  useEffect(() => {
+    if (!user.id) return;
+    setRecipientName((v) => v || user.name);
+    setPhone((v) => v || user.phone);
+    setAddress((v) => v || user.address);
+  }, [user.id, user.name, user.phone, user.address]);
+
+  const selectedPlan = plans.find((p) => p.id === planId);
+  const subPet = pets.find((p) => p.id === petId);
 
   useEffect(() => {
     if (isSubscription && boxId) {
       fetchBoxTypeById(boxId).then(setSubBox);
-      fetchSubscriptionPlans().then(setRealPlans);
+      fetchPlanOptions().then(setPlans);
     }
   }, [isSubscription, boxId]);
 
   useEffect(() => {
     // Gói định kỳ và Mystery Box luôn cần đăng nhập (SPEC §4, §5); hàng lẻ cho phép mua không cần tài khoản.
+    // Chờ xác định xong phiên đăng nhập, tránh đá khách đã đăng nhập về trang login khi tải lại trang.
+    if (isLoadingAuth) return;
     const cartHasBox = cart.some((c) => c.type === "box");
     if (!isLoggedIn && (isSubscription || cartHasBox)) {
       router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
     }
-  }, [isLoggedIn, isSubscription, cart, router]);
+  }, [isLoadingAuth, isLoggedIn, isSubscription, cart, router]);
 
-  const unitPrice = subBox ? Math.round(subBox.basePrice * (1 - mockPlan.discountPercent / 100)) : 0;
-  const finalAmount = isSubscription ? unitPrice * mockPlan.cycles : total;
+  // Số tiền hiển thị mô phỏng đúng công thức server (checkout_create_order / subscribe_to_box)
+  const unitPrice = subBox && selectedPlan ? Math.round(subBox.basePrice * (1 - selectedPlan.discountPercent / 100)) : 0;
+  const itemsAmount = isSubscription ? unitPrice * (selectedPlan?.cycles || 0) : subtotal;
+  const shippingFee = isSubscription
+    ? calcShippingFee(province, itemsAmount, selectedPlan?.freeShipping)
+    : calcShippingFee(province, subtotal, voucherFreeShip);
+  const discount = isSubscription || voucherFreeShip ? 0 : voucherDiscount;
+  const finalAmount = Math.max(0, itemsAmount + shippingFee - discount);
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,15 +82,14 @@ function CheckoutFormContent() {
 
     try {
       if (isSubscription) {
-        if (!subBox || !subPet) throw new Error("Thiếu thông tin box hoặc thú cưng");
-        const realPlan = realPlans.find((p) => p.cycle_count === mockPlan.cycles);
-        if (!realPlan) throw new Error("Không tìm thấy gói phù hợp");
+        if (!subBox || !subPet) throw new Error("Thiếu thông tin box hoặc bé nhận hộp, vui lòng chọn lại từ trang Mystery Box.");
+        if (!selectedPlan) throw new Error("Không tìm thấy gói phù hợp, vui lòng chọn lại gói.");
         if (paymentMethod === "cod") throw new Error("Gói định kỳ chỉ thanh toán online");
 
         const { data, error } = await supabase.rpc("subscribe_to_box", {
           p_box_type_id: subBox.id,
           p_pet_id: subPet.id,
-          p_plan_id: realPlan.id,
+          p_plan_id: selectedPlan.id,
           p_delivery_schedule: deliverySchedule,
           p_recipient_name: recipientName,
           p_recipient_phone: phone,
@@ -107,6 +123,7 @@ function CheckoutFormContent() {
         p_shipping_address: address,
         p_payment_method: paymentMethod,
         p_customer_notes: notes || undefined,
+        p_voucher_code: voucherCode || undefined,
       });
 
       if (error) throw error;
@@ -132,7 +149,15 @@ function CheckoutFormContent() {
     if (message.includes("ERR_COD_LIMIT_EXCEEDED")) return "Đơn trên 2.000.000₫ không hỗ trợ thanh toán khi nhận hàng (COD).";
     if (message.includes("ERR_LOGIN_REQUIRED_FOR_BOX")) return "Vui lòng đăng nhập để mua Mystery Box.";
     if (message.includes("ERR_PET_NOT_OWNED")) return "Thú cưng không hợp lệ, vui lòng chọn lại.";
+    if (message.includes("ERR_VOUCHER_SCOPE")) return "Mã voucher không áp dụng cho loại hàng trong đơn này.";
+    if (message.includes("ERR_VOUCHER_MIN_ORDER")) return "Đơn chưa đạt giá trị tối thiểu để dùng mã voucher.";
+    if (message.includes("ERR_VOUCHER_USER_LIMIT")) return "Bạn đã dùng hết lượt cho mã voucher này.";
     if (message.includes("ERR_VOUCHER")) return "Mã voucher không áp dụng được cho đơn này.";
+    if (message.includes("ERR_PET_BOX_MISMATCH")) return "Bé được chọn không phù hợp với loại box này (khác loài hoặc khác size). Vui lòng chọn lại bé hoặc loại box.";
+    if (message.includes("ERR_ONE_BOX_PER_ORDER")) return "Mỗi đơn chỉ được mua 1 Mystery Box. Vui lòng tách thành các đơn riêng.";
+    if (message.includes("ERR_PLAN_NOT_FOUND")) return "Gói định kỳ không còn áp dụng, vui lòng chọn lại.";
+    if (message.includes("ERR_BOX_NOT_FOUND")) return "Loại box này hiện không còn bán.";
+    if (message.includes("ERR_COD_NOT_ALLOWED_FOR_SUBSCRIPTION")) return "Gói định kỳ chỉ hỗ trợ thanh toán online (MoMo / VNPay).";
     return message;
   }
 
@@ -302,7 +327,7 @@ function CheckoutFormContent() {
                 subBox ? (
                   <div className="p-3 rounded-box bg-surface-card border border-surface-border/60 space-y-1 text-xs">
                     <div className="font-bold text-pine-950">{subBox.name}</div>
-                    <div className="text-[11px] text-pine-800 font-semibold">{mockPlan.name}</div>
+                    <div className="text-[11px] text-pine-800 font-semibold">{selectedPlan?.name}</div>
                     <div className="text-[11px] text-bark-500">Dành cho bé: {subPet?.name} ({subPet?.breed})</div>
                     <div className="text-[11px] text-grass-700 font-medium pt-1">
                       Giao đợt: {deliverySchedule === 'dau_thang' ? 'Đầu tháng (1–5)' : 'Giữa tháng (15–20)'}
@@ -328,12 +353,18 @@ function CheckoutFormContent() {
             <div className="space-y-2 pt-3 border-t border-surface-border text-xs">
               <div className="flex justify-between text-bark-600">
                 <span>Tạm tính:</span>
-                <span className="font-semibold text-bark-900">{formatVND(isSubscription ? finalAmount : subtotal)}</span>
+                <span className="font-semibold text-bark-900">{formatVND(itemsAmount)}</span>
               </div>
               <div className="flex justify-between text-bark-600">
                 <span>Phí vận chuyển:</span>
-                <span>{isSubscription || shippingFee === 0 ? "Freeship" : formatVND(shippingFee)}</span>
+                <span>{shippingFee === 0 ? "Freeship" : formatVND(shippingFee)}</span>
               </div>
+              {!isSubscription && voucherCode && (
+                <div className="flex justify-between text-grass-700 font-semibold">
+                  <span>Voucher {voucherCode}:</span>
+                  <span>{voucherFreeShip ? "Miễn phí ship" : `−${formatVND(discount)}`}</span>
+                </div>
+              )}
               <div className="flex justify-between items-baseline pt-3 border-t border-surface-border text-sm font-extrabold text-pine-950">
                 <span>Tổng cộng:</span>
                 <span className="text-2xl font-extrabold font-display text-pine-950">{formatVND(finalAmount)}</span>

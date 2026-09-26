@@ -1,13 +1,21 @@
 "use client";
 
+import { useApp } from "@/context/AppContext";
 import React from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { formatVND } from "@/lib/formatters";
 import { CheckCircle2, Package, Home } from "lucide-react";
 
+const PAYMENT_LABEL: Record<string, string> = {
+  cod: "Thanh toán khi nhận hàng (COD)",
+  momo: "Ví MoMo",
+  vnpay: "VNPay",
+};
+
 function CheckoutResultContent() {
   const searchParams = useSearchParams();
+  const { isLoggedIn } = useApp();
   const orderCode = searchParams.get("code");
   const paymentMethod = searchParams.get("method") || "";
   const status = searchParams.get("status") || "";
@@ -37,7 +45,7 @@ function CheckoutResultContent() {
           Cảm ơn bạn đã đặt hàng tại FPETS!
         </h1>
         <p className="text-xs sm:text-sm text-bark-600 max-w-md mx-auto">
-          Mã đơn hàng của bạn là <strong className="text-pine-950 font-mono">{orderCode}</strong>. Chúng tôi đã gửi thông tin chi tiết qua email và thông báo web.
+          Mã đơn hàng của bạn là <strong className="text-pine-950 font-mono">{orderCode}</strong>. Hãy lưu lại mã này để tra cứu đơn cùng số điện thoại đặt hàng.
         </p>
       </div>
 
@@ -49,7 +57,7 @@ function CheckoutResultContent() {
         </div>
         <div className="flex justify-between pb-2 border-b border-surface-border">
           <span className="text-bark-500">Hình thức thanh toán:</span>
-          <span className="font-semibold text-bark-900">{paymentMethod}</span>
+          <span className="font-semibold text-bark-900">{PAYMENT_LABEL[paymentMethod] || paymentMethod}</span>
         </div>
         <div className="flex justify-between pb-2 border-b border-surface-border">
           <span className="text-bark-500">Trạng thái thanh toán:</span>
@@ -66,7 +74,7 @@ function CheckoutResultContent() {
       {/* Hai nút hành động */}
       <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
         <Link
-          href="/my-account/orders"
+          href={isLoggedIn ? "/my-account/orders" : `/order-tracking?code=${orderCode || ""}`}
           className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-xs transition-colors"
         >
           <Package className="w-4 h-4" />
