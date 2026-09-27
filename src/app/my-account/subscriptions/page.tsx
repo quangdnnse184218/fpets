@@ -2,9 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { formatVND } from "@/lib/formatters";
-import { Pause, Play, CheckCircle2, AlertTriangle } from "lucide-react";
+import { fetchPlanOptions } from "@/lib/catalog";
+import { SubscriptionPlan } from "@/mock/boxTypes";
+import { Pause, Play, CheckCircle2, AlertTriangle, RefreshCw, CreditCard } from "lucide-react";
 
 type SubStatus = "cho_thanh_toan" | "dang_hoat_dong" | "tam_dung" | "qua_han" | "het_han" | "da_huy";
 
@@ -28,13 +31,34 @@ interface SubscriptionRow {
   cutoff_date: string;
   total_prepaid_amount: number;
   paused_cycles_left: number;
+  grace_period_expires_at: string | null;
   pets: { name: string; breed: string | null } | null;
-  box_types: { name: string } | null;
+  box_types: { name: string; baseprice: number } | null;
   subscription_plans: { name: string } | null;
 }
 
+interface PendingOrder {
+  id: string;
+  order_code: string;
+  total_amount: number;
+  payment_method: string;
+  subscription_id: string;
+  payment_expires_at: string | null;
+}
+
+// Gia hạn được khi còn hộp cuối hoặc đang trong 5 ngày quá hạn (khớp renew_subscription)
+const canRenew = (sub: SubscriptionRow) =>
+  (sub.status === "dang_hoat_dong" && sub.remaining_cycles <= 1) ||
+  (sub.status === "qua_han" && !!sub.grace_period_expires_at && new Date(sub.grace_period_expires_at) >= new Date());
+
 export default function MySubscriptionsPage() {
+  const router = useRouter();
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
+  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [renewSub, setRenewSub] = useState<SubscriptionRow | null>(null);
+  const [renewPlanId, setRenewPlanId] = useState("");
+  const [renewMethod, setRenewMethod] = useState<"momo" | "vnpay">("momo");
   const [loading, setLoading] = useState(true);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -49,15 +73,53 @@ export default function MySubscriptionsPage() {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("subscriptions")
-      .select("id, subscription_code, status, total_cycles, remaining_cycles, current_cycle, next_delivery_date, cutoff_date, total_prepaid_amount, paused_cycles_left, pets(name, breed), box_types(name), subscription_plans(name)")
+      .select("id, subscription_code, status, total_cycles, remaining_cycles, current_cycle, next_delivery_date, cutoff_date, total_prepaid_amount, paused_cycles_left, grace_period_expires_at, pets(name, breed), box_types(name, baseprice), subscription_plans(name)")
       .order("created_at", { ascending: false });
     if (!error && data) setSubscriptions(data as unknown as SubscriptionRow[]);
+    // Đơn thanh toán đăng ký/gia hạn còn dang dở để khách bấm thanh toán tiếp
+    const { data: pending } = await supabase
+      .from("orders")
+      .select("id, order_code, total_amount, payment_method, subscription_id, payment_expires_at")
+      .in("order_type", ["subscription_initial", "subscription_renewal"])
+      .eq("status", "cho_thanh_toan")
+      .gt("payment_expires_at", new Date().toISOString());
+    setPendingOrders((pending as PendingOrder[]) || []);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     loadSubs();
+    fetchPlanOptions().then(setPlans);
   }, [loadSubs]);
+
+  const goToPayment = (o: PendingOrder) => {
+    router.push(`/checkout/pay/${o.id}?code=${o.order_code}&amount=${o.total_amount}&method=${o.payment_method}&sub=1`);
+  };
+
+  const openRenew = (sub: SubscriptionRow) => {
+    setRenewSub(sub);
+    const def = plans.find((p) => p.cycles === 3) || plans[0];
+    if (def) setRenewPlanId(def.id);
+  };
+
+  const handleConfirmRenew = async () => {
+    if (!renewSub || !renewPlanId) return;
+    setBusy(true);
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("renew_subscription", {
+      p_subscription_id: renewSub.id,
+      p_plan_id: renewPlanId,
+      p_payment_method: renewMethod,
+    });
+    setBusy(false);
+    if (error || !data) {
+      setRenewSub(null);
+      showError(error?.message.includes("ERR_RENEW_NOT_ALLOWED") ? "Gói này hiện không thể gia hạn." : "Không tạo được yêu cầu gia hạn, vui lòng thử lại.");
+      return;
+    }
+    const r = data as { order_id: string; order_code: string; total_amount: number };
+    router.push(`/checkout/pay/${r.order_id}?code=${r.order_code}&amount=${r.total_amount}&method=${renewMethod}&sub=1`);
+  };
 
   const showNotification = (msg: string) => {
     setActionNotice(msg);
@@ -108,7 +170,7 @@ export default function MySubscriptionsPage() {
       showError("Không thể hủy gói này.");
       return;
     }
-    showNotification("Đã hủy gia hạn gói. Các hộp bạn đã trả trước vẫn sẽ được chuẩn bị và giao đầy đủ.");
+    showNotification("Đã hủy gói. Các hộp bạn đã trả trước vẫn sẽ được chuẩn bị và giao đầy đủ.");
     loadSubs();
   };
 
@@ -148,7 +210,16 @@ export default function MySubscriptionsPage() {
       {subscriptions.map((sub) => {
         const isPaused = sub.status === "tam_dung";
         const isCancelled = sub.status === "da_huy" || sub.status === "het_han";
+        const isOverdue = sub.status === "qua_han";
         const completedCycles = sub.total_cycles - sub.remaining_cycles;
+        const pending = pendingOrders.find((o) => o.subscription_id === sub.id);
+        const badgeClass = isPaused || isOverdue
+          ? "bg-amber-100 text-amber-800"
+          : isCancelled
+          ? "bg-bark-200 text-bark-700"
+          : sub.status === "cho_thanh_toan"
+          ? "bg-surface-muted text-bark-700"
+          : "bg-grass-100 text-grass-800";
 
         return (
           <div key={sub.id} className={`p-6 rounded-container bg-surface-card border space-y-5 shadow-xs ${isPaused ? "border-amber-400 bg-amber-50/20" : isCancelled ? "border-bark-300 opacity-90" : "border-surface-border"}`}>
@@ -156,7 +227,7 @@ export default function MySubscriptionsPage() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-bold text-pine-950 text-sm">{sub.subscription_code}</span>
-                  <span className={`px-2.5 py-0.5 rounded-tag text-xs font-bold ${isPaused ? "bg-amber-100 text-amber-800" : isCancelled ? "bg-bark-200 text-bark-700" : "bg-grass-100 text-grass-800"}`}>
+                  <span className={`px-2.5 py-0.5 rounded-tag text-xs font-bold ${badgeClass}`}>
                     {STATUS_LABEL[sub.status]}
                   </span>
                 </div>
@@ -189,12 +260,42 @@ export default function MySubscriptionsPage() {
                 <strong className="text-pine-950">{new Date(sub.next_delivery_date).toLocaleDateString("vi-VN")}</strong>
               </div>
               <div>
-                <span className="text-bark-500 block">Hạn chốt thay đổi (Cut-off):</span>
+                <span className="text-bark-500 block">Ngày chốt hộp kỳ này:</span>
                 <strong className="text-honey-800">{new Date(sub.cutoff_date).toLocaleDateString("vi-VN")}</strong>
               </div>
             </div>
 
-            {!isCancelled && (
+            {isOverdue && sub.grace_period_expires_at && (
+              <div className="p-3.5 rounded-box bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                Gói đã giao hết hộp. Gia hạn trước <strong>{new Date(sub.grace_period_expires_at).toLocaleDateString("vi-VN")}</strong> để giữ ưu đãi và lịch giao cho bé.
+              </div>
+            )}
+            {sub.status === "da_huy" && sub.remaining_cycles > 0 && (
+              <div className="p-3.5 rounded-box bg-surface-muted border border-surface-border text-bark-700 text-xs">
+                Gói đã hủy. FPETS vẫn giao nốt <strong>{sub.remaining_cycles} hộp</strong> bạn đã trả trước.
+              </div>
+            )}
+
+            {(canRenew(sub) || pending) && (
+              <div className="flex flex-wrap gap-2 text-xs">
+                {pending && (
+                  <button type="button" onClick={() => goToPayment(pending)}
+                    className="px-4 py-2.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>Thanh toán tiếp {formatVND(pending.total_amount)}</span>
+                  </button>
+                )}
+                {canRenew(sub) && (
+                  <button type="button" onClick={() => openRenew(sub)}
+                    className="px-4 py-2.5 rounded-box bg-honey-600 hover:bg-honey-700 text-white font-bold flex items-center gap-1.5">
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>{pending ? "Chọn lại gói gia hạn" : "Gia hạn gói"}</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {!isCancelled && sub.status !== "cho_thanh_toan" && (
               <div className="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs border-t border-surface-border">
                 <div className="flex flex-wrap items-center gap-2">
                   {isPaused ? (
@@ -220,6 +321,53 @@ export default function MySubscriptionsPage() {
           </div>
         );
       })}
+
+      {renewSub && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-surface-card rounded-container p-6 space-y-4 shadow-xl border border-surface-border text-xs">
+            <h3 className="text-base font-bold text-pine-950 flex items-center gap-1.5">
+              <RefreshCw className="w-4 h-4 text-honey-600" />
+              <span>Gia hạn gói {renewSub.subscription_code}</span>
+            </h3>
+            <p className="text-bark-600">Chọn gói tiếp theo cho bé {renewSub.pets?.name}. Hộp mới nối tiếp ngay sau hộp hiện tại.</p>
+            <div className="space-y-2">
+              {plans.map((plan) => {
+                const unit = Math.round((renewSub.box_types?.baseprice || 0) * (1 - plan.discountPercent / 100));
+                const selected = plan.id === renewPlanId;
+                return (
+                  <button key={plan.id} type="button" onClick={() => setRenewPlanId(plan.id)}
+                    className={`w-full p-3 rounded-box border text-left flex items-center justify-between ${selected ? "border-pine-900 bg-pine-50 ring-1 ring-pine-900/20" : "border-surface-border hover:bg-surface-muted"}`}>
+                    <div>
+                      <div className="font-bold text-pine-950">{plan.name}</div>
+                      <div className="text-[11px] text-bark-500">
+                        {formatVND(unit)}/hộp{plan.discountPercent > 0 ? ` · giảm ${plan.discountPercent}%` : ""}{plan.freeShipping ? " · freeship" : " · + phí ship"}
+                      </div>
+                    </div>
+                    <div className="font-extrabold text-pine-950">{formatVND(unit * plan.cycles)}</div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {(["momo", "vnpay"] as const).map((m) => (
+                <button key={m} type="button" onClick={() => setRenewMethod(m)}
+                  className={`p-2.5 rounded-box border font-bold ${renewMethod === m ? "border-pine-900 bg-pine-50" : "border-surface-border"}`}>
+                  {m === "momo" ? "Ví MoMo" : "VNPay"}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-bark-500">Số tiền cuối cùng (kể cả phí ship) được tính lại ở bước thanh toán.</p>
+            <div className="flex justify-end gap-2 pt-2 border-t border-surface-border">
+              <button type="button" onClick={() => setRenewSub(null)} className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold">
+                Để sau
+              </button>
+              <button type="button" disabled={busy || !renewPlanId} onClick={handleConfirmRenew} className="px-5 py-2 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold disabled:opacity-60">
+                Tiếp tục thanh toán
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {pauseModalSubId && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">

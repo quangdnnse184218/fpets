@@ -528,6 +528,7 @@ export type Database = {
           province_city: string
           recipient_name: string
           recipient_phone: string
+          renewal_plan_id: string | null
           return_reason: string | null
           return_requested_at: string | null
           shipping_address: string
@@ -561,6 +562,7 @@ export type Database = {
           province_city: string
           recipient_name: string
           recipient_phone: string
+          renewal_plan_id?: string | null
           return_reason?: string | null
           return_requested_at?: string | null
           shipping_address: string
@@ -594,6 +596,7 @@ export type Database = {
           province_city?: string
           recipient_name?: string
           recipient_phone?: string
+          renewal_plan_id?: string | null
           return_reason?: string | null
           return_requested_at?: string | null
           shipping_address?: string
@@ -609,6 +612,13 @@ export type Database = {
           ward?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_renewal_plan_id_fkey"
+            columns: ["renewal_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_subscription_id_fkey"
             columns: ["subscription_id"]
@@ -1165,6 +1175,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _assert_pet_fits_box: {
+        Args: { p_box_type_id: string; p_pet_id: string }
+        Returns: undefined
+      }
       _deduct_retail_stock: { Args: { p_order_id: string }; Returns: undefined }
       approve_box_curation: {
         Args: { p_curation_id: string; p_product_ids: string[] }
@@ -1249,6 +1263,14 @@ export type Database = {
       }
       pause_subscription: {
         Args: { p_cycles: number; p_subscription_id: string }
+        Returns: Json
+      }
+      renew_subscription: {
+        Args: {
+          p_payment_method: Database["public"]["Enums"]["payment_method"]
+          p_plan_id: string
+          p_subscription_id: string
+        }
         Returns: Json
       }
       request_order_return: {

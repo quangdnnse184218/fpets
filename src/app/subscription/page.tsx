@@ -195,10 +195,12 @@ export default function SubscriptionIntroPage() {
                           {plan.birthday_gift ? 'Tặng kèm Quà sinh nhật đặc biệt cho bé' : 'Chưa có quà sinh nhật'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-grass-700 shrink-0" />
-                        <span>Tự do tạm dừng 1–2 kỳ bất kỳ lúc nào</span>
-                      </div>
+                      {plan.cycle_count > 1 && (
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-grass-700 shrink-0" />
+                          <span>Tạm dừng 1–2 kỳ trước ngày chốt</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -293,7 +295,7 @@ export default function SubscriptionIntroPage() {
               <div className="w-10 h-10 rounded-box bg-pine-100 text-pine-900 flex items-center justify-center">
                 <PauseCircle className="w-5 h-5" />
               </div>
-              <h3 className="font-bold text-base text-pine-950">Tạm Dừng (Pause)</h3>
+              <h3 className="font-bold text-base text-pine-950">Tạm dừng khi bận</h3>
               <p className="text-xs text-bark-600 leading-relaxed">
                 Đi du lịch hoặc bé còn nhiều đồ chơi chưa dùng hết? Chỉ cần 1 chạm để tạm dừng 1 hoặc 2 kỳ. Lịch giao sẽ tự động lùi lại mà không mất quyền lợi.
               </p>
@@ -303,9 +305,9 @@ export default function SubscriptionIntroPage() {
               <div className="w-10 h-10 rounded-box bg-honey-100 text-honey-800 flex items-center justify-center">
                 <RefreshCw className="w-5 h-5" />
               </div>
-              <h3 className="font-bold text-base text-pine-950">Gia Hạn Liền Mạch (Renew)</h3>
+              <h3 className="font-bold text-base text-pine-950">Gia hạn khi hết gói</h3>
               <p className="text-xs text-bark-600 leading-relaxed">
-                Khi đến kỳ giao hộp cuối, bạn sẽ nhận được nhắc nhở để gia hạn. Gói mới sẽ tự động nối tiếp tháng kế tiếp mà không làm gián đoạn lịch nhận quà của bé.
+                Khi còn hộp cuối, FPETS nhắc bạn trên web trước 7, 3 và 1 ngày. Bấm Gia hạn, chọn lại gói và thanh toán là gói nối tiếp. Không gia hạn thì gói tự kết thúc sau 5 ngày, không trừ tiền.
               </p>
             </div>
 
@@ -313,7 +315,7 @@ export default function SubscriptionIntroPage() {
               <div className="w-10 h-10 rounded-box bg-grass-100 text-grass-800 flex items-center justify-center">
                 <XCircle className="w-5 h-5" />
               </div>
-              <h3 className="font-bold text-base text-pine-950">Hủy Gói Minh Bạch (Cancel)</h3>
+              <h3 className="font-bold text-base text-pine-950">Hủy gói bất kỳ lúc nào</h3>
               <p className="text-xs text-bark-600 leading-relaxed">
                 Nếu muốn ngừng gói, bạn có thể bấm Hủy bất cứ lúc nào. Các hộp bạn đã thanh toán trước vẫn sẽ được đóng gói và giao đầy đủ đến tận hộp cuối cùng.
               </p>
@@ -330,16 +332,16 @@ export default function SubscriptionIntroPage() {
 
           <div className="divide-y divide-surface-border text-xs sm:text-sm space-y-3 pt-1">
             <div className="pt-3 space-y-1">
-              <div className="font-bold text-pine-950">Ngày chốt kỳ (Cut-off date) là gì?</div>
+              <div className="font-bold text-pine-950">Ngày chốt kỳ là gì?</div>
               <p className="text-bark-600 leading-relaxed">
-                Là mốc trước ngày giao hàng 7 ngày. Trước mốc này, bạn có thể thoải mái cập nhật địa chỉ giao hàng, tạm dừng gói hoặc chỉnh sửa sở thích dị ứng của bé.
+                Là mốc trước ngày giao hàng 7 ngày. Trước mốc này, bạn có thể tạm dừng gói hoặc cập nhật sở thích, dị ứng của bé trong Hồ sơ thú cưng.
               </p>
             </div>
 
             <div className="pt-3 space-y-1">
               <div className="font-bold text-pine-950">Tôi có thể đổi địa chỉ nhận hàng giữa các kỳ không?</div>
               <p className="text-bark-600 leading-relaxed">
-                Có! Bạn có thể vào mục &lsquo;Quản lý gói định kỳ&rsquo; để đổi địa chỉ giao hàng cho kỳ tiếp theo bất kỳ lúc nào trước ngày Cut-off.
+                Có. Bạn liên hệ FPETS qua hotline hoặc trang Liên hệ trước ngày chốt kỳ, chúng tôi sẽ cập nhật địa chỉ cho kỳ giao tiếp theo.
               </p>
             </div>
 

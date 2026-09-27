@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   Star, Camera, Filter, MessageSquare, Gift,
 } from "lucide-react";
@@ -113,14 +114,14 @@ export default function ReviewsPage() {
             })}
           </div>
 
-          {/* Banner tặng voucher unbox */}
+          {/* Mời khách đã nhận hàng vào đánh giá */}
           <div className="md:col-span-3 p-4 rounded-box bg-honey-50 border border-honey-200 text-xs space-y-2 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-1.5 font-bold text-honey-900">
               <Gift className="w-4 h-4 text-honey-600" />
-              <span>Tặng Voucher 20.000₫</span>
+              <span>Bé đã nhận hộp?</span>
             </div>
             <p className="text-[11px] text-honey-800 leading-relaxed">
-              Mỗi đánh giá kèm ảnh mở hộp thực tế sẽ được tặng ngay voucher 20.000₫ cho đơn tiếp theo.
+              Vào <Link href="/my-account/orders" className="font-bold underline">Đơn hàng của tôi</Link> để đánh giá và chấm từng món bé thích hay không, giúp hộp sau hợp khẩu vị hơn.
             </p>
           </div>
         </div>

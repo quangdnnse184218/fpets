@@ -21,6 +21,7 @@ interface OrderRow {
   id: string;
   order_code: string;
   order_type: string;
+  cycle_index: number | null;
   status: OrderStatus;
   payment_method: string;
   payment_status: string;
@@ -32,6 +33,15 @@ interface OrderRow {
   created_at: string;
   order_items: { id: string; product_name_snapshot: string; quantity: number; total_price: number; pets: { name: string } | null }[];
 }
+
+// Đơn "Thanh toán/Gia hạn gói" chỉ là biên nhận tiền; hộp thực tế giao theo đơn "Giao hộp gói"
+const ORDER_TYPE_LABEL: Record<string, string> = {
+  retail: "Mua lẻ",
+  mystery_box: "Mystery Box",
+  subscription_initial: "Thanh toán gói",
+  subscription_renewal: "Gia hạn gói",
+  subscription_cycle: "Giao hộp gói",
+};
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -59,7 +69,7 @@ export default function AdminOrdersPage() {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("orders")
-      .select("id, order_code, order_type, status, payment_method, payment_status, total_amount, recipient_name, recipient_phone, shipping_address, tracking_code, created_at, order_items(id, product_name_snapshot, quantity, total_price, pets(name))")
+      .select("id, order_code, order_type, cycle_index, status, payment_method, payment_status, total_amount, recipient_name, recipient_phone, shipping_address, tracking_code, created_at, order_items(id, product_name_snapshot, quantity, total_price, pets(name))")
       .order("created_at", { ascending: false })
       .limit(200);
     if (!error && data) setOrders(data as unknown as OrderRow[]);
@@ -184,7 +194,7 @@ export default function AdminOrdersPage() {
                 </td>
                 <td className="p-3.5">
                   <span className="px-2 py-0.5 rounded-tag bg-surface-muted font-bold text-[10px] text-bark-700">
-                    {order.order_type === "mystery_box" ? "Mystery Box" : order.order_type.startsWith("subscription") ? "Gói định kỳ" : "Mua lẻ"}
+                    {ORDER_TYPE_LABEL[order.order_type] || "Mua lẻ"}{order.order_type === "subscription_cycle" && order.cycle_index ? ` (kỳ ${order.cycle_index})` : ""}
                   </span>
                 </td>
                 <td className="p-3.5 text-bark-600">{new Date(order.created_at).toLocaleDateString("vi-VN")}</td>

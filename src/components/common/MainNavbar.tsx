@@ -18,6 +18,7 @@ import {
   UserPlus
 } from "lucide-react";
 import BrandLogo from "@/components/common/BrandLogo";
+import NotificationBell from "@/components/common/NotificationBell";
 
 export default function MainNavbar() {
   const pathname = usePathname();
@@ -108,6 +109,8 @@ export default function MainNavbar() {
           >
             <span>Quiz tìm Box</span>
           </Link>
+
+          {isLoggedIn && user.id && <NotificationBell userId={user.id} />}
 
           {/* Giỏ hàng */}
           <Link

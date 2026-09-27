@@ -70,8 +70,8 @@ const FAQ_DATA: FAQItem[] = [
   {
     id: "sub-3",
     category: "subscription",
-    question: "Tôi có thể tạm dừng (Pause) hoặc hủy gói (Cancel) khi đi công tác được không?",
-    answer: "Hoàn toàn được! Bạn có thể vào mục 'Tài khoản > Gói định kỳ' bất kỳ lúc nào trước ngày chốt kỳ (Cut-off date, trước ngày giao 7 ngày) để chọn 'Tạm dừng 1 hoặc 2 kỳ'. Lịch giao của các hộp còn lại sẽ tự động lùi sang tháng sau. Nếu bạn chọn 'Hủy gói', các hộp bạn đã trả trước vẫn sẽ được tuyển chọn và giao đầy đủ đến tận hộp cuối cùng."
+    question: "Tôi có thể tạm dừng hoặc hủy gói khi đi công tác được không?",
+    answer: "Hoàn toàn được! Bạn có thể vào mục 'Tài khoản > Gói định kỳ' bất kỳ lúc nào trước ngày chốt kỳ (7 ngày trước ngày giao) để chọn 'Tạm dừng 1 hoặc 2 kỳ'. Lịch giao của các hộp còn lại sẽ tự động lùi sang tháng sau. Nếu bạn chọn 'Hủy gói', các hộp bạn đã trả trước vẫn sẽ được tuyển chọn và giao đầy đủ đến tận hộp cuối cùng."
   },
 
   // Giao hàng & Vận chuyển
@@ -99,7 +99,7 @@ const FAQ_DATA: FAQItem[] = [
     id: "ret-2",
     category: "return",
     question: "Nếu bé không chịu chơi hoặc không chịu ăn món trong hộp thì sao?",
-    answer: "Khẩu vị và tâm lý thú cưng đôi khi cần thời gian làm quen. Bạn hãy vào phần Đánh giá đơn hàng và chấm 'Không thích' cho món đó. Thuật toán của FPETS sẽ ghi nhớ vĩnh viễn và không bao giờ đưa sản phẩm đó (hoặc loại tương tự) vào các kỳ tiếp theo của bé nữa!"
+    answer: "Mystery Box không đổi trả vì bé không thích món. Bạn hãy vào Đơn hàng của tôi, bấm Đánh giá và chấm 'Không thích' cho món đó; FPETS ghi nhận vào hồ sơ của bé để tránh gửi lại món này ở các kỳ sau."
   },
 
   // Thanh toán
