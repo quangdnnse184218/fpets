@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Product } from "@/mock/products";
-import { fetchProductBySlug } from "@/lib/catalog";
+import { fetchProductBySlug, fetchProducts } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import ProductItemImage from "@/components/common/ProductItemImage";
 import { useApp } from "@/context/AppContext";
@@ -20,11 +20,22 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [related, setRelated] = useState<Product[]>([]);
 
   useEffect(() => {
     setLoading(true);
-    fetchProductBySlug(slug).then((data) => {
+    setQuantity(1);
+    setAdded(false);
+    Promise.all([fetchProductBySlug(slug), fetchProducts()]).then(([data, all]) => {
       setProduct(data);
+      if (data) {
+        // Ưu tiên cùng danh mục và hợp loài, sau đó bù bằng sản phẩm khác
+        const others = all.filter((p) => p.id !== data.id);
+        const sameCat = others.filter(
+          (p) => p.category === data.category && (p.species === data.species || p.species === "both" || data.species === "both")
+        );
+        setRelated([...sameCat, ...others.filter((p) => !sameCat.includes(p))].slice(0, 4));
+      }
       setLoading(false);
     });
   }, [slug]);
@@ -108,12 +119,7 @@ export default function ProductDetailPage() {
                   <span>{product.reviewCount} đánh giá từ ba mẹ</span>
                   <span>·</span>
                 </>
-              ) : (
-                <>
-                  <span className="text-bark-400">Chưa có đánh giá</span>
-                  <span>·</span>
-                </>
-              )}
+              ) : null}
               <span className={product.stock > 0 ? "text-grass-700 font-medium" : "text-red-600 font-medium"}>
                 {product.stock > 0 ? `Còn ${product.stock} sản phẩm` : "Hết hàng"}
               </span>
@@ -194,6 +200,36 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
+
+      {related.length > 0 && (
+        <section className="space-y-4 pt-4 border-t border-surface-border">
+          <h2 className="text-lg font-bold text-pine-950 font-display">Có thể bé cũng thích</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {related.map((p) => (
+              <Link
+                key={p.id}
+                href={`/shop/${p.slug}`}
+                className="rounded-container bg-surface-card border border-surface-border overflow-hidden hover:border-pine-800 transition-colors"
+              >
+                <div className="relative w-full aspect-square bg-surface-muted">
+                  <ProductItemImage
+                    src={p.image}
+                    alt={p.name}
+                    category={p.category}
+                    placeholderColor={p.placeholderColor}
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                    showNote={false}
+                  />
+                </div>
+                <div className="p-3 space-y-1">
+                  <h3 className="text-xs font-bold text-pine-950 line-clamp-2 leading-snug">{p.name}</h3>
+                  <div className="text-sm font-extrabold text-pine-950">{formatVND(p.price)}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

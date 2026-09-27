@@ -25,11 +25,11 @@ export default function Footer() {
           <div className="md:col-span-5 space-y-2.5">
             <BrandLogo variant="dark" size="md" />
             <p className="text-xs text-pine-300/85 leading-relaxed max-w-sm">
-              Hộp quà bí ẩn cá nhân hóa đầu tiên tại Việt Nam, tuyển chọn riêng theo sở thích và thể trạng của từng bé cưng.
+              Hộp quà bí ẩn cá nhân hóa cho chó mèo, tuyển chọn riêng theo sở thích và thể trạng của từng bé cưng.
             </p>
             <div className="inline-flex items-center gap-1.5 text-[11px] text-pine-400">
               <ShieldCheck className="w-3.5 h-3.5 text-grass-400 shrink-0" />
-              <span>100% sản phẩm chính hãng & kiểm định thú y an toàn</span>
+              <span>Loại trừ thành phần dị ứng theo hồ sơ của bé</span>
             </div>
           </div>
 
@@ -49,7 +49,7 @@ export default function Footer() {
                 Chính sách đổi trả trong 3 ngày
               </Link>
               <Link href="/contact" className="hover:text-white transition-colors">
-                Liên hệ hợp tác
+                Liên hệ
               </Link>
             </nav>
           </div>
@@ -81,10 +81,10 @@ export default function Footer() {
         {/* DÒNG BẢN QUYỀN CUỐI TRANG - TINH GỌN */}
         <div className="mt-6 pt-4 border-t border-pine-900/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-pine-400">
           <div>
-            © 2026 FPETS Vietnam. Dịch vụ hộp quà thú cưng cá nhân hóa hàng đầu.
+            © {new Date().getFullYear()} FPETS. Hộp quà thú cưng cá nhân hóa.
           </div>
           <div className="text-pine-400/70">
-            Giờ làm việc: 08:00 – 21:00 (Asia/Ho_Chi_Minh)
+            Giờ làm việc: {CONTACT_INFO.hours} hằng ngày
           </div>
         </div>
       </div>

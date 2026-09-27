@@ -52,7 +52,6 @@ export default function MainNavbar() {
     { href: "/subscription", label: "Gói định kỳ" },
     { href: "/shop", label: "Shop bán lẻ" },
     { href: "/reviews", label: "Đánh giá" },
-    { href: "/quiz", label: "Pet Quiz", badge: "Gợi ý box" },
     { href: "/order-tracking", label: "Tra cứu đơn" },
   ];
 
@@ -95,11 +94,6 @@ export default function MainNavbar() {
                 }`}
               >
                 <span>{link.label}</span>
-                {link.badge && (
-                  <span className="ml-1.5 inline-flex items-center px-1.5 py-0.2 text-[10px] font-semibold rounded-tag bg-pine-100 text-pine-800 border border-pine-200">
-                    {link.badge}
-                  </span>
-                )}
               </Link>
             );
           })}
@@ -308,11 +302,6 @@ export default function MainNavbar() {
               className="flex items-center justify-between py-2 text-sm font-medium text-bark-800 hover:text-pine-900"
             >
               <span>{link.label}</span>
-              {link.badge && (
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-tag bg-pine-100 text-pine-800">
-                  {link.badge}
-                </span>
-              )}
             </Link>
           ))}
           

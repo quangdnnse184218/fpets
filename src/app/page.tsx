@@ -9,6 +9,17 @@ import { fetchBoxTypes, fetchSubscriptionPlans } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/client";
 
+const HERO_ITEMS = [
+  { src: "/images/products/pate-ca-hoi.jpg", alt: "Pate cá hồi cho mèo" },
+  { src: "/images/products/bong-cao-su.jpg", alt: "Bóng cao su cho chó" },
+  { src: "/images/products/day-thung-keo-co.jpg", alt: "Dây thừng kéo co" },
+  { src: "/images/products/banh-quy-canxi.jpg", alt: "Bánh quy canxi cho chó" },
+];
+
+// Chỉ khoe số liệu khi đủ lớn để tạo niềm tin; "1 đánh giá" phản tác dụng
+const MIN_REVIEWS_TO_SHOW = 5;
+const MIN_DELIVERED_TO_SHOW = 20;
+
 export default function HomePage() {
   const [standardBoxPrice, setStandardBoxPrice] = useState(299000);
   const [standardMinValue, setStandardMinValue] = useState(380000);
@@ -102,16 +113,16 @@ export default function HomePage() {
             </div>
 
             {/* Số liệu lấy thật từ database; chỉ hiện khi đã có dữ liệu để tránh khoe số 0 */}
-            {(stats.delivered > 0 || stats.reviewCount > 0) && (
+            {(stats.delivered >= MIN_DELIVERED_TO_SHOW || stats.reviewCount >= MIN_REVIEWS_TO_SHOW) && (
               <div className="pt-4 border-t border-surface-border/70 flex flex-wrap items-center gap-4 sm:gap-6 text-xs text-bark-600">
-                {stats.delivered > 0 && (
+                {stats.delivered >= MIN_DELIVERED_TO_SHOW && (
                   <div>
                     <span className="font-extrabold text-pine-950 block leading-tight">{stats.delivered.toLocaleString("vi-VN")}</span>
                     <span className="text-[11px] text-bark-500">Đơn hàng đã giao</span>
                   </div>
                 )}
-                {stats.delivered > 0 && stats.reviewCount > 0 && <div className="hidden sm:block w-px h-7 bg-surface-border" />}
-                {stats.reviewCount > 0 && (
+                {stats.delivered >= MIN_DELIVERED_TO_SHOW && stats.reviewCount >= MIN_REVIEWS_TO_SHOW && <div className="hidden sm:block w-px h-7 bg-surface-border" />}
+                {stats.reviewCount >= MIN_REVIEWS_TO_SHOW && (
                   <div>
                     <div className="flex items-center gap-1 font-extrabold text-pine-950 leading-tight">
                       <Star className="w-3.5 h-3.5 text-honey-500 fill-honey-500" />
@@ -126,18 +137,23 @@ export default function HomePage() {
 
           <div className="lg:col-span-5">
             <div className="relative rounded-2xl overflow-hidden border border-surface-border/90 shadow-lg bg-white p-2 sm:p-2.5">
-              <div className="relative w-full h-[280px] sm:h-[350px] md:h-[390px] rounded-xl overflow-hidden bg-surface-muted">
-                <Image
-                  src="/images/fpets-hero-box.jpg"
-                  alt="Ảnh chụp hộp quà Mystery Box FPETS mở ra cùng đồ ăn và đồ chơi cho thú cưng"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 45vw"
-                  className="object-cover"
-                  priority
-                />
+              {/* Ghép ảnh sản phẩm thật của shop: minh họa các món có thể nằm trong hộp */}
+              <div className="relative w-full h-[280px] sm:h-[350px] md:h-[390px] rounded-xl overflow-hidden bg-surface-muted grid grid-cols-2 grid-rows-2 gap-1.5">
+                {HERO_ITEMS.map((item, i) => (
+                  <div key={item.src} className="relative overflow-hidden group">
+                    <Image
+                      src={item.src}
+                      alt={item.alt}
+                      fill
+                      sizes="(max-width: 768px) 50vw, 22vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      priority={i < 2}
+                    />
+                  </div>
+                ))}
                 <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/95 backdrop-blur-xs text-pine-950 text-xs font-bold shadow-xs border border-white/80 flex items-center gap-1.5 z-10">
                   <PackageOpen className="w-3.5 h-3.5 text-pine-900" />
-                  <span>Hộp quà Mystery Box tuyển chọn</span>
+                  <span>Có thể có trong hộp của bé</span>
                 </div>
               </div>
 
@@ -259,7 +275,7 @@ export default function HomePage() {
 
               <div className="pt-6 mt-6 border-t border-surface-border">
                 <Link
-                  href="/boxes/box-tieu-chuan-cho-nho"
+                  href="/boxes"
                   className="block w-full py-3 rounded-box text-center text-sm font-bold bg-pine-900 hover:bg-pine-800 text-white transition-colors"
                 >
                   Xem chi tiết Box Tiêu Chuẩn
@@ -298,10 +314,6 @@ export default function HomePage() {
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-pine-700 shrink-0" />
-                    <span>Tặng kèm quà sinh nhật độc quyền khi đăng ký gói 6 hộp</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-pine-700 shrink-0" />
                     <span>Miễn phí đổi món nếu lỗi thuộc về shop</span>
                   </li>
                 </ul>
@@ -309,7 +321,7 @@ export default function HomePage() {
 
               <div className="pt-6 mt-6 border-t border-surface-border">
                 <Link
-                  href="/boxes/box-premium-cho"
+                  href="/boxes"
                   className="block w-full py-3 rounded-box text-center text-sm font-bold bg-pine-900 hover:bg-pine-800 text-white transition-colors"
                 >
                   Xem chi tiết Box Premium
@@ -365,7 +377,7 @@ export default function HomePage() {
                   <div className="space-y-2 text-xs text-bark-700 pt-3 border-t border-surface-border">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-3.5 h-3.5 text-grass-600 shrink-0" />
-                      <span>Nhận 1 hộp mỗi tháng ({plan.cycle_count} tháng)</span>
+                      <span>{plan.cycle_count === 1 ? "Nhận 1 hộp, không cam kết dài hạn" : `Nhận 1 hộp mỗi tháng (${plan.cycle_count} tháng)`}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-3.5 h-3.5 text-grass-600 shrink-0" />
@@ -399,7 +411,7 @@ export default function HomePage() {
       </section>
 
       {/* 5. FEEDBACK KHÁCH HÀNG: chỉ hiển thị review thật đã xuất bản, ẩn cả mục nếu chưa có */}
-      {topReviews.length > 0 && (
+      {topReviews.length >= 3 && (
         <section className="bg-surface-muted border-y border-surface-border py-14">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
@@ -464,10 +476,9 @@ export default function HomePage() {
           </div>
 
           <div className="md:col-span-5 h-64 md:h-full relative min-h-[280px]">
-            {/* TODO: thay bằng ảnh thật của FPETS khi có */}
             <Image
               src="https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?w=800&q=80"
-              alt="Cún cưng và mèo cưng đáng yêu bên nhau"
+              alt="Chú cún con đáng yêu"
               fill
               sizes="(max-width: 768px) 100vw, 50vw"
               className="object-cover"

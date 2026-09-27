@@ -30,6 +30,7 @@ export default function ShopPage() {
   const [selectedSpecies, setSelectedSpecies] = useState<string>("all");
   const [addedId, setAddedId] = useState<string | null>(null);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<"newest" | "price_asc" | "price_desc">("newest");
 
   useEffect(() => {
     fetchProducts().then((data) => {
@@ -51,12 +52,14 @@ export default function ShopPage() {
     { id: "cat", label: "Cho Mèo", icon: Cat },
   ];
 
-  const filteredProducts = products.filter((p) => {
-    const matchCat = selectedCategory === "all" || p.category === selectedCategory;
-    const matchSpecies =
-      selectedSpecies === "all" || p.species === selectedSpecies || p.species === "both";
-    return matchCat && matchSpecies;
-  });
+  const filteredProducts = products
+    .filter((p) => {
+      const matchCat = selectedCategory === "all" || p.category === selectedCategory;
+      const matchSpecies =
+        selectedSpecies === "all" || p.species === selectedSpecies || p.species === "both";
+      return matchCat && matchSpecies;
+    })
+    .sort((a, b) => (sortBy === "price_asc" ? a.price - b.price : sortBy === "price_desc" ? b.price - a.price : 0));
 
   const handleQuickAdd = (product: Product) => {
     addToCart({
@@ -102,14 +105,26 @@ export default function ShopPage() {
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setMobileFilterOpen(true)}
-          className="px-3.5 py-2 rounded-box bg-pine-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
-        >
-          <Filter className="w-3.5 h-3.5" />
-          <span>Bộ lọc {isFiltering && "(Đang bật)"}</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            aria-label="Sắp xếp sản phẩm"
+            className="px-2 py-2 rounded-box border border-surface-border bg-surface-card text-xs text-bark-800"
+          >
+            <option value="newest">Mới nhất</option>
+            <option value="price_asc">Giá tăng dần</option>
+            <option value="price_desc">Giá giảm dần</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => setMobileFilterOpen(true)}
+            className="px-3.5 py-2 rounded-box bg-pine-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
+          >
+            <Filter className="w-3.5 h-3.5" />
+            <span>Lọc{isFiltering && " •"}</span>
+          </button>
+        </div>
       </div>
 
       {/* BỐ CỤC CHÍNH 2 CỘT: Cột trái Sidebar cố định (sticky) + Cột phải lưới sản phẩm */}
@@ -234,6 +249,16 @@ export default function ShopPage() {
             <span>
               Tìm thấy <strong className="text-pine-950">{filteredProducts.length}</strong> sản phẩm phù hợp
             </span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              aria-label="Sắp xếp sản phẩm"
+              className="ml-auto mr-3 px-2.5 py-1.5 rounded-box border border-surface-border bg-surface-card text-xs text-bark-800 focus:outline-none focus:border-pine-800"
+            >
+              <option value="newest">Mới nhất</option>
+              <option value="price_asc">Giá thấp đến cao</option>
+              <option value="price_desc">Giá cao đến thấp</option>
+            </select>
             {isFiltering && (
               <button
                 type="button"
@@ -307,17 +332,13 @@ export default function ShopPage() {
                         </Link>
                       </div>
 
-                      <div className="flex items-center gap-1 text-[11px] text-bark-500">
-                        {product.reviewCount > 0 ? (
-                          <>
-                            <Star className="w-3 h-3 text-honey-500 fill-honey-500" />
-                            <span className="font-bold text-bark-800">{product.rating}</span>
-                            <span>({product.reviewCount})</span>
-                          </>
-                        ) : (
-                          <span className="text-bark-400">Chưa có đánh giá</span>
-                        )}
-                      </div>
+                      {product.reviewCount > 0 && (
+                        <div className="flex items-center gap-1 text-[11px] text-bark-500">
+                          <Star className="w-3 h-3 text-honey-500 fill-honey-500" />
+                          <span className="font-bold text-bark-800">{product.rating}</span>
+                          <span>({product.reviewCount})</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Giá & Nút thêm giỏ */}
@@ -326,6 +347,14 @@ export default function ShopPage() {
                         <div className="text-sm sm:text-base font-extrabold text-pine-950 font-display">
                           {formatVND(product.price)}
                         </div>
+                        {product.originalPrice && product.originalPrice > product.price && (
+                          <div className="flex items-center gap-1.5 text-[11px]">
+                            <span className="text-bark-400 line-through">{formatVND(product.originalPrice)}</span>
+                            <span className="font-bold text-red-600">
+                              -{Math.round((1 - product.price / product.originalPrice) * 100)}%
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <button
