@@ -31,6 +31,14 @@ const LOW_STOCK = 5;
 const normalize = (text: string) =>
   text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
+// Mỗi từ khách gõ phải khớp đầu một từ trong sản phẩm; từ ngắn (≤ 2 ký tự như "ga", "bo") phải khớp nguyên từ
+// để "ga" ra "ức gà" chứ không ra "gạo", "gặm"
+function matchesSearch(text: string, query: string): boolean {
+  const words = normalize(text).split(/[^a-z0-9]+/).filter(Boolean);
+  const tokens = normalize(query).split(/[^a-z0-9]+/).filter(Boolean);
+  return tokens.every((t) => words.some((w) => (t.length <= 2 ? w === t : w.startsWith(t))));
+}
+
 export default function ShopPage() {
   return (
     <Suspense>
@@ -85,7 +93,7 @@ function ShopContent() {
       const matchCat = selectedCategory === "all" || p.category === selectedCategory;
       const matchSpecies =
         selectedSpecies === "all" || p.species === selectedSpecies || p.species === "both";
-      const matchQuery = !query.trim() || normalize(`${p.name} ${p.description}`).includes(normalize(query.trim()));
+      const matchQuery = matchesSearch(`${p.name} ${p.description} ${p.ingredients.join(" ")}`, query);
       return matchCat && matchSpecies && matchQuery;
     })
     .sort((a, b) => (sortBy === "price_asc" ? a.price - b.price : sortBy === "price_desc" ? b.price - a.price : 0));

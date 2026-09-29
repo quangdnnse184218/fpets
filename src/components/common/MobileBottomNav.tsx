@@ -18,7 +18,7 @@ export default function MobileBottomNav() {
 
   const navItems = [
     { href: "/", label: "Trang chủ", icon: Home },
-    { href: "/boxes", label: "Mystery Box", icon: Gift },
+    { href: "/boxes", label: "Hộp quà", icon: Gift },
     { href: "/shop", label: "Cửa hàng", icon: ShoppingBag },
     { href: "/cart", label: "Giỏ hàng", icon: ShoppingCart, badge: totalCartItems },
     { href: "/my-account/pets", label: "Tài khoản", icon: User },
