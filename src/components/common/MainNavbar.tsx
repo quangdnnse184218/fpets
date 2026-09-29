@@ -16,11 +16,10 @@ import {
   RefreshCw,
   Bell,
   User,
-  LogIn,
-  UserPlus,
 } from "lucide-react";
 import BrandLogo from "@/components/common/BrandLogo";
 import NotificationBell from "@/components/common/NotificationBell";
+import { buttonClass } from "@/components/ui/Button";
 
 export default function MainNavbar() {
   const pathname = usePathname();
@@ -54,7 +53,7 @@ export default function MainNavbar() {
   // "Mystery Box" là 1 mục có 2 mục con: loại hộp và bảng giá gói định kỳ
   const boxLinks = [
     { href: "/boxes", label: "Các loại hộp", desc: "Hộp Tiêu chuẩn và Premium cho chó, mèo" },
-    { href: "/subscription", label: "Bảng giá gói", desc: "Gói 3, 6 hộp giảm đến 15%, miễn phí ship" },
+    { href: "/subscription", label: "Bảng giá gói", desc: "Gói 1, 3, 6 hộp, giảm đến 15%" },
   ];
   const navLinks = [
     { href: "/shop", label: "Shop bán lẻ" },
@@ -90,11 +89,11 @@ export default function MainNavbar() {
   return (
     <header className="sticky top-0 z-40 bg-surface-card border-b border-surface-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        {/* Logo Thương hiệu */}
+        {/* Logo + menu chính nằm cùng cụm bên trái, hành động của khách ở bên phải */}
+        <div className="flex items-center gap-6 lg:gap-10 min-w-0">
         <BrandLogo href="/" size="md" />
 
-        {/* Menu Desktop */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav aria-label="Menu chính" className="hidden md:flex items-center gap-1">
           <div className="relative" onMouseLeave={() => setBoxMenuOpen(false)}>
             <button
               type="button"
@@ -138,17 +137,10 @@ export default function MainNavbar() {
             );
           })}
         </nav>
+        </div>
 
         {/* Cụm hành động bên phải */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* CTA Pet Quiz trên desktop */}
-          <Link
-            href="/quiz"
-            className="hidden lg:inline-flex items-center px-3.5 py-2 text-xs font-bold rounded-box bg-honey-500 hover:bg-honey-600 text-pine-950 shadow-sm transition-colors"
-          >
-            <span>Pet Quiz</span>
-          </Link>
-
+        <div className="flex items-center gap-1 sm:gap-2">
           {isLoggedIn && user.id && <NotificationBell userId={user.id} />}
 
           {/* Giỏ hàng */}
@@ -173,11 +165,11 @@ export default function MainNavbar() {
               <button
                 type="button"
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-surface-border hover:bg-surface-muted transition-colors ${
+                className={`flex items-center gap-2 px-2 py-1.5 rounded-box border border-surface-border hover:bg-surface-muted transition-colors ${
                   userDropdownOpen ? "bg-pine-50 border-pine-300" : ""
                 }`}
               >
-                <div className="w-7 h-7 rounded-lg bg-pine-900 text-white text-xs font-bold flex items-center justify-center">
+                <div className="w-7 h-7 rounded-full bg-pine-900 text-white text-xs font-bold flex items-center justify-center">
                   {user.name ? user.name.charAt(0).toUpperCase() : "U"}
                 </div>
                 <div className="text-left hidden xl:block max-w-[120px]">
@@ -189,7 +181,7 @@ export default function MainNavbar() {
 
               {/* Menu Dropdown User */}
               {userDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-surface-card rounded-2xl border border-surface-border shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute right-0 mt-2 w-64 bg-surface-card rounded-container border border-surface-border shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                   <div className="px-4 py-3 border-b border-surface-border">
                     <p className="text-xs text-bark-500">Đang đăng nhập với tư cách</p>
                     <p className="text-sm font-bold text-bark-950 truncate mt-0.5">{user.name}</p>
@@ -240,20 +232,15 @@ export default function MainNavbar() {
             </div>
           ) : (
             /* CHƯA ĐĂNG NHẬP: Nút Đăng nhập & Đăng ký */
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2 pl-2 ml-1 border-l border-surface-border">
               <Link
                 href="/login"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-bark-700 hover:text-pine-950 hover:bg-surface-muted rounded-xl transition-colors"
+                className="inline-flex items-center min-h-10 px-3 text-sm font-medium text-bark-700 hover:text-pine-950 rounded-box hover:bg-surface-muted transition-colors"
               >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Đăng nhập</span>
+                Đăng nhập
               </Link>
-              <Link
-                href="/register"
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-pine-900 hover:bg-pine-800 text-white rounded-xl shadow-sm transition-colors"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Đăng ký</span>
+              <Link href="/register" className={buttonClass("primary", "md", "!min-h-10")}>
+                Đăng ký
               </Link>
             </div>
           )}
@@ -261,8 +248,9 @@ export default function MainNavbar() {
           {/* Toggle Menu Mobile */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-box text-bark-700 hover:bg-surface-muted"
-            aria-label="Menu"
+            className="md:hidden min-w-11 min-h-11 flex items-center justify-center rounded-box text-bark-700 hover:bg-surface-muted"
+            aria-label={mobileMenuOpen ? "Đóng menu" : "Mở menu"}
+            aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -349,16 +337,7 @@ export default function MainNavbar() {
               <span>{link.label}</span>
             </Link>
           ))}
-          
-          <div className="pt-2 border-t border-surface-border flex gap-2">
-            <Link
-              href="/quiz"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex-1 text-center py-2.5 text-xs font-bold rounded-xl bg-honey-500 text-pine-950"
-            >
-              Làm Pet Quiz
-            </Link>
-          </div>
+
         </div>
       )}
     </header>
