@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { fetchProducts } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
@@ -31,6 +32,15 @@ const normalize = (text: string) =>
   text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
 export default function ShopPage() {
+  return (
+    <Suspense>
+      <ShopContent />
+    </Suspense>
+  );
+}
+
+function ShopContent() {
+  const searchParams = useSearchParams();
   const { addToCart } = useApp();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +50,15 @@ export default function ShopPage() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"newest" | "price_asc" | "price_desc">("newest");
   const [query, setQuery] = useState("");
+
+  // Lọc theo link từ menu: /shop?category=food&species=cat&q=pate (cập nhật cả khi đang ở sẵn trang Shop)
+  useEffect(() => {
+    const category = searchParams.get("category");
+    const species = searchParams.get("species");
+    setSelectedCategory(category && ["food", "toy", "accessory"].includes(category) ? category : "all");
+    setSelectedSpecies(species === "dog" || species === "cat" ? species : "all");
+    setQuery(searchParams.get("q") || "");
+  }, [searchParams]);
 
   useEffect(() => {
     fetchProducts().then((data) => {
@@ -96,7 +115,7 @@ export default function ShopPage() {
       {/* Tiêu đề trang & Tóm tắt */}
       <div className="space-y-1 sm:space-y-2">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
-          Shop bán lẻ
+          Cửa hàng FPETS
         </h1>
         <p className="text-xs sm:text-sm text-bark-600 max-w-2xl leading-relaxed">
           Đồ ăn, đồ chơi và phụ kiện cho chó mèo. Mua lẻ không cần tài khoản; nhiều món cũng có mặt trong Mystery Box.
@@ -154,7 +173,7 @@ export default function ShopPage() {
       {/* BỐ CỤC CHÍNH 2 CỘT: Cột trái Sidebar cố định (sticky) + Cột phải lưới sản phẩm */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* ==================== CỘT TRÁI: SIDEBAR BỘ LỌC CỐ ĐỊNH ==================== */}
-        <aside className="hidden lg:block lg:col-span-3 sticky top-24 space-y-6 self-start">
+        <aside className="hidden lg:block lg:col-span-3 sticky top-28 space-y-6 self-start">
           <div className="p-5 rounded-container bg-surface-card border border-surface-border space-y-6 shadow-xs">
             {/* Header Sidebar & Nút Reset */}
             <div className="flex items-center justify-between pb-3 border-b border-surface-border">

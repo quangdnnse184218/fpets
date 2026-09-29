@@ -466,7 +466,7 @@ export default function HomePage() {
                 href="/shop"
                 className="inline-flex items-center justify-center px-6 py-3.5 rounded-box bg-pine-800 hover:bg-pine-750 text-pine-100 font-bold text-sm transition-colors border border-pine-700/60"
               >
-                <span>Xem Shop bán lẻ</span>
+                <span>Xem cửa hàng</span>
               </Link>
             </div>
           </div>

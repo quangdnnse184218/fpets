@@ -76,7 +76,7 @@ export default function MyAccountLayout({ children }: { children: React.ReactNod
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <div className="lg:grid lg:grid-cols-[240px_1fr] lg:gap-8 lg:items-start">
         {/* Desktop: thanh bên cố định; mobile: thẻ gọn + tab cuộn ngang dính trên cùng */}
-        <aside className="lg:sticky lg:top-24 space-y-4">
+        <aside className="lg:sticky lg:top-28 space-y-4">
           <div className="p-4 rounded-container bg-surface-card border border-surface-border space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-full bg-pine-900 text-white flex items-center justify-center font-extrabold shrink-0">
@@ -99,7 +99,7 @@ export default function MyAccountLayout({ children }: { children: React.ReactNod
 
           <nav
             aria-label="Tài khoản"
-            className="sticky top-16 z-30 -mx-4 px-4 py-2 bg-surface/95 backdrop-blur-sm flex gap-2 overflow-x-auto no-scrollbar lg:static lg:mx-0 lg:p-2 lg:flex-col lg:gap-1 lg:rounded-container lg:bg-surface-card lg:border lg:border-surface-border"
+            className="sticky top-24 z-30 -mx-4 px-4 py-2 bg-surface/95 backdrop-blur-sm flex gap-2 overflow-x-auto no-scrollbar lg:static lg:mx-0 lg:p-2 lg:flex-col lg:gap-1 lg:rounded-container lg:bg-surface-card lg:border lg:border-surface-border"
           >
             {ACCOUNT_TABS.map((tab) => {
               const Icon = tab.icon;

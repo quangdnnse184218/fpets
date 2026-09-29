@@ -45,7 +45,7 @@ export default function Footer() {
             <nav className="flex flex-col space-y-1.5 text-xs text-pine-200">
               <Link href="/boxes" className="hover:text-white transition-colors">Mystery Box</Link>
               <Link href="/subscription" className="hover:text-white transition-colors">Gói định kỳ</Link>
-              <Link href="/shop" className="hover:text-white transition-colors">Shop bán lẻ</Link>
+              <Link href="/shop" className="hover:text-white transition-colors">Cửa hàng</Link>
               {/* Đã đăng nhập thì xem đơn trong tài khoản, không cần tra cứu bằng mã */}
               {isLoggedIn ? (
                 <Link href="/my-account/orders" className="hover:text-white transition-colors">Đơn hàng của tôi</Link>

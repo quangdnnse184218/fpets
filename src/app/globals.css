@@ -78,3 +78,8 @@ body {
 .animate-pulse-slow {
   animation: pulseSlow 8s ease-in-out infinite;
 }
+
+/* Header dính cao ~96px: chừa chỗ khi nhảy tới #anchor (vd. /faq#doi-tra) */
+html {
+  scroll-padding-top: 7rem;
+}

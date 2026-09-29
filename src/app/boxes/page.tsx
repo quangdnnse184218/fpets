@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { fetchBoxTypes } from "@/lib/catalog";
@@ -23,6 +24,15 @@ import {
 } from "lucide-react";
 
 export default function BoxesPage() {
+  return (
+    <Suspense>
+      <BoxesContent />
+    </Suspense>
+  );
+}
+
+function BoxesContent() {
+  const searchParams = useSearchParams();
   const [speciesFilter, setSpeciesFilter] = useState<'all' | 'dog' | 'cat'>('all');
   const [tierFilter, setTierFilter] = useState<'all' | 'standard' | 'premium'>('all');
   const [boxes, setBoxes] = useState<BoxType[]>([]);
@@ -30,16 +40,15 @@ export default function BoxesPage() {
   // Đến từ trang Gói định kỳ (?plan=3): giữ gói đã chọn khi sang trang chi tiết hộp
   const [planParam, setPlanParam] = useState("");
 
-  // Lọc sẵn theo link: /boxes?tier=premium (trang chủ), /boxes?species=cat (hồ sơ thú cưng)
+  // Lọc sẵn theo link: /boxes?tier=premium, /boxes?species=cat (menu, trang chủ, hồ sơ thú cưng)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tier = params.get("tier");
-    const species = params.get("species");
-    if (tier === "premium" || tier === "standard") setTierFilter(tier);
-    if (species === "dog" || species === "cat") setSpeciesFilter(species);
-    const plan = params.get("plan");
-    if (plan && /^[0-9]+$/.test(plan)) setPlanParam(plan);
-  }, []);
+    const tier = searchParams.get("tier");
+    const species = searchParams.get("species");
+    setTierFilter(tier === "premium" || tier === "standard" ? tier : "all");
+    setSpeciesFilter(species === "dog" || species === "cat" ? species : "all");
+    const plan = searchParams.get("plan");
+    setPlanParam(plan && /^[0-9]+$/.test(plan) ? plan : "");
+  }, [searchParams]);
 
   useEffect(() => {
     fetchBoxTypes().then((data) => {

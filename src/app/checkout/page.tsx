@@ -355,7 +355,7 @@ function CheckoutFormContent() {
           </div>
         </div>
 
-        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-20">
+        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-28">
           <div className="p-5 sm:p-6 rounded-container bg-surface-muted/50 border border-surface-border/80 space-y-4">
             <h2 className="text-sm font-bold text-pine-950 pb-3 border-b border-surface-border flex items-center justify-between">
               <span>Đơn hàng của bạn</span>
