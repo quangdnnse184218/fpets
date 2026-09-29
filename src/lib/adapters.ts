@@ -105,6 +105,6 @@ export function petRowToPet(row: Tables<"pets">): Pet {
     preferences: row.preferences || [],
     notes: row.notes || undefined,
     avatarColor: row.species === "dog" ? "#E1EDE8" : "#FEF7E6",
-    receivedBoxesCount: 0,
+    avatarPath: row.avatar_url || undefined,
   };
 }

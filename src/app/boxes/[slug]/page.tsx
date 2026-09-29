@@ -5,11 +5,15 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { fetchBoxTypeBySlug, fetchPlanOptions } from "@/lib/catalog";
-import { formatVND } from "@/lib/formatters";
+import { formatVND, formatDate } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
-import { CheckCircle2, ShieldCheck, PlusCircle, PawPrint, Truck, ChevronDown, Gift } from "lucide-react";
+import { Check, CheckCircle2, ShieldCheck, PlusCircle, PawPrint, Truck, ChevronDown, Gift } from "lucide-react";
 import { EXCHANGE_POLICY, QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
+import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/Toast";
+import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, nextDeliveryWindow } from "@/lib/deliverySchedule";
 import { BoxType, SubscriptionPlan } from "@/types/models";
+import { DELIVERY_DAYS, SHIPPING_POLICY } from "@/lib/shipping";
 
 const BOX_FAQ = [
   {
@@ -30,7 +34,8 @@ export default function BoxDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params?.slug as string;
-  const { pets, addToCart, isLoggedIn } = useApp();
+  const { pets, addToCart, isLoggedIn, user } = useApp();
+  const { show } = useToast();
 
   const [box, setBox] = useState<BoxType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,18 +46,40 @@ export default function BoxDetailPage() {
   const [purchaseMode, setPurchaseMode] = useState<'once' | 'subscription'>('once');
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
-  const [addedSuccess, setAddedSuccess] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [schedule, setSchedule] = useState<DeliverySchedule>("dau_thang");
+  // Gói còn hiệu lực theo bé: cảnh báo khi mua trùng
+  const [activeSubs, setActiveSubs] = useState<Record<string, { planName: string; remaining: number }>>({});
 
   useEffect(() => {
     setLoading(true);
     Promise.all([fetchBoxTypeBySlug(slug), fetchPlanOptions()]).then(([data, planData]) => {
       setBox(data);
       setPlans(planData);
-      const defaultPlan = planData.find((p) => p.cycles === 3) || planData[0];
+      // Mua 1 hộp đã có lựa chọn riêng, nên phần gói định kỳ chỉ còn gói 3 và 6 hộp
+      const defaultPlan = planData.find((p) => p.cycles === 3) || planData.find((p) => p.cycles > 1);
       if (defaultPlan) setSelectedPlanId(defaultPlan.id);
       setLoading(false);
     });
   }, [slug]);
+
+  useEffect(() => {
+    if (!user.id) return;
+    createClient()
+      .from("subscriptions")
+      .select("pet_id, remaining_cycles, subscription_plans(name)")
+      .in("status", ["cho_thanh_toan", "dang_hoat_dong", "tam_dung", "qua_han"])
+      .then(({ data }) => {
+        const map: Record<string, { planName: string; remaining: number }> = {};
+        (data as unknown as { pet_id: string; remaining_cycles: number; subscription_plans: { name: string } | null }[] | null)?.forEach((s) => {
+          map[s.pet_id] = { planName: s.subscription_plans?.name || "gói định kỳ", remaining: s.remaining_cycles };
+        });
+        setActiveSubs(map);
+      });
+  }, [user.id]);
+
+  const subscriptionPlans = plans.filter((p) => p.cycles > 1);
+  const firstDelivery = nextDeliveryWindow(schedule);
 
   // Chỉ bé cùng loài (và với chó: cùng size) mới nhận được loại box này — server cũng chặn lại
   const eligiblePets = box
@@ -73,14 +100,16 @@ export default function BoxDetailPage() {
   const planTotalPrice = selectedPlan ? unitDiscountedPrice * selectedPlan.cycles : 0;
   const maxDiscount = plans.reduce((m, p) => Math.max(m, p.discountPercent), 0);
 
-  const handleAddToCart = () => {
+  // Thêm vào giỏ rồi ở lại trang, khách tự chọn xem giỏ hay mua tiếp
+  const handleAddToCart = async () => {
     if (!box) return;
     if (!isLoggedIn) {
       router.push(`/login?redirect=/boxes/${slug}`);
       return;
     }
     if (!selectedPet) return;
-    addToCart({
+    setAdding(true);
+    await addToCart({
       type: "box",
       boxTypeId: box.id,
       boxType: box,
@@ -89,10 +118,14 @@ export default function BoxDetailPage() {
       quantity: 1,
       unitPrice: box.basePrice,
     });
-    setAddedSuccess(true);
-    setTimeout(() => {
-      router.push("/cart");
-    }, 600);
+    setAdding(false);
+    show(`Đã thêm ${box.name} cho bé ${selectedPet.name} vào giỏ`, {
+      actions: [
+        { label: "Xem giỏ", onClick: () => router.push("/cart") },
+        { label: "Mua tiếp", onClick: () => router.push("/shop") },
+      ],
+      duration: 7000,
+    });
   };
 
   const handleSubscribeCheckout = () => {
@@ -102,7 +135,7 @@ export default function BoxDetailPage() {
       return;
     }
     // Với subscription, dẫn thẳng vào checkout gói với các tham số
-    router.push(`/checkout?type=subscription&box=${box.id}&pet=${selectedPet?.id}&plan=${selectedPlan.id}`);
+    router.push(`/checkout?type=subscription&box=${box.id}&pet=${selectedPet?.id}&plan=${selectedPlan.id}&schedule=${schedule}`);
   };
 
   if (loading) {
@@ -193,7 +226,7 @@ export default function BoxDetailPage() {
               </label>
               <Link
                 href="/quiz"
-                className="text-[11px] font-bold text-honey-700 hover:text-honey-800 flex items-center gap-1"
+                className="min-h-9 text-[11px] font-bold text-pine-900 hover:underline flex items-center gap-1"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
                 <span>Thêm bé qua {QUIZ_NAME}</span>
@@ -209,13 +242,19 @@ export default function BoxDetailPage() {
                       key={pet.id}
                       type="button"
                       onClick={() => setSelectedPetId(pet.id)}
-                      className={`p-3 rounded-box text-left border transition-all ${
+                      aria-pressed={isSelected}
+                      className={`relative p-3 rounded-box text-left border transition-all ${
                         isSelected
                           ? "border-pine-900 bg-pine-50/60 ring-2 ring-pine-900/10"
                           : "border-surface-border hover:bg-surface-muted"
                       }`}
                     >
-                      <div className="flex items-center gap-2">
+                      {isSelected && (
+                        <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-pine-900 text-white flex items-center justify-center">
+                          <Check className="w-3 h-3" />
+                        </span>
+                      )}
+                      <div className="flex items-center gap-2 pr-6">
                         <PawPrint className="w-4 h-4 text-pine-900 shrink-0" />
                         <span className="text-sm font-bold text-pine-950">{pet.name}</span>
                       </div>
@@ -223,7 +262,7 @@ export default function BoxDetailPage() {
                         {pet.breed} · {pet.weight}kg
                       </div>
                       {pet.allergies.length > 0 && (
-                        <div className="text-[10px] text-honey-700 mt-1 truncate font-medium">
+                        <div className="text-[10px] text-red-700 mt-1 truncate font-medium">
                           Dị ứng: {pet.allergies.join(", ")}
                         </div>
                       )}
@@ -242,6 +281,13 @@ export default function BoxDetailPage() {
             )}
           </div>
 
+          {selectedPet && activeSubs[selectedPet.id] && (
+            <div className="p-3 rounded-box bg-amber-50 border border-amber-200 text-xs text-amber-900">
+              Bé {selectedPet.name} đang có {activeSubs[selectedPet.id].planName} (còn {activeSubs[selectedPet.id].remaining} hộp).
+              Bạn vẫn có thể mua thêm 1 hộp lẻ, hoặc <Link href="/my-account/subscriptions" className="font-bold underline">xem gói hiện tại</Link>.
+            </div>
+          )}
+
           {/* 2. BƯỚC 2: Chọn Hình thức Mua */}
           <div className="space-y-3">
             <label className="text-xs font-bold text-pine-950 block">
@@ -252,13 +298,14 @@ export default function BoxDetailPage() {
               <button
                 type="button"
                 onClick={() => setPurchaseMode('once')}
+                aria-pressed={purchaseMode === 'once'}
                 className={`p-3.5 rounded-box border text-left transition-all ${
                   purchaseMode === 'once'
                     ? 'border-pine-900 bg-pine-50/60 ring-2 ring-pine-900/10'
                     : 'border-surface-border hover:bg-surface-muted'
                 }`}
               >
-                <div className="text-xs font-bold text-pine-950">Mua thử 1 hộp</div>
+                <div className="text-xs font-bold text-pine-950">{purchaseMode === 'once' ? "✓ " : ""}Mua 1 hộp</div>
                 <div className="text-base font-extrabold text-pine-950 font-display mt-0.5">
                   {formatVND(box.basePrice)}
                 </div>
@@ -268,20 +315,21 @@ export default function BoxDetailPage() {
               <button
                 type="button"
                 onClick={() => setPurchaseMode('subscription')}
+                aria-pressed={purchaseMode === 'subscription'}
                 className={`p-3.5 rounded-box border text-left transition-all relative ${
                   purchaseMode === 'subscription'
                     ? 'border-pine-900 bg-pine-50/60 ring-2 ring-pine-900/10'
                     : 'border-surface-border hover:bg-surface-muted'
                 }`}
               >
-                <span className="absolute -top-2 right-2 px-2 py-0.5 rounded-tag bg-honey-600 text-white text-[10px] font-bold">
+                <span className="absolute -top-2 right-2 px-2 py-0.5 rounded-tag bg-grass-100 text-grass-800 border border-grass-200 text-[10px] font-bold">
                   Tiết kiệm đến {maxDiscount}%
                 </span>
-                <div className="text-xs font-bold text-pine-950">Gói định kỳ</div>
+                <div className="text-xs font-bold text-pine-950">{purchaseMode === 'subscription' ? "✓ " : ""}Đăng ký 3 hoặc 6 tháng</div>
                 <div className="text-base font-extrabold text-pine-950 font-display mt-0.5">
                   Từ {formatVND(Math.round(box.basePrice * (1 - maxDiscount / 100)))}/hộp
                 </div>
-                <div className="text-[11px] text-grass-700 font-medium mt-1">Freeship từ gói 3 hộp</div>
+                <div className="text-[11px] text-grass-700 font-medium mt-1">Miễn phí ship với gói 3, 6 hộp</div>
               </button>
             </div>
           </div>
@@ -289,12 +337,12 @@ export default function BoxDetailPage() {
           {/* Chi tiết khi chọn Gói định kỳ */}
           {purchaseMode === 'subscription' && (
             <div className="p-4 rounded-box bg-surface-muted/60 border border-surface-border space-y-3">
-              <label className="text-xs font-bold text-pine-950 block">
-                Chọn gói cam kết nhận hộp:
-              </label>
+              <span className="text-xs font-bold text-pine-950 block">
+                Chọn gói:
+              </span>
 
-              <div className="grid grid-cols-3 gap-2">
-                {plans.map((plan) => {
+              <div className="grid grid-cols-2 gap-2">
+                {subscriptionPlans.map((plan) => {
                   const isPlanSelected = plan.id === selectedPlanId;
                   const discountedPerBox = Math.round(box.basePrice * (1 - plan.discountPercent / 100));
 
@@ -303,13 +351,14 @@ export default function BoxDetailPage() {
                       key={plan.id}
                       type="button"
                       onClick={() => setSelectedPlanId(plan.id)}
-                      className={`p-2.5 rounded-box border text-center transition-all ${
+                      aria-pressed={isPlanSelected}
+                      className={`min-h-11 p-2.5 rounded-box border text-center transition-all ${
                         isPlanSelected
                           ? 'border-pine-900 bg-pine-50 font-bold text-pine-950 ring-1 ring-pine-900/20'
                           : 'border-surface-border bg-surface-card hover:bg-surface-muted text-bark-800'
                       }`}
                     >
-                      <div className="text-xs font-bold">{plan.name}</div>
+                      <div className="text-xs font-bold">{isPlanSelected ? "✓ " : ""}{plan.name}</div>
                       <div className="text-[11px] text-pine-900 mt-0.5 font-bold">
                         {formatVND(discountedPerBox)}
                       </div>
@@ -324,6 +373,26 @@ export default function BoxDetailPage() {
               <div className="text-[11px] text-bark-500 pt-1 leading-relaxed">
                 * {selectedPlan?.description}
               </div>
+
+              <div className="pt-3 border-t border-surface-border space-y-2">
+                <span className="text-xs font-bold text-pine-950 block">3. Chọn đợt giao hằng tháng:</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.keys(SCHEDULE_LABEL) as DeliverySchedule[]).map((sc) => (
+                    <button
+                      key={sc}
+                      type="button"
+                      onClick={() => setSchedule(sc)}
+                      aria-pressed={schedule === sc}
+                      className={`min-h-11 px-3 rounded-box border text-xs font-bold ${schedule === sc ? "border-pine-900 bg-pine-50 text-pine-950" : "border-surface-border bg-surface-card text-bark-700"}`}
+                    >
+                      {schedule === sc ? "✓ " : ""}{SCHEDULE_LABEL[sc]}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-bark-600">
+                  Hộp đầu tiên giao {deliveryWindowLabel(firstDelivery.start, schedule)}, chốt thông tin bé ngày {formatDate(firstDelivery.cutoff)}.
+                </p>
+              </div>
             </div>
           )}
 
@@ -333,14 +402,12 @@ export default function BoxDetailPage() {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={addedSuccess || (isLoggedIn && !selectedPet)}
-                className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                disabled={adding || (isLoggedIn && !selectedPet)}
+                aria-busy={adding || undefined}
+                className="w-full min-h-12 py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                {addedSuccess ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-grass-300" />
-                    <span>Đã thêm vào giỏ hàng! Đang chuyển hướng...</span>
-                  </>
+                {adding ? (
+                  <span>Đang thêm vào giỏ…</span>
                 ) : !isLoggedIn ? (
                   <span>Đăng nhập để đặt hộp ({formatVND(box.basePrice)})</span>
                 ) : (
@@ -352,7 +419,7 @@ export default function BoxDetailPage() {
                 type="button"
                 onClick={handleSubscribeCheckout}
                 disabled={isLoggedIn && !selectedPet}
-                className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="w-full min-h-12 py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <span>
                   {!isLoggedIn
@@ -396,9 +463,9 @@ export default function BoxDetailPage() {
             <span>Giao hàng</span>
           </h2>
           <ul className="space-y-2 text-sm text-bark-700">
-            <li>Mua 1 hộp: giao 1–2 ngày nội thành TP.HCM, 3–5 ngày tỉnh khác.</li>
+            <li>Mua 1 hộp: giao {DELIVERY_DAYS}.</li>
             <li>Gói định kỳ: giao mỗi tháng 1 hộp, đợt đầu tháng (ngày 1–5) hoặc giữa tháng (ngày 15–20).</li>
-            <li>Phí ship 25.000₫ nội thành TP.HCM, 35.000₫ tỉnh khác; freeship đơn từ 500.000₫ và gói 3, 6 hộp.</li>
+            <li>{SHIPPING_POLICY}</li>
           </ul>
           <Link href="/reviews" className="inline-block text-xs font-bold text-pine-900 hover:underline">Xem đánh giá của khách đã nhận hộp</Link>
         </section>

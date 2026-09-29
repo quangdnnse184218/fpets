@@ -28,10 +28,13 @@ export default function BoxesPage() {
   const [boxes, setBoxes] = useState<BoxType[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Link "Xem Box Premium" ở trang chủ dẫn tới /boxes?tier=premium
+  // Lọc sẵn theo link: /boxes?tier=premium (trang chủ), /boxes?species=cat (hồ sơ thú cưng)
   useEffect(() => {
-    const tier = new URLSearchParams(window.location.search).get("tier");
+    const params = new URLSearchParams(window.location.search);
+    const tier = params.get("tier");
+    const species = params.get("species");
     if (tier === "premium" || tier === "standard") setTierFilter(tier);
+    if (species === "dog" || species === "cat") setSpeciesFilter(species);
   }, []);
 
   useEffect(() => {

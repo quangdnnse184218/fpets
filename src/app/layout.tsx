@@ -5,6 +5,7 @@ import { AppProvider } from "@/context/AppContext";
 import MainNavbar from "@/components/common/MainNavbar";
 import MobileBottomNav from "@/components/common/MobileBottomNav";
 import Footer from "@/components/common/Footer";
+import { ToastProvider } from "@/components/ui/Toast";
 
 const bricolageGrotesque = Bricolage_Grotesque({
   subsets: ["latin", "vietnamese"],
@@ -36,6 +37,7 @@ export default function RootLayout({
     <html lang="vi" className={`${beVietnamPro.variable} ${bricolageGrotesque.variable}`}>
       <body className="min-h-screen flex flex-col bg-surface text-bark-900 antialiased selection:bg-honey-200">
         <AppProvider>
+          <ToastProvider>
           {/* Header điều hướng chính */}
           <MainNavbar />
 
@@ -51,6 +53,7 @@ export default function RootLayout({
 
           {/* Thanh điều hướng cố định dưới đáy màn hình trên Mobile (375px) */}
           <MobileBottomNav />
+          </ToastProvider>
         </AppProvider>
       </body>
     </html>

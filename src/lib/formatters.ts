@@ -29,10 +29,10 @@ export function formatDate(value: string | Date | null | undefined): string {
 }
 
 /**
- * Ngày giờ dạng dd/MM/yyyy HH:mm
+ * Ngày giờ dạng HH:mm · dd/MM/yyyy (không hiện giây)
  */
 export function formatDateTime(value: string | Date | null | undefined): string {
   if (!value) return "";
   const d = new Date(value);
-  return isNaN(d.getTime()) ? "" : `${DATE_FORMAT.format(d)} ${TIME_FORMAT.format(d)}`;
+  return isNaN(d.getTime()) ? "" : `${TIME_FORMAT.format(d)} · ${DATE_FORMAT.format(d)}`;
 }

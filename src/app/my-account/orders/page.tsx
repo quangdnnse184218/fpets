@@ -1,411 +1,161 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { ChevronRight, RotateCcw } from "lucide-react";
 import { formatVND, formatDateTime } from "@/lib/formatters";
-import { Truck, CheckCircle2, Star, PackageOpen, UtensilsCrossed, Heart, ThumbsDown, Minus } from "lucide-react";
+import { ORDER_STATUS_LABEL, ORDER_STATUS_STYLE, ORDER_TYPE_LABEL, OrderStatus, cleanItemName, paymentText } from "@/lib/orderDisplay";
+import { fetchMyOrders, MyOrder, orderLines } from "@/lib/myOrders";
+import { fetchProducts } from "@/lib/catalog";
+import { useApp } from "@/context/AppContext";
+import { useToast } from "@/components/ui/Toast";
+import { Button, ButtonLink } from "@/components/ui/Button";
 
-type OrderStatus = "cho_thanh_toan" | "da_xac_nhan" | "dang_chuan_bi" | "dang_giao" | "da_giao" | "da_huy" | "doi_tra";
-
-const STATUS_LABEL: Record<OrderStatus, string> = {
-  cho_thanh_toan: "Chờ thanh toán",
-  da_xac_nhan: "Đã xác nhận",
-  dang_chuan_bi: "Đang chuẩn bị",
-  dang_giao: "Đang giao",
-  da_giao: "Đã giao",
-  da_huy: "Đã hủy",
-  doi_tra: "Đổi / Trả",
-};
-
-interface OrderItemRow {
-  id: string;
-  product_name_snapshot: string;
-  quantity: number;
-  total_price: number;
-  box_type_id: string | null;
-  pets: { name: string } | null;
-}
-
-interface OrderRow {
-  id: string;
-  order_code: string;
-  status: OrderStatus;
-  payment_method: string;
-  payment_status: string;
-  total_amount: number;
-  cycle_index: number | null;
-  tracking_code: string | null;
-  created_at: string;
-  order_items: OrderItemRow[];
-}
-
-interface CurationFeedbackItem {
-  product_id: string;
-  name: string;
-  rating: "like" | "neutral" | "dislike" | null;
-}
+const FILTERS: { id: string; label: string; match: (s: OrderStatus) => boolean }[] = [
+  { id: "all", label: "Tất cả", match: () => true },
+  { id: "cho_thanh_toan", label: "Chờ thanh toán", match: (s) => s === "cho_thanh_toan" },
+  { id: "dang_xu_ly", label: "Đang xử lý", match: (s) => s === "da_xac_nhan" || s === "dang_chuan_bi" },
+  { id: "dang_giao", label: "Đang giao", match: (s) => s === "dang_giao" },
+  { id: "da_giao", label: "Đã giao", match: (s) => s === "da_giao" },
+  { id: "doi_tra", label: "Đổi / Trả", match: (s) => s === "doi_tra" },
+  { id: "da_huy", label: "Đã hủy", match: (s) => s === "da_huy" },
+];
 
 export default function MyOrdersPage() {
-  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const router = useRouter();
+  const { addToCart } = useApp();
+  const { show } = useToast();
+  const [orders, setOrders] = useState<MyOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<string>("all");
-
-  const [reviewOrder, setReviewOrder] = useState<OrderRow | null>(null);
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState("");
-  const [reviewSubmitted, setReviewSubmitted] = useState(false);
-  const [curationItems, setCurationItems] = useState<CurationFeedbackItem[]>([]);
-  const [petIdForFeedback, setPetIdForFeedback] = useState<string | null>(null);
-
-  const [returnOrder, setReturnOrder] = useState<OrderRow | null>(null);
-  const [returnReason, setReturnReason] = useState("Món chứa thành phần dị ứng đã khai báo");
-  const [returnSubmitted, setReturnSubmitted] = useState(false);
-  const [returnErr, setReturnErr] = useState("");
-
-  const loadOrders = useCallback(async () => {
-    setLoading(true);
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("orders")
-      .select("id, order_code, status, payment_method, payment_status, total_amount, cycle_index, tracking_code, created_at, order_items(id, product_name_snapshot, quantity, total_price, box_type_id, pets(name))")
-      .order("created_at", { ascending: false });
-    if (!error && data) {
-      setOrders(data as unknown as OrderRow[]);
-    }
-    setLoading(false);
-  }, []);
+  const [filter, setFilter] = useState("all");
+  const [reordering, setReordering] = useState<string | null>(null);
 
   useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
-
-  const filterTabs = [
-    { id: "all", label: "Tất cả đơn" },
-    { id: "dang_giao", label: "Đang giao" },
-    { id: "da_giao", label: "Đã giao" },
-    { id: "dang_chuan_bi", label: "Đang chuẩn bị" },
-  ];
-
-  const filteredOrders = orders.filter((o) => activeFilter === "all" || o.status === activeFilter);
-
-  const getStatusBadge = (status: OrderStatus) => {
-    const label = STATUS_LABEL[status];
-    const styles: Record<OrderStatus, string> = {
-      da_giao: "bg-grass-100 text-grass-700",
-      dang_giao: "bg-honey-100 text-honey-800",
-      dang_chuan_bi: "bg-pine-100 text-pine-800",
-      da_xac_nhan: "bg-surface-muted text-bark-700",
-      cho_thanh_toan: "bg-surface-muted text-bark-700",
-      da_huy: "bg-red-100 text-red-700",
-      doi_tra: "bg-honey-100 text-honey-800",
-    };
-    return <span className={`px-2 py-0.5 rounded-tag font-bold text-[11px] ${styles[status]}`}>{label}</span>;
-  };
-
-  const openReview = async (order: OrderRow) => {
-    setReviewOrder(order);
-    setReviewSubmitted(false);
-    setRating(5);
-    setComment("");
-    setCurationItems([]);
-    setPetIdForFeedback(null);
-
-    const boxLine = order.order_items.find((i) => i.box_type_id);
-    if (!boxLine) return;
-
-    const supabase = createClient();
-    const { data: curation } = await supabase
-      .from("box_curations")
-      .select("id, pet_id, box_curation_items(product_id, products(name))")
-      .eq("order_id", order.id)
-      .maybeSingle();
-
-    if (curation) {
-      setPetIdForFeedback(curation.pet_id);
-      const items = (curation.box_curation_items as unknown as { product_id: string; products: { name: string } | null }[]) || [];
-      setCurationItems(items.map((i) => ({ product_id: i.product_id, name: i.products?.name || "Sản phẩm", rating: null })));
-    }
-  };
-
-  const setItemRating = (productId: string, rating: "like" | "neutral" | "dislike") => {
-    setCurationItems((prev) => prev.map((i) => (i.product_id === productId ? { ...i, rating } : i)));
-  };
-
-  const submitReview = async () => {
-    if (!reviewOrder) return;
-    const supabase = createClient();
-    const { data: authData } = await supabase.auth.getUser();
-    if (!authData.user) return;
-
-    const { error } = await supabase.from("reviews").insert({
-      order_id: reviewOrder.id,
-      user_id: authData.user.id,
-      rating,
-      comment: comment || null,
+    fetchMyOrders().then((data) => {
+      setOrders(data);
+      setLoading(false);
     });
-    if (error) return;
+  }, []);
 
-    if (petIdForFeedback) {
-      const rows = curationItems
-        .filter((i): i is CurationFeedbackItem & { rating: "like" | "neutral" | "dislike" } => i.rating !== null)
-        .map((i) => ({ pet_id: petIdForFeedback as string, product_id: i.product_id, rating: i.rating }));
-      if (rows.length > 0) {
-        await supabase.from("pet_item_feedback").insert(rows);
-      }
+  const current = FILTERS.find((f) => f.id === filter) || FILTERS[0];
+  const visible = orders.filter((o) => current.match(o.status));
+
+  // Mua lại đơn hàng lẻ: thêm lại các sản phẩm còn bán, giá theo hiện tại
+  const reorder = async (order: MyOrder) => {
+    setReordering(order.id);
+    const products = await fetchProducts();
+    let added = 0;
+    for (const item of order.order_items) {
+      const product = products.find((p) => p.id === item.product_id);
+      if (!product || product.stock <= 0) continue;
+      await addToCart({ type: "retail", productId: product.id, product, quantity: Math.min(item.quantity, product.stock), unitPrice: product.price });
+      added++;
     }
-    setReviewSubmitted(true);
-  };
-
-  const submitReturn = async () => {
-    if (!returnOrder) return;
-    setReturnErr("");
-    const supabase = createClient();
-    const { error } = await supabase.rpc("request_order_return", {
-      p_order_id: returnOrder.id,
-      p_reason: returnReason,
-    });
-    if (error) {
-      setReturnErr(error.message.includes("ERR_RETURN_WINDOW_EXPIRED") ? "Đã quá 3 ngày kể từ khi nhận hàng." : "Không thể gửi yêu cầu.");
+    setReordering(null);
+    if (added === 0) {
+      show("Các sản phẩm trong đơn này hiện đã hết hàng.", { tone: "error" });
       return;
     }
-    setReturnSubmitted(true);
-    loadOrders();
+    show(`Đã thêm ${added} sản phẩm vào giỏ`, { actions: [{ label: "Xem giỏ", onClick: () => router.push("/cart") }] });
   };
 
   if (loading) {
-    return <div className="py-16 text-center text-xs text-bark-500">Đang tải đơn hàng...</div>;
+    return (
+      <div className="space-y-3" aria-busy="true">
+        {[0, 1, 2].map((i) => <div key={i} className="h-32 rounded-container bg-surface-muted animate-pulse" />)}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex gap-2 pb-1 border-b border-surface-border overflow-x-auto no-scrollbar">
-        {filterTabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveFilter(tab.id)}
-            className={`px-3 py-1.5 rounded-box text-xs font-bold transition-colors whitespace-nowrap ${
-              activeFilter === tab.id ? "bg-pine-900 text-white" : "bg-surface-card hover:bg-surface-muted text-bark-700 border border-surface-border"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+    <div className="space-y-5">
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+        {FILTERS.map((f) => {
+          const count = orders.filter((o) => f.match(o.status)).length;
+          if (f.id !== "all" && count === 0) return null;
+          const active = filter === f.id;
+          return (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setFilter(f.id)}
+              aria-pressed={active}
+              className={`min-h-10 px-3 rounded-box text-xs font-bold whitespace-nowrap border transition-colors ${
+                active ? "bg-pine-900 text-white border-pine-900" : "bg-surface-card text-bark-700 border-surface-border hover:bg-surface-muted"
+              }`}
+            >
+              {f.label} <span className={active ? "text-pine-200" : "text-bark-400"}>({count})</span>
+            </button>
+          );
+        })}
       </div>
 
-      {filteredOrders.length === 0 && (
-        <div className="p-10 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
-          Chưa có đơn hàng nào.
+      {visible.length === 0 && (
+        <div className="p-10 text-center rounded-container bg-surface-card border border-surface-border space-y-3">
+          <p className="text-sm text-bark-600">{orders.length === 0 ? "Bạn chưa có đơn hàng nào." : "Không có đơn nào ở mục này."}</p>
+          {orders.length === 0 && <ButtonLink href="/boxes">Chọn hộp cho bé</ButtonLink>}
         </div>
       )}
 
-      <div className="space-y-4">
-        {filteredOrders.map((order) => (
-          <div key={order.id} className="p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs">
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-surface-border">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-pine-950 text-sm">{order.order_code}</span>
-                  {order.cycle_index && (
-                    <span className="px-2 py-0.2 rounded-tag bg-honey-100 text-honey-700 text-[10px] font-extrabold border border-honey-300">
-                      Kỳ {order.cycle_index}
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-bark-500">
-                  Đặt lúc: {formatDateTime(order.created_at)}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">{getStatusBadge(order.status)}</div>
-            </div>
-
-            <div className="space-y-2">
-              {order.order_items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between text-xs py-1">
-                  <div className="flex items-center gap-2">
-                    <span className="p-1.5 rounded bg-surface-muted flex items-center justify-center">
-                      {item.box_type_id ? (
-                        <PackageOpen className="w-3.5 h-3.5 text-pine-900" />
-                      ) : (
-                        <UtensilsCrossed className="w-3.5 h-3.5 text-bark-700" />
-                      )}
-                    </span>
-                    <div>
-                      <span className="font-bold text-pine-950">{item.product_name_snapshot}</span>
-                      {item.pets?.name && (
-                        <span className="text-[11px] text-honey-700 ml-1.5 font-semibold">(Bé {item.pets.name})</span>
-                      )}
-                      <span className="text-bark-500 ml-2">x{item.quantity}</span>
+      <div className="space-y-3">
+        {visible.map((order) => {
+          const lines = orderLines(order);
+          const canReorder = order.order_type === "retail" && order.status === "da_giao";
+          return (
+            <div key={order.id} className="rounded-container bg-surface-card border border-surface-border shadow-xs hover:border-pine-800/60 transition-colors">
+              <Link href={`/my-account/orders/${order.id}`} className="block p-4 sm:p-5 space-y-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-pine-950 text-sm">{order.order_code}</span>
+                      <span className="text-[11px] text-bark-500">{ORDER_TYPE_LABEL[order.order_type] || ""}</span>
                     </div>
+                    <p className="text-[11px] text-bark-500">{formatDateTime(order.created_at)}</p>
                   </div>
-                  <span className="font-semibold text-bark-900">
-                    {item.total_price === 0 ? "Đã trả theo gói" : formatVND(item.total_price)}
+                  <span className={`px-2 py-0.5 rounded-tag border text-[11px] font-bold ${ORDER_STATUS_STYLE[order.status]}`}>
+                    {ORDER_STATUS_LABEL[order.status]}
                   </span>
                 </div>
-              ))}
-            </div>
 
-            {order.tracking_code && (
-              <div className="pt-3 border-t border-surface-border bg-surface-muted/50 p-3.5 rounded-box flex items-center justify-between text-xs font-bold text-pine-950">
-                <span className="flex items-center gap-1.5">
-                  <Truck className="w-3.5 h-3.5 text-pine-800" />
-                  <span>Mã vận đơn:</span>
-                </span>
-                <span className="font-mono text-[11px] text-bark-600">{order.tracking_code}</span>
-              </div>
-            )}
-
-            <div className="pt-3 border-t border-surface-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-              <div>
-                <span className="text-bark-500">Tổng thanh toán: </span>
-                <strong className="text-sm font-extrabold text-pine-950 font-display">
-                  {order.total_amount === 0 ? "0₫ (Đã thanh toán trước)" : formatVND(order.total_amount)}
-                </strong>
-                <span className="text-bark-500 ml-2">({order.payment_method} - {order.payment_status})</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {order.status === "da_giao" && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => openReview(order)}
-                      className="px-3 py-1.5 rounded-box bg-honey-600 hover:bg-honey-700 text-white font-bold text-xs flex items-center gap-1 transition-colors"
-                    >
-                      <Star className="w-3 h-3 text-butter-200 fill-butter-200" />
-                      <span>Đánh giá unbox</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setReturnOrder(order); setReturnSubmitted(false); setReturnErr(""); }}
-                      className="px-3 py-1.5 rounded-box bg-surface-card hover:bg-surface-muted text-bark-700 border border-surface-border font-semibold text-xs transition-colors"
-                    >
-                      <span>Yêu cầu đổi / trả</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {reviewOrder && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-surface-card rounded-container p-6 space-y-4 shadow-xl border border-surface-border max-h-[90vh] overflow-y-auto">
-            <h3 className="text-base font-bold text-pine-950">Đánh giá đơn hàng {reviewOrder.order_code}</h3>
-
-            {reviewSubmitted ? (
-              <div className="p-4 rounded-box bg-grass-50 border border-grass-200 text-center space-y-2">
-                <CheckCircle2 className="w-8 h-8 text-grass-600 mx-auto" />
-                <p className="text-xs font-bold text-grass-800">Cảm ơn bạn! Đánh giá đã được ghi nhận.</p>
-                <button type="button" onClick={() => setReviewOrder(null)} className="px-4 py-1.5 rounded-box bg-grass-700 text-white text-xs font-bold">
-                  Đóng
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4 text-xs">
-                <div>
-                  <label className="font-bold text-bark-800 block mb-1">Đánh giá chung:</label>
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <button key={s} type="button" onClick={() => setRating(s)} className="p-1 text-honey-500">
-                        <Star className={`w-6 h-6 ${s <= rating ? "fill-honey-500" : ""}`} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="font-bold text-bark-800 block mb-1">Cảm nhận của bé và bạn khi mở hộp:</label>
-                  <textarea rows={3} placeholder="Bé thích món nào nhất?..." value={comment} onChange={(e) => setComment(e.target.value)}
-                    className="w-full p-2.5 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none" />
-                </div>
-
-                {curationItems.length > 0 ? (
-                  <div className="p-3 rounded-box bg-surface-muted border border-surface-border text-[11px] text-bark-600 space-y-2">
-                    <div className="font-bold text-pine-950">Chấm điểm từng món trong hộp:</div>
-                    {curationItems.map((item) => (
-                      <div key={item.product_id} className="flex items-center justify-between py-1">
-                        <span>{item.name}:</span>
-                        <div className="flex gap-1">
-                          <button type="button" onClick={() => setItemRating(item.product_id, "like")}
-                            className={`p-1 rounded ${item.rating === "like" ? "bg-grass-200 text-grass-800" : "text-bark-400"}`}>
-                            <Heart className="w-3.5 h-3.5" />
-                          </button>
-                          <button type="button" onClick={() => setItemRating(item.product_id, "neutral")}
-                            className={`p-1 rounded ${item.rating === "neutral" ? "bg-honey-200 text-honey-800" : "text-bark-400"}`}>
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                          <button type="button" onClick={() => setItemRating(item.product_id, "dislike")}
-                            className={`p-1 rounded ${item.rating === "dislike" ? "bg-red-200 text-red-800" : "text-bark-400"}`}>
-                            <ThumbsDown className="w-3.5 h-3.5" />
-                          </button>
+                <div className="space-y-2">
+                  {lines.slice(0, 3).map((line) => (
+                    <div key={line.key} className="flex items-center gap-3 text-xs">
+                      <div className="relative w-12 h-12 rounded-box overflow-hidden bg-surface-muted shrink-0">
+                        <Image src={line.thumb} alt="" fill sizes="48px" className="object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-pine-950 truncate">{cleanItemName(line.name)}</div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {line.petName && <span className="px-2 py-0.5 rounded-tag bg-pine-50 text-pine-900 text-[10px] font-semibold">Bé {line.petName}</span>}
+                          <span className="text-bark-500">x{line.quantity}</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-box bg-surface-muted text-[11px] text-bark-500">
-                    Đơn này không có dữ liệu món cụ thể để chấm điểm (đơn hàng lẻ, hoặc chưa được tuyển chọn box).
-                  </div>
-                )}
+                    </div>
+                  ))}
+                  {lines.length > 3 && <p className="text-[11px] text-bark-500">và {lines.length - 3} sản phẩm khác</p>}
+                </div>
 
-                <div className="flex justify-end gap-2 pt-2 border-t border-surface-border">
-                  <button type="button" onClick={() => setReviewOrder(null)} className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold">
-                    Hủy
-                  </button>
-                  <button type="button" onClick={submitReview} className="px-5 py-2 rounded-box bg-honey-600 hover:bg-honey-700 text-white font-bold">
-                    Gửi đánh giá
-                  </button>
+                <div className="pt-3 border-t border-surface-border flex items-center justify-between gap-2 text-xs">
+                  <span className="text-bark-500">{paymentText(order.payment_method, order.payment_status, order.order_type)}</span>
+                  <span className="flex items-center gap-1 font-extrabold text-pine-950 text-sm">
+                    {order.order_type === "subscription_cycle" ? "Đã trả theo gói" : formatVND(order.total_amount)}
+                    <ChevronRight className="w-4 h-4 text-bark-400" />
+                  </span>
                 </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {returnOrder && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-surface-card rounded-container p-6 space-y-4 shadow-xl border border-surface-border">
-            <h3 className="text-base font-bold text-pine-950">Yêu cầu đổi / trả cho đơn {returnOrder.order_code}</h3>
-
-            {returnSubmitted ? (
-              <div className="p-4 rounded-box bg-pine-50 border border-pine-200 text-center space-y-2">
-                <CheckCircle2 className="w-8 h-8 text-pine-700 mx-auto" />
-                <p className="text-xs font-bold text-pine-900">
-                  Yêu cầu đã được ghi nhận, đơn chuyển sang trạng thái &quot;Đổi / Trả&quot; để CSKH xử lý.
-                </p>
-                <button type="button" onClick={() => setReturnOrder(null)} className="px-4 py-1.5 rounded-box bg-pine-900 text-white text-xs font-bold">
-                  Đóng
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3 text-xs">
-                {returnErr && <div className="p-2.5 rounded-box bg-red-50 border border-red-200 text-red-700">{returnErr}</div>}
-                <div>
-                  <label className="font-bold text-bark-800 block mb-1">Lý do yêu cầu đổi trả: *</label>
-                  <select value={returnReason} onChange={(e) => setReturnReason(e.target.value)} className="w-full p-2.5 rounded-box border border-surface-border bg-white">
-                    <option value="Món chứa thành phần dị ứng đã khai báo">Món chứa thành phần dị ứng đã khai trong hồ sơ thú cưng</option>
-                    <option value="Hàng hỏng, vỡ, hết hạn sử dụng">Hàng hỏng, vỡ, hết hạn sử dụng</option>
-                    <option value="Giao thiếu món">Giao thiếu món so với cam kết</option>
-                  </select>
+              </Link>
+              {canReorder && (
+                <div className="px-4 sm:px-5 pb-4 -mt-1 flex justify-end">
+                  <Button variant="secondary" size="sm" loading={reordering === order.id} onClick={() => reorder(order)}>
+                    <RotateCcw className="w-3.5 h-3.5" /> Mua lại
+                  </Button>
                 </div>
-                <div className="p-2.5 rounded-box bg-honey-50 border border-honey-200 text-[11px] text-honey-900 leading-relaxed">
-                  Chính sách FPETS: đổi món miễn phí nếu lỗi thuộc về shop khi bạn báo trong vòng 3 ngày sau khi nhận hàng.
-                </div>
-                <div className="flex justify-end gap-2 pt-2 border-t border-surface-border">
-                  <button type="button" onClick={() => setReturnOrder(null)} className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold">
-                    Hủy
-                  </button>
-                  <button type="button" onClick={submitReturn} className="px-5 py-2 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold">
-                    Gửi yêu cầu CSKH
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

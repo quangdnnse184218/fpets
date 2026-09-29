@@ -7,9 +7,14 @@ import ProductItemImage from "@/components/common/ProductItemImage";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import { formatVND } from "@/lib/formatters";
-import { Trash2, ShoppingBag, Truck, Tag, CheckCircle2, AlertCircle, PackageOpen } from "lucide-react";
+import { Trash2, ShoppingBag, Truck, Tag, CheckCircle2, AlertCircle, PackageOpen, Minus, Plus } from "lucide-react";
+import { IconButton, ButtonLink } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
+import { findAllergyConflicts } from "@/lib/petOptions";
+import type { CartItem } from "@/context/AppContext";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { formatShippingFee, SHIPPING_CONFIG } from "@/lib/shipping";
 
 export default function CartPage() {
   const router = useRouter();
@@ -26,7 +31,22 @@ export default function CartPage() {
     voucherDiscount,
     voucherMessage,
     applyVoucher,
+    addToCart,
   } = useApp();
+  const { show } = useToast();
+
+  // Xóa ngay, cho phép hoàn tác trong 5 giây
+  const handleRemove = (item: CartItem) => {
+    removeFromCart(item.id);
+    const name = item.type === "box" ? item.boxType?.name : item.product?.name;
+    show(`Đã xóa ${name || "sản phẩm"}`, {
+      actions: [{ label: "Hoàn tác", onClick: () => {
+        const { id: _removedId, ...rest } = item;
+        void _removedId;
+        addToCart(rest);
+      } }],
+    });
+  };
 
   const [inputCode, setInputCode] = useState("");
 
@@ -35,7 +55,7 @@ export default function CartPage() {
     await applyVoucher(inputCode);
   };
 
-  const remainingForFreeship = Math.max(0, 500000 - subtotal);
+  const remainingForFreeship = Math.max(0, SHIPPING_CONFIG.freeShippingThreshold - subtotal);
 
   // Box chỉ đổi được sang bé cùng loài (chó: cùng size) — khớp ràng buộc ở server
   const eligiblePetsFor = (item: (typeof cart)[number]) =>
@@ -101,7 +121,7 @@ export default function CartPage() {
             </span>
           ) : (
             <span className="text-bark-700">
-              Mua thêm <strong>{formatVND(remainingForFreeship)}</strong> để được <strong>Freeship</strong> (đơn từ 500k).
+              Mua thêm <strong>{formatVND(remainingForFreeship)}</strong> để được miễn phí vận chuyển (đơn từ {formatVND(SHIPPING_CONFIG.freeShippingThreshold)}).
             </span>
           )}
         </div>
@@ -110,7 +130,9 @@ export default function CartPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Danh sách dòng sản phẩm */}
         <div className="lg:col-span-8 space-y-3">
-          {cart.map((item) => (
+          {cart.map((item) => {
+            const conflicts = item.product ? findAllergyConflicts(item.product, pets) : [];
+            return (
             <Card
               key={item.id}
               className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
@@ -143,14 +165,12 @@ export default function CartPage() {
                 </div>
 
                 <div className="space-y-1 min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="neutral">
                       {item.type === 'box' ? 'Mystery Box' : 'Sản phẩm lẻ'}
                     </Badge>
-                    {item.type === 'box' && (
-                      <span className="text-[11px] text-pine-900 font-semibold">
-                        Dành cho bé: {item.petName || "Bé cưng"}
-                      </span>
+                    {item.type === 'box' && item.petName && (
+                      <span className="px-2 py-0.5 rounded-tag bg-pine-50 text-pine-900 text-[11px] font-semibold">Bé {item.petName}</span>
                     )}
                   </div>
 
@@ -158,15 +178,21 @@ export default function CartPage() {
                     {item.type === 'box' ? item.boxType?.name : item.product?.name}
                   </h3>
 
-                  <div className="text-xs font-semibold text-bark-800">
-                    {formatVND(item.unitPrice)}
-                  </div>
+                  {conflicts.length > 0 && (
+                    <p className="flex items-start gap-1 text-[11px] text-red-700 font-semibold">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
+                      <span>
+                        Sản phẩm có thể chứa {conflicts.map((c) => `${c.allergy.toLowerCase()} (bé ${c.petName} đang khai báo dị ứng)`).join(", ")}.
+                      </span>
+                    </p>
+                  )}
 
                   {/* Cho phép đổi Pet ngay trong giỏ hàng nếu là dòng Box */}
                   {item.type === 'box' && eligiblePetsFor(item).length > 1 && (
                     <div className="pt-1 flex items-center gap-2">
-                      <span className="text-[11px] text-bark-500">Đổi bé nhận hộp:</span>
+                      <label className="text-[11px] text-bark-500" htmlFor={`pet-${item.id}`}>Đổi bé nhận hộp:</label>
                       <select
+                        id={`pet-${item.id}`}
                         value={item.petId || ""}
                         onChange={(e) => {
                           const newPet = pets.find((p) => p.id === e.target.value);
@@ -174,7 +200,7 @@ export default function CartPage() {
                             updatePetForBox(item.id, newPet.id, newPet.name);
                           }
                         }}
-                        className="text-xs font-medium py-0.5 px-2 rounded border border-surface-border bg-surface-muted text-pine-950"
+                        className="min-h-9 text-xs font-medium px-2 rounded-box border border-surface-border bg-white text-pine-950"
                       >
                         {eligiblePetsFor(item).map((pet) => (
                           <option key={pet.id} value={pet.id}>
@@ -187,29 +213,19 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {/* Tăng giảm số lượng & Thành tiền */}
-              <div className="flex items-center justify-between sm:justify-end gap-5 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0 border-surface-border">
+              {/* Số lượng & Thành tiền */}
+              <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0 border-surface-border">
                 {item.type === 'box' ? (
-                  <div className="px-3 py-1 rounded-box bg-surface-muted text-xs font-bold text-bark-600" title="Mỗi đơn chỉ mua 1 Mystery Box">
-                    Số lượng: 1
-                  </div>
+                  <span className="text-xs text-bark-500" title="Mỗi đơn chỉ mua 1 Mystery Box">1 hộp</span>
                 ) : (
-                  <div className="flex items-center border border-surface-border rounded-box bg-surface-muted">
-                    <button
-                      type="button"
-                      onClick={() => updateQuantity(item.id, -1)}
-                      className="px-2.5 py-1 text-bark-700 hover:bg-surface-border text-sm font-bold"
-                    >
-                      −
-                    </button>
-                    <span className="px-2.5 text-xs font-bold text-pine-950">{item.quantity}</span>
-                    <button
-                      type="button"
-                      onClick={() => updateQuantity(item.id, 1)}
-                      className="px-2.5 py-1 text-bark-700 hover:bg-surface-border text-sm font-bold"
-                    >
-                      +
-                    </button>
+                  <div className="flex items-center border border-surface-border rounded-box bg-white">
+                    <IconButton label="Giảm số lượng" onClick={() => updateQuantity(item.id, -1)} disabled={item.quantity <= 1}>
+                      <Minus className="w-3.5 h-3.5" />
+                    </IconButton>
+                    <span className="w-8 text-center text-sm font-bold text-pine-950" aria-live="polite">{item.quantity}</span>
+                    <IconButton label="Tăng số lượng" onClick={() => updateQuantity(item.id, 1)}>
+                      <Plus className="w-3.5 h-3.5" />
+                    </IconButton>
                   </div>
                 )}
 
@@ -217,34 +233,28 @@ export default function CartPage() {
                   <div className="text-sm font-extrabold text-pine-950 font-display">
                     {formatVND(item.unitPrice * item.quantity)}
                   </div>
+                  {item.quantity > 1 && <div className="text-[11px] text-bark-500">{formatVND(item.unitPrice)} / món</div>}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => removeFromCart(item.id)}
-                  className="p-1.5 text-bark-400 hover:text-red-600 transition-colors"
-                  title="Xóa khỏi giỏ"
-                >
+                <IconButton label="Xóa khỏi giỏ" className="hover:!text-red-600" onClick={() => handleRemove(item)}>
                   <Trash2 className="w-4 h-4" />
-                </button>
+                </IconButton>
               </div>
             </Card>
-          ))}
+            );
+          })}
 
-          {/* Banner Upsell Gói định kỳ: Thiết kế phẳng không đóng card nổi */}
+          {/* Gợi ý gói định kỳ: nút phụ để không tranh với "Tiến hành đặt hàng" */}
           <div className="p-4 rounded-container bg-pine-50/70 border border-pine-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             <div>
               <span className="font-bold text-pine-950">Muốn nhận hộp đều đặn mỗi tháng cho bé?</span>
               <p className="text-bark-600 mt-0.5">
-                Đăng ký Gói định kỳ 3 hoặc 6 hộp để tiết kiệm 10–15% và được miễn phí vận chuyển trọn gói.
+                Gói 3 hoặc 6 hộp giảm 10–15% và miễn phí vận chuyển.
               </p>
             </div>
-            <Link
-              href="/boxes"
-              className="px-3.5 py-1.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold shrink-0 transition-colors"
-            >
+            <ButtonLink href="/subscription" variant="secondary" size="sm" className="shrink-0">
               Xem các gói định kỳ
-            </Link>
+            </ButtonLink>
           </div>
         </div>
 
@@ -301,9 +311,14 @@ export default function CartPage() {
               </div>
 
               <div className="flex justify-between text-bark-600">
-                <span>Phí vận chuyển dự kiến:</span>
-                <span>{shippingFee === 0 ? "Miễn phí" : formatVND(shippingFee)}</span>
+                <span>Phí vận chuyển:</span>
+                <span>{formatShippingFee(shippingFee)}</span>
               </div>
+              {shippingFee === null && (
+                <p className="text-[11px] text-bark-500">
+                  {formatVND(SHIPPING_CONFIG.hcmFee)} nội thành TP.HCM, {formatVND(SHIPPING_CONFIG.otherFee)} tỉnh khác. Tính chính xác ở bước đặt hàng.
+                </p>
+              )}
 
               {voucherDiscount > 0 && (
                 <div className="flex justify-between text-grass-700 font-semibold">
@@ -313,7 +328,7 @@ export default function CartPage() {
               )}
 
               <div className="flex justify-between items-baseline pt-3 border-t border-surface-border text-sm font-extrabold text-pine-950">
-                <span>Tổng thanh toán:</span>
+                <span>{shippingFee === null ? "Tạm tính (chưa gồm ship):" : "Tổng thanh toán:"}</span>
                 <span className="text-xl font-extrabold font-display text-pine-950">
                   {formatVND(total)}
                 </span>
@@ -325,7 +340,7 @@ export default function CartPage() {
               onClick={() => router.push("/checkout")}
               className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center cursor-pointer"
             >
-              <span>Tiến hành đặt hàng ({formatVND(total)})</span>
+              <span>Tiến hành đặt hàng</span>
             </button>
           </div>
         </div>

@@ -16,6 +16,7 @@ import {
 import { formatVND } from "@/lib/formatters";
 import { fetchBoxTypes, fetchSubscriptionPlans } from "@/lib/catalog";
 import { QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
+import { SHIPPING_CONFIG } from "@/lib/shipping";
 
 // Lịch giao minh họa cho gói 3 hộp, đợt đầu tháng (SPEC §5: chốt hộp 7 ngày trước đợt giao)
 const SAMPLE_SCHEDULE = [
@@ -207,7 +208,7 @@ export default function SubscriptionIntroPage() {
                           <XCircle className="w-4 h-4 shrink-0 text-bark-300" />
                         )}
                         <span className={plan.free_shipping ? 'font-bold text-grass-800' : 'text-bark-400'}>
-                          {plan.free_shipping ? 'Miễn phí vận chuyển mọi hộp' : 'Phí ship 25.000₫ / 35.000₫'}
+                          {plan.free_shipping ? 'Miễn phí vận chuyển mọi hộp' : `Phí ship ${formatVND(SHIPPING_CONFIG.hcmFee)} / ${formatVND(SHIPPING_CONFIG.otherFee)}`}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">

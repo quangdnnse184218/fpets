@@ -1,6 +1,7 @@
 import LegalPage from "@/components/common/LegalPage";
 import { CONTACT_INFO } from "@/lib/contactInfo";
 import { EXCHANGE_POLICY } from "@/lib/copy";
+import { DELIVERY_TIME, SHIPPING_POLICY } from "@/lib/shipping";
 
 export const metadata = {
   title: "Điều khoản dịch vụ",
@@ -43,8 +44,8 @@ export default function TermsPage() {
         {
           title: "Giao hàng",
           items: [
-            "Giao toàn quốc. Phí ship 25.000₫ nội thành TP.HCM, 35.000₫ tỉnh khác; miễn phí cho đơn từ 500.000₫ và gói 3, 6 hộp.",
-            "Thời gian dự kiến 1–2 ngày nội thành TP.HCM, 3–5 ngày tỉnh khác.",
+            `Giao toàn quốc. ${SHIPPING_POLICY}`,
+            DELIVERY_TIME,
           ],
         },
         {

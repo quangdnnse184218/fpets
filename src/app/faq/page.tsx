@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { SHIPPING_POLICY } from "@/lib/shipping";
 import {
   HelpCircle,
   ChevronDown,
@@ -77,7 +78,7 @@ const FAQ_DATA: FAQItem[] = [
     id: "ship-1",
     category: "shipping",
     question: "Phí vận chuyển được tính như thế nào? Khi nào được Freeship?",
-    answer: "Phí ship 25.000₫ cho nội thành TP.HCM, 35.000₫ cho các tỉnh thành khác. Miễn phí ship cho đơn từ 500.000₫ và cho mọi hộp của gói 3 hộp, 6 hộp."
+    answer: SHIPPING_POLICY
   },
   {
     id: "ship-2",

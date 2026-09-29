@@ -46,7 +46,7 @@ interface AppContextType {
 
   // Pets (Supabase thật, chỉ có khi đã đăng nhập)
   pets: Pet[];
-  addPet: (pet: Omit<Pet, "id" | "receivedBoxesCount" | "avatarColor">) => Promise<Pet>;
+  addPet: (pet: Omit<Pet, "id" | "avatarColor" | "avatarPath">) => Promise<Pet>;
   updatePet: (id: string, updated: Partial<Pet>) => Promise<void>;
   deletePet: (id: string) => Promise<void>;
 
@@ -63,7 +63,8 @@ interface AppContextType {
   voucherMessage: string;
   applyVoucher: (code: string) => Promise<boolean>;
   subtotal: number;
-  shippingFee: number;
+  // null = chưa biết tỉnh nhận hàng (giỏ hàng), checkout tính theo địa chỉ thật
+  shippingFee: number | null;
   total: number;
 }
 
@@ -239,7 +240,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addPet = async (newPetData: Omit<Pet, "id" | "receivedBoxesCount" | "avatarColor">): Promise<Pet> => {
+  const addPet = async (newPetData: Omit<Pet, "id" | "avatarColor" | "avatarPath">): Promise<Pet> => {
     const supabase = createClient();
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) throw new Error("Cần đăng nhập để tạo hồ sơ thú cưng");
@@ -283,6 +284,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...(updated.allergies !== undefined && { allergies: updated.allergies }),
       ...(updated.preferences !== undefined && { preferences: updated.preferences }),
       ...(updated.notes !== undefined && { notes: updated.notes }),
+      ...(updated.avatarPath !== undefined && { avatar_url: updated.avatarPath }),
     };
 
     const { error } = await supabase.from("pets").update(patch).eq("id", id);
@@ -512,9 +514,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newQ = Math.max(1, Math.min(maxQty, current.quantity + delta));
 
     if (isLoggedIn && user.id) {
-      const supabase = createClient();
-      await supabase.from("cart_items").update({ quantity: newQ }).eq("id", id);
+      // Cập nhật giao diện ngay, không chờ server (tránh cảm giác bấm không ăn)
       setCart((prev) => prev.map((c) => (c.id === id ? { ...c, quantity: newQ } : c)));
+      await createClient().from("cart_items").update({ quantity: newQ }).eq("id", id);
     } else {
       const lines = readGuestCart();
       const line = lines.find((l) => l.productId === current.productId);
@@ -525,24 +527,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePetForBox = async (cartItemId: string, petId: string, petName: string) => {
-    if (isLoggedIn) {
-      const supabase = createClient();
-      await supabase.from("cart_items").update({ pet_id: petId }).eq("id", cartItemId);
-    }
     setCart((prev) => prev.map((c) => (c.id === cartItemId ? { ...c, petId, petName } : c)));
+    if (isLoggedIn) {
+      await createClient().from("cart_items").update({ pet_id: petId }).eq("id", cartItemId);
+    }
   };
 
   const removeFromCart = async (id: string) => {
-    if (isLoggedIn && user.id) {
-      const supabase = createClient();
-      await supabase.from("cart_items").delete().eq("id", id);
-    } else {
-      const current = cart.find((c) => c.id === id);
-      if (current?.productId) {
-        writeGuestCart(readGuestCart().filter((l) => l.productId !== current.productId));
-      }
-    }
+    const current = cart.find((c) => c.id === id);
     setCart((prev) => prev.filter((c) => c.id !== id));
+    if (isLoggedIn && user.id) {
+      await createClient().from("cart_items").delete().eq("id", id);
+    } else if (current?.productId) {
+      writeGuestCart(readGuestCart().filter((l) => l.productId !== current.productId));
+    }
   };
 
   const clearCart = async () => {
@@ -622,9 +620,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (voucher.max_discount) discount = Math.min(discount, voucher.max_discount);
     } else if (voucher.voucher_type === "fixed_amount") {
       discount = Math.min(voucher.discount_value, base);
-    } else if (voucher.voucher_type === "free_shipping") {
-      discount = shippingFee;
     }
+    // Voucher freeship không trừ tiền hàng: nó đưa phí ship về 0 (voucherFreeShip)
 
     setVoucherCode(clean);
     storeVoucherCode(clean);
@@ -645,9 +642,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [cart, cartLoading, voucherCode]);
 
   const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  // Giỏ chưa biết tỉnh nhận hàng: ước tính theo mức tỉnh khác, checkout tính lại theo tỉnh thật
-  const shippingFee = calcShippingFee("", subtotal);
-  const total = Math.max(0, subtotal + shippingFee - voucherDiscount);
+  const shippingFee = calcShippingFee(null, subtotal, voucherFreeShip);
+  const total = Math.max(0, subtotal + (shippingFee ?? 0) - voucherDiscount);
 
   return (
     <AppContext.Provider

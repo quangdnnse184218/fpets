@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import ProductItemImage from "@/components/common/ProductItemImage";
 import { EXCHANGE_POLICY, EXCHANGE_POLICY_SHORT, PREMIUM_ITEMS, QUIZ_LENGTH, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
 import { Product } from "@/types/models";
+import { SHIPPING_POLICY } from "@/lib/shipping";
 
 const HOME_FAQ = [
   {
@@ -343,7 +344,7 @@ export default function HomePage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { icon: Truck, title: "Giao toàn quốc", text: "25.000₫ nội thành TP.HCM, 35.000₫ tỉnh khác. Freeship đơn từ 500.000₫ và gói 3, 6 hộp." },
+            { icon: Truck, title: "Giao toàn quốc", text: SHIPPING_POLICY },
             { icon: RefreshCw, title: EXCHANGE_POLICY_SHORT, text: "Dị ứng đã khai, hàng hỏng hoặc giao thiếu: báo trong 3 ngày kèm ảnh mở hộp." },
             { icon: CreditCard, title: "Thanh toán quen thuộc", text: "MoMo, VNPay hoặc COD cho đơn mua 1 lần. Không tự động trừ tiền." },
           ].map(({ icon: Icon, title, text }) => (

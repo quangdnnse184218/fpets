@@ -7,8 +7,10 @@ import { fetchProductBySlug, fetchProducts } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import ProductItemImage from "@/components/common/ProductItemImage";
 import { useApp } from "@/context/AppContext";
-import { ShoppingCart, ArrowLeft, Truck, RotateCcw } from "lucide-react";
+import { ShoppingCart, ArrowLeft, Truck, RotateCcw, AlertTriangle } from "lucide-react";
+import { findAllergyConflicts } from "@/lib/petOptions";
 import { Product } from "@/types/models";
+import { DELIVERY_TIME, SHIPPING_POLICY } from "@/lib/shipping";
 
 const SPECIES_LABEL: Record<Product["species"], string> = { dog: "Chó", cat: "Mèo", both: "Chó và mèo" };
 const SIZE_LABEL: Record<Product["targetSize"], string> = { small: "Dưới 10 kg", large: "Từ 10 kg", all: "Mọi cân nặng" };
@@ -23,7 +25,7 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params?.slug as string;
-  const { addToCart } = useApp();
+  const { addToCart, pets } = useApp();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -178,6 +180,14 @@ export default function ProductDetailPage() {
             </div>
           )}
 
+          {/* Cảnh báo dị ứng theo hồ sơ thú cưng (vẫn cho mua) */}
+          {findAllergyConflicts(product, pets).map((c) => (
+            <div key={`${c.petName}-${c.allergy}`} className="flex items-start gap-2 p-3 rounded-box bg-red-50 border border-red-200 text-xs text-red-800">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>Sản phẩm có thể chứa <strong>{c.allergy.toLowerCase()}</strong>, bé {c.petName} đang khai báo dị ứng thành phần này.</span>
+            </div>
+          ))}
+
           {/* Chọn số lượng & Nút thêm giỏ */}
           <div className="space-y-3 pt-2">
             <div className="flex items-center gap-3">
@@ -222,7 +232,7 @@ export default function ProductDetailPage() {
           <div className="space-y-2 text-xs text-bark-600 pt-1">
             <div className="flex items-start gap-2">
               <Truck className="w-4 h-4 text-pine-800 shrink-0" />
-              <span>Giao 1–2 ngày nội thành TP.HCM, 3–5 ngày tỉnh khác. Freeship đơn từ 500.000₫.</span>
+              <span>{DELIVERY_TIME} {SHIPPING_POLICY}</span>
             </div>
             <div className="flex items-start gap-2">
               <RotateCcw className="w-4 h-4 text-pine-800 shrink-0" />

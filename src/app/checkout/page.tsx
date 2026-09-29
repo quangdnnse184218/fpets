@@ -6,10 +6,14 @@ import Link from "next/link";
 import { useApp } from "@/context/AppContext";
 import { formatVND } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/client";
-import { calcShippingFee } from "@/lib/shipping";
+import { calcShippingFee, formatShippingFee, DELIVERY_DAYS } from "@/lib/shipping";
 import { fetchBoxTypeById, fetchPlanOptions } from "@/lib/catalog";
 import { CreditCard, Truck, ArrowLeft, Lock, Banknote, Smartphone } from "lucide-react";
 import { BoxType, SubscriptionPlan } from "@/types/models";
+import AddressFields, { AddressValue, SavedAddressRow, emptyAddress, formatAddress, rowToAddress } from "@/components/common/AddressFields";
+import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, nextDeliveryWindow } from "@/lib/deliverySchedule";
+import { formatDate } from "@/lib/formatters";
+import { Button } from "@/components/ui/Button";
 
 function CheckoutFormContent() {
   const router = useRouter();
@@ -21,29 +25,65 @@ function CheckoutFormContent() {
 
   const { cart, user, subtotal, voucherCode, voucherDiscount, voucherFreeShip, clearCart, pets, isLoggedIn, isLoadingAuth } = useApp();
 
-  const [recipientName, setRecipientName] = useState(user.id ? user.name : "");
-  const [phone, setPhone] = useState(user.id ? user.phone : "");
-  const [address, setAddress] = useState(user.id ? user.address : "");
-  const [province, setProvince] = useState("TP. Hồ Chí Minh");
-  const [district, setDistrict] = useState("");
-  const [ward, setWard] = useState("");
+  const [addr, setAddr] = useState<AddressValue>(emptyAddress());
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddressRow[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("new");
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
   const [notes, setNotes] = useState("");
+  const province = addr.province;
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const [deliverySchedule, setDeliverySchedule] = useState<'dau_thang' | 'giua_thang'>('dau_thang');
+  const [deliverySchedule, setDeliverySchedule] = useState<DeliverySchedule>(searchParams.get("schedule") === "giua_thang" ? "giua_thang" : "dau_thang");
   const [paymentMethod, setPaymentMethod] = useState<'momo' | 'vnpay' | 'cod'>('momo');
 
   const [subBox, setSubBox] = useState<BoxType | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
 
-  // Thông tin khách tải xong sau lần render đầu: điền sẵn nếu ô còn trống
+  // Tự điền từ sổ địa chỉ (ưu tiên địa chỉ mặc định); chưa có thì điền tên, SĐT từ hồ sơ
   useEffect(() => {
     if (!user.id) return;
-    setRecipientName((v) => v || user.name);
-    setPhone((v) => v || user.phone);
-    setAddress((v) => v || user.address);
-  }, [user.id, user.name, user.phone, user.address]);
+    createClient()
+      .from("addresses")
+      .select("id, recipient_name, phone, province_city, ward, street_address, is_default")
+      .order("is_default", { ascending: false })
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        const rows = (data as SavedAddressRow[]) || [];
+        setSavedAddresses(rows);
+        if (rows.length > 0) {
+          setSelectedAddressId(rows[0].id);
+          setAddr(rowToAddress(rows[0]));
+        } else {
+          setSaveAsDefault(true);
+          setAddr((a) => ({ ...a, recipientName: a.recipientName || user.name, phone: a.phone || user.phone }));
+        }
+      });
+  }, [user.id, user.name, user.phone]);
+
+  const chooseAddress = (id: string) => {
+    setSelectedAddressId(id);
+    const row = savedAddresses.find((r) => r.id === id);
+    setAddr(row ? rowToAddress(row) : { ...emptyAddress(), recipientName: user.name, phone: user.phone });
+  };
+
+  // Lưu địa chỉ mới vào sổ (và đặt mặc định nếu khách chọn) sau khi đặt hàng thành công
+  const persistAddress = async () => {
+    if (!user.id || selectedAddressId !== "new") return;
+    const supabase = createClient();
+    if (saveAsDefault) await supabase.from("addresses").update({ is_default: false }).eq("user_id", user.id);
+    await supabase.from("addresses").insert({
+      user_id: user.id,
+      recipient_name: addr.recipientName,
+      phone: addr.phone,
+      province_city: addr.province,
+      // Địa giới mới không còn quận/huyện; cột district vẫn NOT NULL nên lưu chuỗi rỗng
+      district: "",
+      ward: addr.ward,
+      street_address: addr.street,
+      is_default: saveAsDefault || savedAddresses.length === 0,
+    });
+  };
 
   const selectedPlan = plans.find((p) => p.id === planId);
   const subPet = pets.find((p) => p.id === petId);
@@ -72,7 +112,7 @@ function CheckoutFormContent() {
     ? calcShippingFee(province, itemsAmount, selectedPlan?.freeShipping)
     : calcShippingFee(province, subtotal, voucherFreeShip);
   const discount = isSubscription || voucherFreeShip ? 0 : voucherDiscount;
-  const finalAmount = Math.max(0, itemsAmount + shippingFee - discount);
+  const finalAmount = Math.max(0, itemsAmount + (shippingFee ?? 0) - discount);
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,15 +131,16 @@ function CheckoutFormContent() {
           p_pet_id: subPet.id,
           p_plan_id: selectedPlan.id,
           p_delivery_schedule: deliverySchedule,
-          p_recipient_name: recipientName,
-          p_recipient_phone: phone,
-          p_province_city: province,
-          p_district: district,
-          p_ward: ward,
-          p_shipping_address: address,
+          p_recipient_name: addr.recipientName,
+          p_recipient_phone: addr.phone,
+          p_province_city: addr.province,
+          p_district: "",
+          p_ward: addr.ward,
+          p_shipping_address: addr.street,
           p_payment_method: paymentMethod,
         });
         if (error) throw error;
+        await persistAddress();
         const result = data as { order_id: string; order_code: string; total_amount: number };
         router.push(`/checkout/pay/${result.order_id}?code=${result.order_code}&amount=${result.total_amount}&method=${paymentMethod}&sub=1`);
         return;
@@ -115,18 +156,19 @@ function CheckoutFormContent() {
 
       const { data, error } = await supabase.rpc("checkout_create_order", {
         p_items: items,
-        p_recipient_name: recipientName,
-        p_recipient_phone: phone,
-        p_province_city: province,
-        p_district: district,
-        p_ward: ward,
-        p_shipping_address: address,
+        p_recipient_name: addr.recipientName,
+        p_recipient_phone: addr.phone,
+        p_province_city: addr.province,
+        p_district: "",
+        p_ward: addr.ward,
+        p_shipping_address: addr.street,
         p_payment_method: paymentMethod,
         p_customer_notes: notes || undefined,
         p_voucher_code: voucherCode || undefined,
       });
 
       if (error) throw error;
+      await persistAddress();
       const result = data as { order_id: string; order_code: string; status: string; total_amount: number };
       await clearCart();
 
@@ -188,81 +230,73 @@ function CheckoutFormContent() {
               <span>Thông tin nhận hàng</span>
             </h2>
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-bark-800 block mb-1">Họ tên người nhận: *</label>
-                <input type="text" required value={recipientName} onChange={(e) => setRecipientName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none" />
+            {savedAddresses.length > 0 && (
+              <div className="space-y-2">
+                {savedAddresses.map((row) => (
+                  <label key={row.id} className={`flex items-start gap-3 p-3 rounded-box border cursor-pointer text-xs ${selectedAddressId === row.id ? "border-pine-900 bg-pine-50/60" : "border-surface-border"}`}>
+                    <input type="radio" name="saved-address" className="mt-0.5 accent-pine-900" checked={selectedAddressId === row.id} onChange={() => chooseAddress(row.id)} />
+                    <span>
+                      <span className="font-bold text-pine-950">{row.recipient_name} · {row.phone}</span>
+                      {row.is_default && <span className="ml-1.5 px-1.5 py-0.5 rounded-tag bg-pine-100 text-pine-800 text-[10px] font-bold">Mặc định</span>}
+                      <span className="block text-bark-600 mt-0.5">{formatAddress(rowToAddress(row))}</span>
+                    </span>
+                  </label>
+                ))}
+                <label className={`flex items-center gap-3 p-3 rounded-box border cursor-pointer text-xs ${selectedAddressId === "new" ? "border-pine-900 bg-pine-50/60" : "border-surface-border"}`}>
+                  <input type="radio" name="saved-address" className="accent-pine-900" checked={selectedAddressId === "new"} onChange={() => chooseAddress("new")} />
+                  <span className="font-bold text-pine-950">Giao đến địa chỉ khác</span>
+                </label>
               </div>
-              <div>
-                <label className="font-bold text-bark-800 block mb-1">Số điện thoại liên hệ: *</label>
-                <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none" />
+            )}
+
+            {selectedAddressId === "new" && (
+              <div className="space-y-3">
+                <AddressFields value={addr} onChange={setAddr} idPrefix="checkout" />
+                {user.id && savedAddresses.length > 0 && (
+                  <label className="flex items-center gap-2 min-h-11 text-xs text-bark-700 cursor-pointer">
+                    <input type="checkbox" checked={saveAsDefault} onChange={(e) => setSaveAsDefault(e.target.checked)} className="w-4 h-4 accent-pine-900" />
+                    Lưu làm địa chỉ mặc định
+                  </label>
+                )}
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="font-bold text-bark-800 block mb-1">Tỉnh/Thành: *</label>
-                  <input type="text" required value={province} onChange={(e) => setProvince(e.target.value)}
-                    className="w-full px-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none" />
-                </div>
-                <div>
-                  <label className="font-bold text-bark-800 block mb-1">Quận/Huyện: *</label>
-                  <input type="text" required value={district} onChange={(e) => setDistrict(e.target.value)}
-                    className="w-full px-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none" />
-                </div>
-                <div>
-                  <label className="font-bold text-bark-800 block mb-1">Phường/Xã: *</label>
-                  <input type="text" required value={ward} onChange={(e) => setWard(e.target.value)}
-                    className="w-full px-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none" />
-                </div>
-              </div>
-              <div>
-                <label className="font-bold text-bark-800 block mb-1">Số nhà, tên đường: *</label>
-                <textarea required rows={2} value={address} onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none leading-relaxed" />
-              </div>
-              <div>
-                <label className="font-bold text-bark-800 block mb-1">Ghi chú cho shipper (tùy chọn):</label>
-                <input type="text" placeholder="Ví dụ: Gọi trước khi giao, gửi bảo vệ nếu vắng nhà..." value={notes} onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none" />
-              </div>
+            )}
+
+            <div>
+              <label className="text-xs font-bold text-bark-800 block mb-1" htmlFor="checkout-notes">Ghi chú cho shipper (tùy chọn)</label>
+              <input id="checkout-notes" type="text" placeholder="Ví dụ: Gọi trước khi giao, gửi bảo vệ nếu vắng nhà..." value={notes} onChange={(e) => setNotes(e.target.value)}
+                className="w-full min-h-11 px-3 rounded-box border border-surface-border text-sm focus:border-pine-900 focus:outline-none" />
             </div>
           </div>
 
           <div className="p-5 sm:p-6 space-y-4">
             <h2 className="text-sm font-bold text-pine-950 flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-pine-900 text-white flex items-center justify-center text-xs font-bold">2</span>
-              <span>Phương thức vận chuyển</span>
+              <span>{isSubscription ? "Lịch giao hằng tháng" : "Vận chuyển"}</span>
             </h2>
 
             {isSubscription ? (
               <div className="space-y-3 text-xs">
-                <div className="font-semibold text-bark-800">Chọn đợt giao hàng hằng tháng cho bé {subPet?.name}:</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button type="button" onClick={() => setDeliverySchedule('dau_thang')}
-                    className={`p-3.5 rounded-box border text-left transition-colors cursor-pointer ${deliverySchedule === 'dau_thang' ? 'border-pine-900 bg-pine-50/70 font-bold text-pine-950 ring-1 ring-pine-900/20' : 'border-surface-border bg-surface hover:bg-surface-muted text-bark-700'}`}>
-                    <div>Đợt Đầu tháng</div>
-                    <div className="text-[11px] text-bark-500 font-normal mt-0.5">Ngày 1–5 hằng tháng</div>
-                  </button>
-                  <button type="button" onClick={() => setDeliverySchedule('giua_thang')}
-                    className={`p-3.5 rounded-box border text-left transition-colors cursor-pointer ${deliverySchedule === 'giua_thang' ? 'border-pine-900 bg-pine-50/70 font-bold text-pine-950 ring-1 ring-pine-900/20' : 'border-surface-border bg-surface hover:bg-surface-muted text-bark-700'}`}>
-                    <div>Đợt Giữa tháng</div>
-                    <div className="text-[11px] text-bark-500 font-normal mt-0.5">Ngày 15–20 hằng tháng</div>
-                  </button>
+                  {(Object.keys(SCHEDULE_LABEL) as DeliverySchedule[]).map((sc) => (
+                    <button key={sc} type="button" onClick={() => setDeliverySchedule(sc)} aria-pressed={deliverySchedule === sc}
+                      className={`min-h-11 p-3 rounded-box border text-left transition-colors ${deliverySchedule === sc ? "border-pine-900 bg-pine-50/70 font-bold text-pine-950" : "border-surface-border bg-surface hover:bg-surface-muted text-bark-700"}`}>
+                      {deliverySchedule === sc ? "✓ " : ""}{SCHEDULE_LABEL[sc]}
+                    </button>
+                  ))}
                 </div>
-                <p className="text-[11px] text-bark-500">* Ngày chốt hộp (cut-off) là 7 ngày trước đợt giao để chuẩn bị món ăn tươi.</p>
+                <p className="text-[11px] text-bark-600">
+                  Hộp đầu tiên giao {deliveryWindowLabel(nextDeliveryWindow(deliverySchedule).start, deliverySchedule)}. Ngày chốt là 7 ngày trước mỗi đợt giao
+                  (đợt đầu: {formatDate(nextDeliveryWindow(deliverySchedule).cutoff)}), sau ngày chốt mọi thay đổi áp dụng từ kỳ sau.
+                </p>
               </div>
             ) : (
-              <div className="p-3.5 rounded-box bg-surface-muted/60 border border-surface-border flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2.5">
-                  <Truck className="w-4 h-4 text-pine-900" />
-                  <div>
-                    <span className="font-bold text-pine-950">Giao hàng tiêu chuẩn toàn quốc</span>
-                    <p className="text-[11px] text-bark-500">1–2 ngày (Nội thành) · 3–5 ngày (Tỉnh khác)</p>
-                  </div>
-                </div>
-                <span className="font-bold text-pine-950">{shippingFee === 0 ? "Freeship" : formatVND(shippingFee)}</span>
-              </div>
+              <p className="flex items-start gap-2 text-xs text-bark-700">
+                <Truck className="w-4 h-4 text-pine-900 shrink-0" />
+                <span>
+                  Giao tiêu chuẩn toàn quốc, {DELIVERY_DAYS}. Phí ship:{" "}
+                  <strong className="text-pine-950">{shippingFee === null ? "chọn tỉnh/thành để tính" : formatShippingFee(shippingFee)}</strong>
+                </span>
+              </p>
             )}
           </div>
 
@@ -270,6 +304,7 @@ function CheckoutFormContent() {
             <h2 className="text-sm font-bold text-pine-950 flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-pine-900 text-white flex items-center justify-center text-xs font-bold">3</span>
               <span>Hình thức thanh toán</span>
+              <span className="ml-auto px-2 py-0.5 rounded-tag bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold">Chế độ thử nghiệm</span>
             </h2>
 
             <div className="space-y-2.5 text-xs">
@@ -278,7 +313,7 @@ function CheckoutFormContent() {
                   <input type="radio" name="payment" value="momo" checked={paymentMethod === 'momo'} onChange={() => setPaymentMethod('momo')} className="accent-pine-900" />
                   <div>
                     <span className="font-bold text-pine-950">Ví điện tử MoMo</span>
-                    <p className="text-[11px] text-bark-500">Sandbox demo - quét mã QR giả lập</p>
+                    <p className="text-[11px] text-bark-500">Quét mã QR bằng ứng dụng MoMo</p>
                   </div>
                 </div>
                 <Smartphone className="w-5 h-5 text-bark-600 shrink-0" />
@@ -289,7 +324,7 @@ function CheckoutFormContent() {
                   <input type="radio" name="payment" value="vnpay" checked={paymentMethod === 'vnpay'} onChange={() => setPaymentMethod('vnpay')} className="accent-pine-900" />
                   <div>
                     <span className="font-bold text-pine-950">VNPay QR / Thẻ ATM & Thẻ quốc tế</span>
-                    <p className="text-[11px] text-bark-500">Sandbox demo - 40+ ngân hàng, Visa, Mastercard</p>
+                    <p className="text-[11px] text-bark-500">QR ngân hàng, thẻ ATM, Visa / Mastercard</p>
                   </div>
                 </div>
                 <CreditCard className="w-5 h-5 text-bark-600 shrink-0" />
@@ -297,11 +332,11 @@ function CheckoutFormContent() {
 
               {!isSubscription ? (
                 <label className={`p-3.5 rounded-box border flex items-center justify-between cursor-pointer transition-colors ${paymentMethod === 'cod' ? 'border-pine-900 bg-pine-50/60 ring-1 ring-pine-900/20' : 'border-surface-border hover:bg-surface-muted'}`}>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="accent-pine-900" />
-                    <div>
+                    <div className="min-w-0">
                       <span className="font-bold text-pine-950">Thanh toán khi nhận hàng (COD)</span>
-                      <p className="text-[11px] text-bark-500">Áp dụng cho đơn dưới 2.000.000₫. CSKH sẽ gọi xác nhận đơn đầu</p>
+                      <p className="text-[11px] text-bark-500 leading-snug whitespace-normal">Cho đơn dưới 2.000.000₫. FPETS gọi xác nhận đơn COD đầu tiên của bạn.</p>
                     </div>
                   </div>
                   <Banknote className="w-5 h-5 text-bark-600 shrink-0" />
@@ -313,13 +348,18 @@ function CheckoutFormContent() {
               )}
             </div>
           </div>
+
+          <div className="p-5 sm:p-6 lg:hidden space-y-2">
+            <Button type="submit" size="lg" className="w-full" loading={submitting}>Đặt hàng · {formatVND(finalAmount)}</Button>
+            <PolicyNote />
+          </div>
         </div>
 
-        <div className="lg:col-span-5 space-y-4">
-          <div className="p-5 sm:p-6 rounded-container bg-surface-muted/50 border border-surface-border/80 space-y-4 sticky top-20">
+        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-20">
+          <div className="p-5 sm:p-6 rounded-container bg-surface-muted/50 border border-surface-border/80 space-y-4">
             <h2 className="text-sm font-bold text-pine-950 pb-3 border-b border-surface-border flex items-center justify-between">
               <span>Đơn hàng của bạn</span>
-              <span className="text-xs font-normal text-bark-500">{isSubscription ? "Gói định kỳ" : `${cart.length} dòng`}</span>
+              <span className="text-xs font-normal text-bark-500">{isSubscription ? "Gói định kỳ" : `${cart.reduce((n, c) => n + c.quantity, 0)} sản phẩm`}</span>
             </h2>
 
             <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
@@ -357,7 +397,7 @@ function CheckoutFormContent() {
               </div>
               <div className="flex justify-between text-bark-600">
                 <span>Phí vận chuyển:</span>
-                <span>{shippingFee === 0 ? "Freeship" : formatVND(shippingFee)}</span>
+                <span>{formatShippingFee(shippingFee)}</span>
               </div>
               {!isSubscription && voucherCode && (
                 <div className="flex justify-between text-grass-700 font-semibold">
@@ -371,18 +411,23 @@ function CheckoutFormContent() {
               </div>
             </div>
 
-            <button type="submit" disabled={submitting}
-              className="w-full py-4 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center cursor-pointer disabled:opacity-60">
-              <span>{submitting ? "Đang xử lý..." : "Xác nhận & Đặt hàng ngay"}</span>
-            </button>
-
-            <div className="text-[11px] text-bark-500 text-center leading-relaxed">
-              Bằng việc bấm đặt hàng, bạn đồng ý với chính sách đổi trả và điều khoản dịch vụ của FPETS.
+            <div className="hidden lg:block space-y-2">
+              <Button type="submit" size="lg" className="w-full" loading={submitting}>Đặt hàng</Button>
+              <PolicyNote />
             </div>
           </div>
         </div>
       </form>
     </div>
+  );
+}
+
+function PolicyNote() {
+  return (
+    <p className="text-[11px] text-bark-500 text-center leading-relaxed">
+      Bấm đặt hàng nghĩa là bạn đồng ý với <Link href="/faq#doi-tra" className="underline">chính sách đổi trả</Link> và{" "}
+      <Link href="/terms" className="underline">điều khoản dịch vụ</Link> của FPETS.
+    </p>
   );
 }
 

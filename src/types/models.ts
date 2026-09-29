@@ -59,5 +59,6 @@ export interface Pet {
   preferences: string[];
   notes?: string;
   avatarColor: string;
-  receivedBoxesCount: number;
+  // Đường dẫn trong bucket riêng tư pet-avatars (<user_id>/...), hiển thị qua signed URL
+  avatarPath?: string;
 }
