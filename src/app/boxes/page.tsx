@@ -68,6 +68,8 @@ export default function BoxesPage() {
         <div className="absolute -bottom-10 left-10 w-80 h-80 rounded-full bg-pine-100/40 blur-[80px] pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="lg:col-span-7 space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pine-50 border border-pine-200/80 text-pine-900 text-xs font-semibold">
             <Gift className="w-3.5 h-3.5 text-pine-800" />
             <span>Bộ sưu tập Mystery Box tuyển chọn riêng</span>
@@ -80,6 +82,21 @@ export default function BoxesPage() {
             <p className="text-base sm:text-lg text-bark-700 leading-relaxed font-normal">
               Không đóng sẵn hàng loạt. Mỗi hộp gồm đồ ăn, đồ chơi và một món chăm sóc hoặc phụ kiện, chọn theo loài, cân nặng, độ tuổi và dị ứng của bé.
             </p>
+          </div>
+          </div>
+
+          {/* Ảnh minh họa tạo bằng AI; thay bằng ảnh chụp hộp thật khi có */}
+          <div className="lg:col-span-5 relative aspect-[4/3] rounded-2xl overflow-hidden border border-surface-border shadow-md">
+            <Image
+              src="/images/hero/fpets-box-open.jpg"
+              alt="Hộp FPETS đang mở với gói snack, bóng cao su, dây thừng và thiệp gửi bé"
+              fill
+              sizes="(max-width: 1024px) 100vw, 40vw"
+              className="object-cover"
+              priority
+            />
+            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/45 text-white text-[10px]">Ảnh minh họa</span>
+          </div>
           </div>
 
           {/* Dải 4 cam kết chất lượng dạng thẻ nhãn tinh tế */}

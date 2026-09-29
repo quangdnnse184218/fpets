@@ -91,6 +91,7 @@ export default function SubscriptionIntroPage() {
               className="object-cover"
               priority
             />
+            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/45 text-white text-[10px]">Ảnh minh họa</span>
           </div>
         </section>
 

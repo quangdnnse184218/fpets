@@ -168,6 +168,7 @@ export default function HomePage() {
                   <PackageOpen className="w-3.5 h-3.5 text-pine-900" />
                   <span>Mỗi hộp chọn riêng cho một bé</span>
                 </div>
+                <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/45 text-white text-[10px] z-10">Ảnh minh họa</span>
               </div>
 
               <div className="p-3.5 sm:p-4 bg-[#FAF9F6] rounded-xl border border-surface-border/80 mt-2 space-y-2">
