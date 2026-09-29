@@ -58,17 +58,28 @@ export function paymentText(method: string, paymentStatus: string, orderType: st
 
 export const PAYMENT_METHOD_NAME = METHOD_LABEL;
 
-// SPEC §10: báo đổi/trả trong 3 ngày sau khi nhận. Server đang tính mốc nhận hàng bằng updated_at
-// của đơn đã giao (request_order_return), nên giao diện dùng cùng mốc để khớp.
+// SPEC §10: Mystery Box báo lỗi trong 3 ngày; đơn có sản phẩm lẻ (còn nguyên seal) được đổi trả trong 7 ngày.
+// Tính từ lúc giao (delivered_at), mỗi đơn 1 lần — khớp request_order_return.
 export const RETURN_WINDOW_DAYS = 3;
+export const RETAIL_RETURN_WINDOW_DAYS = 7;
 
-export function returnDaysLeft(status: OrderStatus, deliveredAt: string): number {
-  if (status !== "da_giao") return 0;
-  const deadline = new Date(deliveredAt).getTime() + RETURN_WINDOW_DAYS * 86400000;
+export function returnWindowDays(hasRetailItems: boolean): number {
+  return hasRetailItems ? RETAIL_RETURN_WINDOW_DAYS : RETURN_WINDOW_DAYS;
+}
+
+export function returnDaysLeft(status: OrderStatus, deliveredAt: string | null, alreadyRequested = false, windowDays = RETURN_WINDOW_DAYS): number {
+  if (status !== "da_giao" || !deliveredAt || alreadyRequested) return 0;
+  const deadline = new Date(deliveredAt).getTime() + windowDays * 86400000;
   return Math.max(0, Math.ceil((deadline - Date.now()) / 86400000));
 }
 
 // Tên dòng hàng Box đã gồm "(Dành cho bé X)"; bỏ đi để hiện 1 chip tên bé riêng
+export const RETURN_RESOLUTION_LABEL: Record<"exchanged" | "refunded" | "rejected", string> = {
+  exchanged: "Đổi món",
+  refunded: "Hoàn tiền",
+  rejected: "Từ chối",
+};
+
 export function cleanItemName(name: string): string {
   return name.replace(/\s*\((Dành cho )?bé [^)]*\)/gi, "").trim();
 }

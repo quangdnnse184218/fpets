@@ -204,7 +204,7 @@ export default function CartPage() {
                       >
                         {eligiblePetsFor(item).map((pet) => (
                           <option key={pet.id} value={pet.id}>
-                            {pet.name} ({pet.breed})
+                            {pet.name}{pet.breed ? ` (${pet.breed})` : ""}
                           </option>
                         ))}
                       </select>

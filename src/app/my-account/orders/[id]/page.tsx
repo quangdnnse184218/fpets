@@ -12,10 +12,11 @@ import {
   ORDER_STATUS_STYLE,
   ORDER_TIMELINE,
   ORDER_TYPE_LABEL,
-  RETURN_WINDOW_DAYS,
   cleanItemName,
   paymentText,
   returnDaysLeft,
+  returnWindowDays,
+  RETURN_RESOLUTION_LABEL,
   timelineIndex,
 } from "@/lib/orderDisplay";
 import { fetchMyOrder, MyOrder, orderLines } from "@/lib/myOrders";
@@ -65,7 +66,8 @@ export default function OrderDetailPage() {
   const stepIdx = timelineIndex(order.status);
   const cancelled = order.status === "da_huy";
   const isCycle = order.order_type === "subscription_cycle";
-  const daysLeft = returnDaysLeft(order.status, order.updated_at);
+  const hasRetailItems = order.order_items.some((it) => !it.box_type_id);
+  const daysLeft = returnDaysLeft(order.status, order.delivered_at || order.updated_at, !!order.return_requested_at, returnWindowDays(hasRetailItems));
   const isBoxOrder = order.order_type === "mystery_box" || isCycle;
   const pendingPayment = order.status === "cho_thanh_toan" && order.payment_expires_at && new Date(order.payment_expires_at) > new Date();
 
@@ -98,7 +100,8 @@ export default function OrderDetailPage() {
           <ol className="grid grid-cols-5 gap-1">
             {ORDER_TIMELINE.map((step, i) => {
               const done = i <= stepIdx;
-              const time = i === 0 ? order.created_at : i === 1 ? order.paid_at : null;
+              // Mốc "Xác nhận" = lúc thanh toán online; đơn COD trả tiền khi nhận nên không dùng paid_at ở bước này
+              const time = i === 0 ? order.created_at : i === 1 && order.payment_method !== "cod" ? order.paid_at : null;
               return (
                 <li key={step.key} className="flex flex-col items-center text-center gap-1">
                   <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${done ? "bg-pine-900 text-white" : "bg-surface-muted text-bark-400 border border-surface-border"}`}>
@@ -114,6 +117,15 @@ export default function OrderDetailPage() {
         {order.status === "doi_tra" && (
           <div className="p-3 rounded-box bg-honey-50 border border-honey-200 text-xs text-honey-900">
             Đã gửi yêu cầu đổi / trả{order.return_requested_at ? ` lúc ${formatDateTime(order.return_requested_at)}` : ""}. Lý do: {order.return_reason}. Đội ngũ FPETS sẽ liên hệ bạn.
+          </div>
+        )}
+        {order.return_resolution && (
+          <div className={`p-3 rounded-box border text-xs ${order.return_resolution === "rejected" ? "bg-surface-muted border-surface-border text-bark-800" : "bg-grass-50 border-grass-200 text-grass-900"}`}>
+            <p className="font-bold">
+              Yêu cầu đổi / trả: {RETURN_RESOLUTION_LABEL[order.return_resolution]}
+              {order.return_resolved_at ? ` · ${formatDateTime(order.return_resolved_at)}` : ""}
+            </p>
+            {order.return_admin_note && <p className="mt-0.5">{order.return_admin_note}</p>}
           </div>
         )}
 
@@ -189,7 +201,11 @@ export default function OrderDetailPage() {
 
       {order.status === "da_giao" && (
         <div className="flex flex-wrap gap-2">
-          {!hasReview && (
+          {hasReview ? (
+            <p className="flex items-center gap-1.5 min-h-11 text-xs text-grass-800 font-semibold">
+              <Star className="w-4 h-4 fill-honey-500 text-honey-500" /> Bạn đã đánh giá đơn này. Cảm ơn bạn!
+            </p>
+          ) : (
             <Button onClick={() => setReviewOpen(true)}>
               <Star className="w-4 h-4" /> {isBoxOrder ? "Đánh giá hộp" : "Đánh giá sản phẩm"}
             </Button>
@@ -327,19 +343,33 @@ const RETURN_REASONS = [
   "Hàng hỏng, vỡ hoặc hết hạn sử dụng",
   "Giao thiếu món",
 ];
+// Chỉ sản phẩm lẻ được trả vì đổi ý (SPEC §10), Mystery Box thì không
+const RETAIL_RETURN_REASON = "Muốn đổi / trả sản phẩm lẻ còn nguyên seal (khách chịu phí ship)";
 
 function ReturnModal({ order, onClose, onDone }: { order: MyOrder; onClose: () => void; onDone: () => void }) {
+  const hasRetailItems = order.order_items.some((it) => !it.box_type_id);
+  const reasons = hasRetailItems ? [...RETURN_REASONS, RETAIL_RETURN_REASON] : RETURN_REASONS;
   const [reason, setReason] = useState(RETURN_REASONS[0]);
+  const [detail, setDetail] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const submit = async () => {
     setSaving(true);
     setError("");
-    const { error: err } = await createClient().rpc("request_order_return", { p_order_id: order.id, p_reason: reason });
+    const { error: err } = await createClient().rpc("request_order_return", {
+      p_order_id: order.id,
+      p_reason: detail.trim() ? `${reason}. Mô tả: ${detail.trim()}` : reason,
+    });
     setSaving(false);
     if (err) {
-      setError(err.message.includes("ERR_RETURN_WINDOW_EXPIRED") ? `Đã quá ${RETURN_WINDOW_DAYS} ngày kể từ khi nhận hàng.` : "Không gửi được yêu cầu, vui lòng thử lại.");
+      setError(
+        err.message.includes("ERR_RETURN_WINDOW_EXPIRED")
+          ? `Đã quá ${returnWindowDays(hasRetailItems)} ngày kể từ khi nhận hàng.`
+          : err.message.includes("ERR_RETURN_ALREADY_REQUESTED")
+            ? "Đơn này đã gửi yêu cầu đổi / trả trước đó."
+            : "Không gửi được yêu cầu, vui lòng thử lại."
+      );
       return;
     }
     onDone();
@@ -360,13 +390,25 @@ function ReturnModal({ order, onClose, onDone }: { order: MyOrder; onClose: () =
       <div className="space-y-3">
         <fieldset className="space-y-2">
           <legend className="text-xs font-bold text-bark-800 mb-1">Lý do</legend>
-          {RETURN_REASONS.map((r) => (
+          {reasons.map((r) => (
             <label key={r} className={`flex items-center gap-2.5 min-h-11 px-3 rounded-box border cursor-pointer text-sm ${reason === r ? "bg-pine-50 border-pine-800" : "border-surface-border"}`}>
               <input type="radio" name="return-reason" checked={reason === r} onChange={() => setReason(r)} className="accent-pine-900" />
               {r}
             </label>
           ))}
         </fieldset>
+        <div>
+          <label htmlFor="return-detail" className="text-xs font-bold text-bark-800 block mb-1">Mô tả chi tiết (không bắt buộc)</label>
+          <textarea
+            id="return-detail"
+            rows={3}
+            maxLength={500}
+            value={detail}
+            onChange={(e) => setDetail(e.target.value)}
+            placeholder="Ví dụ: Lon pate bị móp, hạt bị ẩm..."
+            className="w-full p-3 rounded-box border border-surface-border bg-white text-sm focus:border-pine-900 focus:outline-none"
+          />
+        </div>
         <p className="text-xs text-bark-600 leading-relaxed">{EXCHANGE_POLICY}</p>
         {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
       </div>

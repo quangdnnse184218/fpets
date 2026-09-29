@@ -9,8 +9,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     .eq("slug", slug)
     .eq("is_active", true)
     .maybeSingle();
-  if (!data) return { title: "Sản phẩm" };
-  return { title: data.name, description: data.description || undefined };
+  // Layout cha đặt title dạng chuỗi nên template "%s | FPETS" của root không áp xuống đây; ghi rõ hậu tố
+  if (!data) return { title: { absolute: "Sản phẩm | FPETS" } };
+  return { title: { absolute: `${data.name} | FPETS` }, description: data.description || undefined };
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {

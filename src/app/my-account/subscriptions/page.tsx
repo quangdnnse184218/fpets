@@ -139,6 +139,14 @@ export default function MySubscriptionsPage() {
     fetchPlanOptions().then(setPlans);
   }, [load]);
 
+  // Quay về từ cổng thanh toán (?status=paid): báo thành công rồi bỏ tham số khỏi URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("status") !== "paid") return;
+    show(`Thanh toán thành công${params.get("code") ? ` đơn ${params.get("code")}` : ""}. Gói định kỳ đã được kích hoạt.`, { duration: 6000 });
+    router.replace("/my-account/subscriptions");
+  }, [router, show]);
+
   const resume = async (sub: SubscriptionRow) => {
     setResuming(sub.id);
     const { error } = await createClient().rpc("resume_subscription", { p_subscription_id: sub.id });
@@ -232,7 +240,7 @@ export default function MySubscriptionsPage() {
             {(isActive || isPaused) && sub.remaining_cycles > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="p-3 rounded-box bg-surface-muted/60 border border-surface-border">
-                  <span className="text-bark-500 block">Hộp tiếp theo ({SCHEDULE_LABEL[sub.delivery_schedule].toLowerCase()})</span>
+                  <span className="text-bark-500 block">Hộp tiếp theo · {SCHEDULE_LABEL[sub.delivery_schedule]}</span>
                   <strong className="text-pine-950 text-sm">{deliveryWindowLabel(sub.next_delivery_date, sub.delivery_schedule)}</strong>
                 </div>
                 <div className="p-3 rounded-box bg-surface-muted/60 border border-surface-border">
@@ -500,7 +508,9 @@ function DeliveryModal({ sub, onClose, onDone }: { sub: SubscriptionRow; onClose
           <AddressFields value={addr} onChange={setAddr} idPrefix="sub-addr" />
         </div>
         <p className="text-[11px] text-bark-500">
-          Hộp đã qua ngày chốt ({formatDate(sub.cutoff_date)}) vẫn giao theo thông tin cũ; thay đổi áp dụng từ kỳ sau.
+          {new Date(`${sub.cutoff_date}T23:59:59+07:00`) >= new Date()
+            ? `Lưu trước ngày chốt ${formatDate(sub.cutoff_date)} thì thay đổi áp dụng ngay cho hộp tiếp theo.`
+            : `Hộp kỳ này đã qua ngày chốt (${formatDate(sub.cutoff_date)}) nên vẫn giao theo thông tin cũ; thay đổi áp dụng từ kỳ sau.`}
         </p>
         {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
       </form>

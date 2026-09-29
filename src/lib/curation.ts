@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { productRowToProduct, ProductWithCategory } from "@/lib/adapters";
 import { Tables } from "@/types/database";
 import { Product } from "@/types/models";
+import { productHasAllergen } from "@/lib/petOptions";
 
 export interface CurationQueueRow {
   id: string;
@@ -76,9 +77,8 @@ export async function fetchCandidateProducts(
 
   return matched.map((row) => {
     const product = productRowToProduct(row);
-    const isAllergic = (pet.allergies || []).some((allergy) =>
-      row.ingredients?.some((ing) => ing.toLowerCase().includes(allergy.toLowerCase()))
-    );
+    // Cùng bộ so khớp với cảnh báo phía khách: "Thịt gà" chặn cả "Snack ức gà", "chicken"...
+    const isAllergic = (pet.allergies || []).some((allergy) => productHasAllergen(row, allergy));
     return {
       ...product,
       isAllergic,
@@ -89,20 +89,21 @@ export async function fetchCandidateProducts(
 }
 
 // Tự động gợi ý danh sách món ban đầu: ưu tiên món chưa gửi/không bị ghét,
-// đảm bảo tối thiểu 1 food + 1 toy + 1 accessory, đạt tổng giá trị tối thiểu.
+// đảm bảo tối thiểu 1 food + 1 toy + 1 accessory, đạt tổng giá trị tối thiểu
+// với ít món nhất có thể. Giá trị tối thiểu là cam kết với khách nên được ưu tiên hơn số món:
+// nếu các món hiện có không đủ giá trị trong giới hạn số món, vẫn thêm món và màn hình sẽ báo cho admin.
 export function autoSuggest(candidates: CandidateProduct[], minRetailValue: number): CandidateProduct[] {
   const safe = candidates.filter((c) => !c.isAllergic && !c.wasSentBefore && !c.wasDisliked);
   const pool = safe.length > 0 ? safe : candidates.filter((c) => !c.isAllergic);
 
-  const byCategory = (cat: Product["category"]) => pool.filter((p) => p.category === cat).sort((a, b) => a.price - b.price);
+  // Mỗi nhóm lấy món giá trị cao nhất để đạt giá trị tối thiểu với ít món nhất
+  const topOf = (cat: Product["category"]) => pool.filter((p) => p.category === cat).sort((a, b) => b.price - a.price)[0];
 
   const selected: CandidateProduct[] = [];
-  const food = byCategory("food")[0];
-  const toy = byCategory("toy")[0];
-  const accessory = byCategory("accessory")[0];
-  if (food) selected.push(food);
-  if (toy) selected.push(toy);
-  if (accessory) selected.push(accessory);
+  for (const cat of ["food", "toy", "accessory"] as const) {
+    const item = topOf(cat);
+    if (item) selected.push(item);
+  }
 
   let total = selected.reduce((s, p) => s + p.price, 0);
   const remaining = pool.filter((p) => !selected.some((s) => s.id === p.id)).sort((a, b) => b.price - a.price);

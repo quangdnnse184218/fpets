@@ -68,14 +68,21 @@ function keywordsFor(allergy: string): string[] {
  * Các cặp (bé, dị ứng) khớp với sản phẩm. Chỉ để cảnh báo khách, vẫn cho mua.
  * Dựa trên tên + thành phần sản phẩm vì DB chưa có cột allergens chuẩn hóa.
  */
+/**
+ * Sản phẩm có chứa nhóm dị ứng này không (so theo tên + thành phần, nguyên từ, không dấu).
+ * Dùng chung cho cảnh báo khách khi mua và cho màn hình tuyển chọn hộp của admin.
+ */
+export function productHasAllergen(product: { name: string; ingredients: string[] | null }, allergy: string): boolean {
+  const haystack = ` ${normalizeText([product.name, ...(product.ingredients || [])].join(" "))} `;
+  return keywordsFor(allergy).some((w) => new RegExp(`[^a-z0-9]${w}[^a-z0-9]`).test(haystack));
+}
+
 export function findAllergyConflicts(product: Pick<Product, "name" | "ingredients" | "species">, pets: Pet[]) {
-  const haystack = ` ${normalizeText([product.name, ...product.ingredients].join(" "))} `;
   const conflicts: { petName: string; allergy: string }[] = [];
   for (const pet of pets) {
     if (product.species !== "both" && product.species !== pet.species) continue;
     for (const allergy of pet.allergies) {
-      const hit = keywordsFor(allergy).some((w) => new RegExp(`[^a-z0-9]${w}[^a-z0-9]`).test(haystack));
-      if (hit) conflicts.push({ petName: pet.name, allergy });
+      if (productHasAllergen(product, allergy)) conflicts.push({ petName: pet.name, allergy });
     }
   }
   return conflicts;

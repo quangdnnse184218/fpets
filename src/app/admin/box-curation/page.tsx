@@ -156,7 +156,7 @@ export default function AdminBoxCurationPage() {
                       Tuyển chọn hộp cho bé {active.pets.name}
                     </h2>
                     <p className="text-xs text-bark-600 mt-1">
-                      Đơn hàng: <strong>{active.orders?.order_code}</strong> · {active.pets.breed} · {ageLabel[active.pets.age_group]}
+                      Đơn hàng: <strong>{active.orders?.order_code}</strong> · {[active.pets.breed, active.pets.weight ? `${active.pets.weight} kg` : null, ageLabel[active.pets.age_group]].filter(Boolean).join(" · ")}
                     </p>
                   </div>
                 </div>
@@ -186,7 +186,14 @@ export default function AdminBoxCurationPage() {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-pine-950">
-                    <span>Món đã chọn ({selectedProducts.length}):</span>
+                    <span>
+                      Món đã chọn ({selectedProducts.length}; quy định {active.box_types.item_count_min}–{active.box_types.item_count_max} món):
+                      {selectedProducts.length > active.box_types.item_count_max && (
+                        <span className="block text-[11px] font-medium text-amber-700">
+                          Vượt số món quy định vì các món phù hợp hiện có chưa đủ giá trị tối thiểu. Nên nhập thêm món giá trị cao.
+                        </span>
+                      )}
+                    </span>
                     <span className="text-bark-500 font-normal">
                       Cam kết tối thiểu: <strong>{formatVND(active.box_types.min_retail_value)}</strong>
                     </span>

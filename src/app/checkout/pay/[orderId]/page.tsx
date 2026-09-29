@@ -64,8 +64,8 @@ function PaySimulationContent() {
         </div>
 
         <p className="text-[11px] text-bark-500 leading-relaxed">
-          Đây là môi trường sandbox demo — chưa tích hợp merchant thật. Bấm nút dưới để giả lập bạn đã
-          hoàn tất thanh toán trên ứng dụng {method === "vnpay" ? "VNPay" : "MoMo"}.
+          Chế độ thử nghiệm: cổng thanh toán {method === "vnpay" ? "VNPay" : "MoMo"} thật chưa được kết nối, bạn không bị trừ tiền.
+          Bấm nút dưới để mô phỏng đã thanh toán thành công.
         </p>
 
         {status === "failed" && (
@@ -83,7 +83,7 @@ function PaySimulationContent() {
 
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-grass-700 font-semibold">
           <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Giao dịch được ghi nhận và trừ tồn kho ngay ở server</span>
+          <span>Đơn giữ chỗ trong 30 phút, quá hạn sẽ tự hủy</span>
         </div>
       </div>
     </div>

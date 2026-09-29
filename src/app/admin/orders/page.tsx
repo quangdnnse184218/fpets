@@ -2,8 +2,17 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { formatVND, formatDate } from "@/lib/formatters";
+import { formatVND, formatDate, formatDateTime } from "@/lib/formatters";
+import { RETURN_RESOLUTION_LABEL } from "@/lib/orderDisplay";
 import { Truck, Eye, Search, CheckCircle2 } from "lucide-react";
+
+const ACTION_ERROR: Record<string, string> = {
+  ERR_INVALID_ORDER_STATUS: "Trạng thái đơn đã thay đổi, vui lòng tải lại trang.",
+  ERR_FORBIDDEN: "Tài khoản không có quyền thực hiện thao tác này.",
+  ERR_NOTE_REQUIRED: "Vui lòng nhập lý do từ chối để gửi cho khách.",
+};
+
+const PAYMENT_STATUS_LABEL: Record<string, string> = { paid: "Đã thanh toán", pending: "Chưa thanh toán", refunded: "Đã hoàn tiền", failed: "Thanh toán lỗi" };
 
 type OrderStatus = "cho_thanh_toan" | "da_xac_nhan" | "dang_chuan_bi" | "dang_giao" | "da_giao" | "da_huy" | "doi_tra";
 
@@ -29,10 +38,22 @@ interface OrderRow {
   recipient_name: string;
   recipient_phone: string;
   shipping_address: string;
+  ward: string | null;
+  province_city: string | null;
+  customer_notes: string | null;
+  return_reason: string | null;
+  return_requested_at: string | null;
+  return_resolution: "exchanged" | "refunded" | "rejected" | null;
+  return_admin_note: string | null;
   tracking_code: string | null;
   created_at: string;
   order_items: { id: string; product_name_snapshot: string; quantity: number; total_price: number; pets: { name: string } | null }[];
+  // order_id là unique nên API trả về 1 object (hoặc null), không phải mảng
+  box_curations: BoxCurationEmbed | BoxCurationEmbed[] | null;
 }
+
+type BoxCurationEmbed = { status: string; box_curation_items: { quantity: number; products: { name: string } | null }[] };
+const curationsOf = (o: OrderRow): BoxCurationEmbed[] => (o.box_curations ? ([] as BoxCurationEmbed[]).concat(o.box_curations) : []);
 
 // Đơn "Thanh toán/Gia hạn gói" chỉ là biên nhận tiền; hộp thực tế giao theo đơn "Giao hộp gói"
 const ORDER_TYPE_LABEL: Record<string, string> = {
@@ -52,6 +73,9 @@ export default function AdminOrdersPage() {
   const [trackingInput, setTrackingInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState<string | null>(null);
+  const [returnResolution, setReturnResolution] = useState<"exchanged" | "refunded" | "rejected">("exchanged");
+  const [returnNote, setReturnNote] = useState("");
 
   const statuses: { id: string; label: string }[] = [
     { id: "all", label: "Tất cả đơn" },
@@ -69,7 +93,7 @@ export default function AdminOrdersPage() {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("orders")
-      .select("id, order_code, order_type, cycle_index, status, payment_method, payment_status, total_amount, recipient_name, recipient_phone, shipping_address, tracking_code, created_at, order_items(id, product_name_snapshot, quantity, total_price, pets(name))")
+      .select("id, order_code, order_type, cycle_index, status, payment_method, payment_status, total_amount, recipient_name, recipient_phone, shipping_address, ward, province_city, customer_notes, return_reason, return_requested_at, return_resolution, return_admin_note, tracking_code, created_at, order_items(id, product_name_snapshot, quantity, total_price, pets(name)), box_curations(status, box_curation_items(quantity, products(name)))")
       .order("created_at", { ascending: false })
       .limit(200);
     if (!error && data) setOrders(data as unknown as OrderRow[]);
@@ -95,7 +119,8 @@ export default function AdminOrdersPage() {
     const { error } = await fn();
     setBusy(false);
     if (error) {
-      setActionError(error.message);
+      const key = Object.keys(ACTION_ERROR).find((k) => error.message.includes(k));
+      setActionError(key ? ACTION_ERROR[key] : `Không thực hiện được: ${error.message}`);
       return false;
     }
     await loadOrders();
@@ -106,29 +131,46 @@ export default function AdminOrdersPage() {
     if (!selectedOrder) return;
     const supabase = createClient();
     const ok = await runAction(() => supabase.rpc("confirm_cod_order", { p_order_id: selectedOrder.id }));
-    if (ok) setSelectedOrder(null);
+    if (ok) closeDetail();
   };
 
   const handleMarkShipping = async () => {
     if (!selectedOrder || !trackingInput.trim()) return;
     const supabase = createClient();
     const ok = await runAction(() => supabase.rpc("mark_order_shipping", { p_order_id: selectedOrder.id, p_tracking_code: trackingInput.trim() }));
-    if (ok) setSelectedOrder(null);
+    if (ok) closeDetail();
   };
 
   const handleMarkDelivered = async () => {
     if (!selectedOrder) return;
     const supabase = createClient();
     const ok = await runAction(() => supabase.rpc("mark_order_delivered", { p_order_id: selectedOrder.id }));
-    if (ok) setSelectedOrder(null);
+    if (ok) closeDetail();
   };
 
+  // Lý do hủy được gửi kèm thông báo cho khách, nên bắt buộc nhập
   const handleCancel = async () => {
-    if (!selectedOrder) return;
-    if (!confirm("Xác nhận hủy đơn này? Tồn kho sẽ được hoàn lại nếu đã trừ.")) return;
+    if (!selectedOrder || !cancelReason?.trim()) return;
     const supabase = createClient();
-    const ok = await runAction(() => supabase.rpc("cancel_order_by_staff", { p_order_id: selectedOrder.id, p_reason: "Hủy bởi quản trị viên" }));
-    if (ok) setSelectedOrder(null);
+    const ok = await runAction(() => supabase.rpc("cancel_order_by_staff", { p_order_id: selectedOrder.id, p_reason: cancelReason.trim() }));
+    if (ok) closeDetail();
+  };
+
+  const handleResolveReturn = async () => {
+    if (!selectedOrder) return;
+    const supabase = createClient();
+    const ok = await runAction(() =>
+      supabase.rpc("resolve_order_return", { p_order_id: selectedOrder.id, p_resolution: returnResolution, p_note: returnNote.trim() })
+    );
+    if (ok) closeDetail();
+  };
+
+  const closeDetail = () => {
+    setSelectedOrder(null);
+    setCancelReason(null);
+    setReturnNote("");
+    setReturnResolution("exchanged");
+    setActionError(null);
   };
 
   if (loading) {
@@ -206,7 +248,7 @@ export default function AdminOrdersPage() {
                 <td className="p-3.5">
                   <span className="font-semibold text-bark-800 uppercase">{order.payment_method}</span>
                   <span className={`block text-[10px] ${order.payment_status === "paid" ? "text-grass-700" : "text-amber-700"}`}>
-                    {order.payment_status}
+                    {PAYMENT_STATUS_LABEL[order.payment_status] || order.payment_status}
                   </span>
                 </td>
                 <td className="p-3.5 font-extrabold text-pine-950 font-display">
@@ -247,7 +289,12 @@ export default function AdminOrdersPage() {
 
             <div className="space-y-2">
               <div className="font-bold text-pine-950">Địa chỉ giao:</div>
-              <p className="text-bark-600 bg-surface-muted p-2 rounded-box">{selectedOrder.shipping_address}</p>
+              <p className="text-bark-600 bg-surface-muted p-2 rounded-box">
+                {[selectedOrder.shipping_address, selectedOrder.ward, selectedOrder.province_city].filter(Boolean).join(", ")}
+              </p>
+              {selectedOrder.customer_notes && (
+                <p className="text-bark-600">Ghi chú của khách: <span className="font-semibold text-bark-800">{selectedOrder.customer_notes}</span></p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -259,6 +306,65 @@ export default function AdminOrdersPage() {
                 </div>
               ))}
             </div>
+
+            {/* Danh sách món đã tuyển chọn để nhân viên kho đóng hộp */}
+            {curationsOf(selectedOrder).length > 0 && (
+              <div className="space-y-1.5">
+                <div className="font-bold text-pine-950">Món trong Mystery Box:</div>
+                {curationsOf(selectedOrder).map((c, idx) =>
+                  c.status === "pending_curation" ? (
+                    <p key={idx} className="p-2 rounded bg-amber-50 text-amber-800">Hộp chưa được tuyển chọn. Vào Hàng chờ tuyển chọn để chọn món.</p>
+                  ) : (
+                    <ul key={idx} className="p-2 rounded bg-surface-muted list-disc pl-6 space-y-0.5">
+                      {c.box_curation_items.map((bi, j) => (
+                        <li key={j}>{bi.quantity}x {bi.products?.name}</li>
+                      ))}
+                    </ul>
+                  )
+                )}
+              </div>
+            )}
+
+            {(selectedOrder.return_reason || selectedOrder.return_resolution) && (
+              <div className="space-y-1.5 p-3 rounded-box bg-honey-50 border border-honey-200">
+                <div className="font-bold text-pine-950">
+                  Yêu cầu đổi / trả{selectedOrder.return_requested_at ? ` · ${formatDateTime(selectedOrder.return_requested_at)}` : ""}
+                </div>
+                <p className="text-bark-800">{selectedOrder.return_reason}</p>
+                {selectedOrder.return_resolution && (
+                  <p className="text-bark-700">
+                    Đã xử lý: <strong>{RETURN_RESOLUTION_LABEL[selectedOrder.return_resolution]}</strong>
+                    {selectedOrder.return_admin_note ? ` · ${selectedOrder.return_admin_note}` : ""}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {selectedOrder.status === "doi_tra" && (
+              <div className="space-y-2 pt-3 border-t border-surface-border">
+                <div className="font-bold text-pine-950">Xử lý yêu cầu đổi / trả:</div>
+                <div className="flex flex-wrap gap-2">
+                  {(Object.keys(RETURN_RESOLUTION_LABEL) as (keyof typeof RETURN_RESOLUTION_LABEL)[]).map((k) => (
+                    <label key={k} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-box border cursor-pointer ${returnResolution === k ? "border-pine-900 bg-pine-50 font-bold" : "border-surface-border"}`}>
+                      <input type="radio" name="return-resolution" className="accent-pine-900" checked={returnResolution === k} onChange={() => setReturnResolution(k)} />
+                      {RETURN_RESOLUTION_LABEL[k]}
+                    </label>
+                  ))}
+                </div>
+                <textarea
+                  rows={2}
+                  value={returnNote}
+                  onChange={(e) => setReturnNote(e.target.value)}
+                  placeholder={returnResolution === "rejected" ? "Lý do từ chối (bắt buộc, gửi cho khách)" : returnResolution === "refunded" ? "Ví dụ: Đã hoàn 45.000₫ qua chuyển khoản" : "Ví dụ: Gửi bù 1 hũ bánh quy trong 2 ngày tới"}
+                  className="w-full px-3 py-2 rounded-box border border-surface-border text-xs"
+                />
+                <p className="text-[11px] text-bark-500">Ghi chú được gửi cho khách qua thông báo. Đơn trở về trạng thái Đã giao.</p>
+                <button type="button" disabled={busy || (returnResolution === "rejected" && !returnNote.trim())} onClick={handleResolveReturn}
+                  className="px-3 py-1.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold disabled:opacity-60">
+                  Xác nhận xử lý
+                </button>
+              </div>
+            )}
 
             <div className="pt-3 border-t border-surface-border space-y-2">
               <div className="font-bold text-pine-950">Thao tác vận hành:</div>
@@ -286,17 +392,34 @@ export default function AdminOrdersPage() {
                     Đã giao thành công
                   </button>
                 )}
-                {!["da_huy", "da_giao"].includes(selectedOrder.status) && (
-                  <button type="button" disabled={busy} onClick={handleCancel}
+                {!["da_huy", "da_giao", "doi_tra"].includes(selectedOrder.status) && cancelReason === null && (
+                  <button type="button" disabled={busy} onClick={() => setCancelReason("")}
                     className="px-3 py-1.5 rounded-box bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold disabled:opacity-60">
                     Hủy đơn
                   </button>
+                )}
+                {cancelReason !== null && (
+                  <div className="w-full space-y-2 p-3 rounded-box bg-red-50 border border-red-200">
+                    <label className="font-semibold text-red-800 block" htmlFor="cancel-reason">Lý do hủy (gửi cho khách; tồn kho được hoàn lại nếu đã trừ)</label>
+                    <input id="cancel-reason" type="text" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)}
+                      placeholder="Ví dụ: Khách yêu cầu hủy qua hotline"
+                      className="w-full px-3 py-2 rounded-box border border-red-200 bg-white text-xs" />
+                    <div className="flex gap-2">
+                      <button type="button" disabled={busy || !cancelReason.trim()} onClick={handleCancel}
+                        className="px-3 py-1.5 rounded-box bg-red-700 hover:bg-red-800 text-white font-bold disabled:opacity-60">
+                        Xác nhận hủy đơn
+                      </button>
+                      <button type="button" onClick={() => setCancelReason(null)} className="px-3 py-1.5 rounded-box border border-surface-border bg-white font-semibold">
+                        Không hủy
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
 
             <div className="flex justify-end pt-3 border-t border-surface-border">
-              <button type="button" onClick={() => setSelectedOrder(null)} className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold">
+              <button type="button" onClick={closeDetail} className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold">
                 Đóng
               </button>
             </div>

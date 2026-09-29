@@ -181,14 +181,14 @@ export default function AdminSubscriptionsPage() {
                   </td>
                   <td className="p-3.5">
                     <div className="font-semibold text-pine-950">{sub.profiles?.full_name}</div>
-                    <div className="text-[11px] text-bark-500 mt-0.5">Bé: <strong className="text-pine-900">{sub.pets?.name}</strong> ({sub.pets?.breed})</div>
+                    <div className="text-[11px] text-bark-500 mt-0.5">Bé: <strong className="text-pine-900">{sub.pets?.name}</strong>{sub.pets?.breed ? ` (${sub.pets.breed})` : ""}</div>
                   </td>
                   <td className="p-3.5">
                     <div className="font-medium text-bark-900">{sub.box_types?.name}</div>
                     <div className="text-[11px] text-grass-700 font-semibold">{sub.subscription_plans?.name}</div>
                   </td>
                   <td className="p-3.5">
-                    <span className="font-bold text-pine-900 text-sm">Kỳ {completed}/{sub.total_cycles}</span>
+                    <span className="font-bold text-pine-900 text-sm">Đã giao {completed}/{sub.total_cycles} hộp</span>
                     <div className="w-24 bg-surface-muted h-1.5 rounded-full overflow-hidden mt-1">
                       <div className="bg-grass-600 h-full rounded-full" style={{ width: `${(completed / sub.total_cycles) * 100}%` }} />
                     </div>

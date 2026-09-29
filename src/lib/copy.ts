@@ -4,7 +4,7 @@
 // Chính sách đổi món Mystery Box (SPEC §10)
 export const EXCHANGE_POLICY_SHORT = "Đổi món miễn phí nếu lỗi do FPETS";
 export const EXCHANGE_POLICY =
-  "FPETS đổi món miễn phí khi lỗi thuộc về shop (món chứa thành phần dị ứng đã khai, hàng hỏng hoặc hết hạn, giao thiếu). Báo trong 3 ngày sau khi nhận, kèm ảnh mở hộp. Không đổi vì bé không thích món.";
+  "FPETS đổi món miễn phí khi lỗi thuộc về shop (món chứa thành phần dị ứng đã khai, hàng hỏng hoặc hết hạn, giao thiếu). Báo trong 3 ngày sau khi nhận; FPETS sẽ liên hệ qua điện thoại hoặc Zalo để nhận ảnh/video mở hộp. Không đổi vì bé không thích món.";
 
 // Pet Quiz (SPEC §3: 5 câu, không cần đăng nhập)
 export const QUIZ_NAME = "Pet Quiz";

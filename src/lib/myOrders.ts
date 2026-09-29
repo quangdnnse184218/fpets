@@ -37,6 +37,10 @@ export interface MyOrder {
   cancellation_reason: string | null;
   return_requested_at: string | null;
   return_reason: string | null;
+  delivered_at: string | null;
+  return_resolution: "exchanged" | "refunded" | "rejected" | null;
+  return_resolved_at: string | null;
+  return_admin_note: string | null;
   payment_expires_at: string | null;
   recipient_name: string;
   recipient_phone: string;
@@ -55,7 +59,7 @@ export interface MyOrder {
 }
 
 const ORDER_SELECT = `id, order_code, order_type, status, payment_method, payment_status, subtotal, shipping_fee, discount_amount, total_amount,
-  cycle_index, tracking_code, created_at, updated_at, paid_at, cancelled_at, cancellation_reason, return_requested_at, return_reason,
+  cycle_index, tracking_code, created_at, updated_at, paid_at, cancelled_at, cancellation_reason, return_requested_at, return_reason, delivered_at, return_resolution, return_resolved_at, return_admin_note,
   payment_expires_at, recipient_name, recipient_phone, shipping_address, province_city, ward, customer_notes,
   order_items(id, product_id, product_name_snapshot, quantity, unit_price, total_price, box_type_id, pets(name), products(slug, images), box_types(name, images)),
   subscriptions(id, subscription_code, total_cycles, box_types(name, images), pets(name))`;

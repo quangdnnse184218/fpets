@@ -558,6 +558,7 @@ export type Database = {
           created_at: string
           customer_notes: string | null
           cycle_index: number | null
+          delivered_at: string | null
           discount_amount: number
           district: string
           id: string
@@ -571,8 +572,11 @@ export type Database = {
           recipient_name: string
           recipient_phone: string
           renewal_plan_id: string | null
+          return_admin_note: string | null
           return_reason: string | null
           return_requested_at: string | null
+          return_resolution: string | null
+          return_resolved_at: string | null
           shipping_address: string
           shipping_fee: number
           status: Database["public"]["Enums"]["order_status"]
@@ -592,6 +596,7 @@ export type Database = {
           created_at?: string
           customer_notes?: string | null
           cycle_index?: number | null
+          delivered_at?: string | null
           discount_amount?: number
           district: string
           id?: string
@@ -605,8 +610,11 @@ export type Database = {
           recipient_name: string
           recipient_phone: string
           renewal_plan_id?: string | null
+          return_admin_note?: string | null
           return_reason?: string | null
           return_requested_at?: string | null
+          return_resolution?: string | null
+          return_resolved_at?: string | null
           shipping_address: string
           shipping_fee?: number
           status?: Database["public"]["Enums"]["order_status"]
@@ -626,6 +634,7 @@ export type Database = {
           created_at?: string
           customer_notes?: string | null
           cycle_index?: number | null
+          delivered_at?: string | null
           discount_amount?: number
           district?: string
           id?: string
@@ -639,8 +648,11 @@ export type Database = {
           recipient_name?: string
           recipient_phone?: string
           renewal_plan_id?: string | null
+          return_admin_note?: string | null
           return_reason?: string | null
           return_requested_at?: string | null
+          return_resolution?: string | null
+          return_resolved_at?: string | null
           shipping_address?: string
           shipping_fee?: number
           status?: Database["public"]["Enums"]["order_status"]
@@ -1346,6 +1358,10 @@ export type Database = {
           p_schedule: Database["public"]["Enums"]["delivery_schedule"]
         }
         Returns: string
+      }
+      resolve_order_return: {
+        Args: { p_note: string; p_order_id: string; p_resolution: string }
+        Returns: Json
       }
       submit_feedback: {
         Args: {

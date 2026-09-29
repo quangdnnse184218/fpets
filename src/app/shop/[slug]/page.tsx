@@ -89,7 +89,7 @@ export default function ProductDetailPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 text-center space-y-4">
         <h1 className="text-xl font-bold text-pine-950">Không tìm thấy sản phẩm</h1>
         <Link href="/shop" className="text-pine-800 font-semibold text-sm hover:underline">
-          Quay lại Shop
+          Quay lại Cửa hàng
         </Link>
       </div>
     );
@@ -101,7 +101,7 @@ export default function ProductDetailPage() {
       <nav className="text-xs text-bark-500 flex items-center gap-1.5">
         <Link href="/shop" className="hover:text-bark-800 flex items-center gap-1">
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Quay lại Shop</span>
+          <span>Quay lại Cửa hàng</span>
         </Link>
         <span>/</span>
         <span className="text-pine-950 font-semibold truncate">{product.name}</span>
