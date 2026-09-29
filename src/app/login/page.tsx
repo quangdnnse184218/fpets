@@ -7,6 +7,7 @@ import { createClient, isSupabaseConfigured, getSupabaseConfigStatus } from "@/l
 import { safeRedirect } from "@/lib/safeRedirect";
 import { useApp } from "@/context/AppContext";
 import BrandLogo from "@/components/common/BrandLogo";
+import GoogleSignInButton from "@/components/common/GoogleSignInButton";
 import { 
   Eye, 
   EyeOff, 
@@ -33,7 +34,10 @@ function LoginForm() {
   // UI states
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  // /auth/callback trả về ?error=google khi đăng nhập Google thất bại hoặc bị hủy
+  const [errorMessage, setErrorMessage] = useState(
+    searchParams.get("error") === "google" ? "Đăng nhập Google không thành công, vui lòng thử lại." : ""
+  );
   const [successMessage, setSuccessMessage] = useState("");
   const [isUnconfirmed, setIsUnconfirmed] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -283,6 +287,16 @@ function LoginForm() {
             )}
           </button>
         </form>
+
+        {/* Đăng nhập nhanh bằng Google */}
+        <div className="mt-5 space-y-4">
+          <div className="flex items-center gap-3 text-[11px] text-bark-400">
+            <span className="flex-1 h-px bg-surface-border" />
+            <span>hoặc</span>
+            <span className="flex-1 h-px bg-surface-border" />
+          </div>
+          <GoogleSignInButton next={redirectUrl || undefined} />
+        </div>
 
         {/* Chuyển sang Đăng ký */}
         <div className="mt-6 pt-5 border-t border-surface-border text-center">
