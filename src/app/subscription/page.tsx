@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Calendar,
   Gift,
@@ -78,6 +79,18 @@ export default function SubscriptionIntroPage() {
             >
               <span>Xem các loại box</span>
             </Link>
+          </div>
+
+          {/* Ảnh minh họa tạo bằng AI; thay bằng ảnh chụp hộp thật khi có */}
+          <div className="relative mx-auto mt-6 max-w-2xl aspect-[4/3] rounded-container overflow-hidden border border-surface-border shadow-md">
+            <Image
+              src="/images/hero/fpets-box-open.jpg"
+              alt="Hộp FPETS đang mở với gói snack, bóng cao su, dây thừng và thiệp gửi bé"
+              fill
+              sizes="(max-width: 768px) 100vw, 672px"
+              className="object-cover"
+              priority
+            />
           </div>
         </section>
 

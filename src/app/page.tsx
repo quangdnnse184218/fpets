@@ -154,11 +154,11 @@ export default function HomePage() {
 
           <div className="lg:col-span-5">
             <div className="relative rounded-2xl overflow-hidden border border-surface-border/90 shadow-lg bg-white p-2 sm:p-2.5">
-              {/* TODO: thay bằng ảnh chụp thật hộp FPETS (hộp đóng/mở, thiệp tên bé) khi có */}
+              {/* Ảnh minh họa tạo bằng AI; thay bằng ảnh chụp hộp thật khi có */}
               <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-surface-muted">
                 <Image
-                  src="/images/hero/dog-in-box.jpg"
-                  alt="Chú chó ló đầu ra khỏi hộp quà"
+                  src="/images/hero/fpets-box-open.jpg"
+                  alt="Hộp FPETS đang mở với gói snack, bóng cao su, dây thừng và thiệp gửi bé"
                   fill
                   sizes="(max-width: 1024px) 100vw, 40vw"
                   className="object-cover"
