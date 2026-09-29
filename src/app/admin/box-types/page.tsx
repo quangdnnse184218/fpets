@@ -156,7 +156,7 @@ export default function AdminBoxTypesPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div className="p-3.5 rounded-box bg-surface-muted border border-surface-border">
-            <span className="font-semibold text-bark-700 block mb-1">Gói 1 hộp (Thử nghiệm)</span>
+            <span className="font-semibold text-bark-700 block mb-1">Gói 1 hộp</span>
             <span className="font-bold text-pine-900 text-sm">Giảm 0%</span>
           </div>
           <div className="p-3.5 rounded-box bg-grass-50/60 border border-grass-200">
@@ -219,9 +219,12 @@ export default function AdminBoxTypesPage() {
                   <td className="p-3.5">
                     <div className="flex items-center gap-1.5">
                       <PetSpeciesIcon species={box.species} variant="badge" size="xs" />
-                      <span className="text-[10px] font-medium text-bark-500 bg-surface-muted px-1.5 py-0.5 rounded border border-surface-border">
-                        {box.size === "small" ? "Nhỏ" : "Lớn"}
-                      </span>
+                      {/* Chỉ hộp cho chó chia theo size; mèo dùng chung một loại */}
+                      {box.species === "dog" && (
+                        <span className="text-[10px] font-medium text-bark-500 bg-surface-muted px-1.5 py-0.5 rounded border border-surface-border">
+                          {box.size === "small" ? "Nhỏ" : "Lớn"}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="p-3.5 font-medium">{box.item_count_min}–{box.item_count_max} món</td>

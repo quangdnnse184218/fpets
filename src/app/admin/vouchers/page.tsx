@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { formatVND } from "@/lib/formatters";
+import { formatDate, formatVND } from "@/lib/formatters";
 import { Tables } from "@/types/database";
 import { Plus, Edit2, Trash2, Power, Search, X, CheckCircle2 } from "lucide-react";
 
@@ -11,7 +11,10 @@ type VoucherRow = Tables<"vouchers">;
 const TYPE_LABEL: Record<string, string> = { percentage: "Giảm theo %", fixed_amount: "Giảm tiền mặt", free_shipping: "Miễn phí vận chuyển" };
 const SCOPE_LABEL: Record<string, string> = { all: "Toàn bộ đơn hàng", retail: "Chỉ sản phẩm lẻ", box: "Chỉ Mystery Box", first_subscription: "Gói định kỳ lần đầu" };
 
-function toDateInput(iso: string) { return iso ? iso.slice(0, 10) : ""; }
+// Ngày trong ô chọn ngày theo giờ Việt Nam (yyyy-MM-dd), không lấy theo UTC
+function toDateInput(iso: string) {
+  return iso ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(iso)) : "";
+}
 
 export default function AdminVouchersPage() {
   const [vouchers, setVouchers] = useState<VoucherRow[]>([]);
@@ -84,8 +87,9 @@ export default function AdminVouchersPage() {
       max_discount: formType === "percentage" && formMaxDiscount ? Number(formMaxDiscount) : null,
       usage_limit_total: Number(formUsageLimitTotal),
       usage_limit_per_user: Number(formUsageLimitPerUser),
-      valid_from: new Date(formValidFrom).toISOString(),
-      valid_to: new Date(formValidTo).toISOString(),
+      // Hiệu lực từ 00:00 ngày bắt đầu đến 23:59:59 ngày kết thúc, theo giờ Việt Nam
+      valid_from: new Date(`${formValidFrom}T00:00:00+07:00`).toISOString(),
+      valid_to: new Date(`${formValidTo}T23:59:59+07:00`).toISOString(),
       scope: formScope,
     };
     if (editingVoucher) {
@@ -160,6 +164,11 @@ export default function AdminVouchersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-border text-bark-700">
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={9} className="p-10 text-center text-xs text-bark-500">Chưa có voucher nào phù hợp.</td>
+              </tr>
+            )}
             {filtered.map((v) => (
               <tr key={v.id} className="hover:bg-surface-muted/50 transition-colors">
                 <td className="p-3.5"><div className="font-extrabold text-pine-900 font-mono text-sm tracking-wide">{v.code}</div></td>
@@ -178,7 +187,7 @@ export default function AdminVouchersPage() {
                     <div className="bg-pine-700 h-full rounded-full" style={{ width: `${Math.min(100, (v.used_count / v.usage_limit_total) * 100)}%` }} />
                   </div>
                 </td>
-                <td className="p-3.5"><div className="text-[11px] text-bark-700">{toDateInput(v.valid_from)} – {toDateInput(v.valid_to)}</div></td>
+                <td className="p-3.5"><div className="text-[11px] text-bark-700">{formatDate(v.valid_from)} – {formatDate(v.valid_to)}</div></td>
                 <td className="p-3.5">
                   <button onClick={() => toggleActive(v)} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${v.is_active ? "bg-grass-100 text-grass-800 hover:bg-grass-200" : "bg-bark-100 text-bark-600 hover:bg-bark-200"}`}>
                     <Power className="w-2.5 h-2.5" /><span>{v.is_active ? "Đang bật" : "Đã tắt"}</span>

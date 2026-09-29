@@ -185,6 +185,11 @@ export default function AdminOrdersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-border">
+            {filteredOrders.length === 0 && (
+              <tr>
+                <td colSpan={8} className="p-10 text-center text-xs text-bark-500">Chưa có đơn hàng nào phù hợp.</td>
+              </tr>
+            )}
             {filteredOrders.map((order) => (
               <tr key={order.id} className="hover:bg-surface-muted/60 transition-colors">
                 <td className="p-3.5 font-mono font-bold text-pine-950">{order.order_code}</td>

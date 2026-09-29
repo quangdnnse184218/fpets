@@ -136,6 +136,11 @@ export default function AdminInventoryPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-border">
+            {movements.length === 0 && (
+              <tr>
+                <td colSpan={6} className="p-10 text-center text-xs text-bark-500">Chưa có biến động kho nào.</td>
+              </tr>
+            )}
             {movements.map((m) => (
               <tr key={m.id} className="hover:bg-surface-muted/50">
                 <td className="p-3.5 text-bark-600">{formatDateTime(m.created_at)}</td>

@@ -121,6 +121,11 @@ export default function AdminCustomersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-border text-bark-700">
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={7} className="p-10 text-center text-xs text-bark-500">Không tìm thấy khách hàng phù hợp.</td>
+              </tr>
+            )}
             {filtered.map((customer) => {
               const customerPets = petsByUser.get(customer.id) || [];
               const stats = orderStatsByUser.get(customer.id) || { count: 0, total: 0 };

@@ -209,6 +209,11 @@ export default function AdminProductsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-border">
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={8} className="p-10 text-center text-xs text-bark-500">Không tìm thấy sản phẩm phù hợp.</td>
+              </tr>
+            )}
             {filtered.map((prod) => {
               const isLowStock = prod.stock_quantity <= prod.low_stock_threshold;
               return (

@@ -86,7 +86,9 @@ export default function AdminAnalyticsPage() {
   };
 
   const maxVal = Math.max(1, ...monthlyRevenue.map((m) => m.value));
-  const totalSubs = subCounts.active + subCounts.paused + subCounts.cancelled + subCounts.expired || 1;
+  const totalSubs = subCounts.active + subCounts.paused + subCounts.cancelled + subCounts.expired;
+  // Mẫu số cho % và thanh tiến độ, tránh chia cho 0 khi chưa có gói nào
+  const subsBase = totalSubs || 1;
 
   if (loading) return <div className="py-16 text-center text-xs text-bark-500">Đang tải báo cáo...</div>;
 
@@ -162,10 +164,10 @@ export default function AdminAnalyticsPage() {
               <div key={row.label}>
                 <div className="flex justify-between text-bark-800 font-semibold mb-1">
                   <span>{row.label}</span>
-                  <span>{row.count} gói ({Math.round((row.count / totalSubs) * 100)}%)</span>
+                  <span>{row.count} gói ({Math.round((row.count / subsBase) * 100)}%)</span>
                 </div>
                 <div className="h-2 w-full bg-surface-muted rounded-full overflow-hidden">
-                  <div className={`h-full ${row.color} rounded-full`} style={{ width: `${(row.count / totalSubs) * 100}%` }} />
+                  <div className={`h-full ${row.color} rounded-full`} style={{ width: `${(row.count / subsBase) * 100}%` }} />
                 </div>
               </div>
             ))}

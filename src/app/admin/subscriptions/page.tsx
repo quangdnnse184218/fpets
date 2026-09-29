@@ -161,6 +161,11 @@ export default function AdminSubscriptionsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-border text-bark-700">
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={7} className="p-10 text-center text-xs text-bark-500">Chưa có gói định kỳ nào phù hợp.</td>
+              </tr>
+            )}
             {filtered.map((sub) => {
               const Icon = STATUS_ICON[sub.status];
               const completed = sub.total_cycles - sub.remaining_cycles;

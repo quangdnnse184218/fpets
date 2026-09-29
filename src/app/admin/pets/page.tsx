@@ -111,6 +111,11 @@ export default function AdminPetsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-border text-bark-700">
+            {filteredPets.length === 0 && (
+              <tr>
+                <td colSpan={7} className="p-10 text-center text-xs text-bark-500">Chưa có hồ sơ thú cưng nào phù hợp.</td>
+              </tr>
+            )}
             {filteredPets.map((pet) => (
               <tr key={pet.id} className="hover:bg-surface-muted/50 transition-colors">
                 <td className="p-3.5">
