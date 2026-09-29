@@ -29,6 +29,12 @@ export default function BoxesPage() {
   const [boxes, setBoxes] = useState<BoxType[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Link "Xem Box Premium" ở trang chủ dẫn tới /boxes?tier=premium
+  useEffect(() => {
+    const tier = new URLSearchParams(window.location.search).get("tier");
+    if (tier === "premium" || tier === "standard") setTierFilter(tier);
+  }, []);
+
   useEffect(() => {
     fetchBoxTypes().then((data) => {
       setBoxes(data);
