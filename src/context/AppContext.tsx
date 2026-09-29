@@ -306,13 +306,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartLoading, setCartLoading] = useState(false);
 
+  // Mỗi tài khoản 1 giỏ (unique index carts_user_id_unique). Hai tab cùng tạo giỏ thì tab chậm hơn
+  // gặp lỗi trùng khóa (23505) và đọc lại giỏ vừa được tạo.
   const getOrCreateCartId = async (userId: string): Promise<string> => {
     const supabase = createClient();
-    const { data: existing } = await supabase.from("carts").select("id").eq("user_id", userId).maybeSingle();
+    const findCart = () => supabase.from("carts").select("id").eq("user_id", userId).maybeSingle();
+    const { data: existing } = await findCart();
     if (existing) return existing.id;
     const { data: created, error } = await supabase.from("carts").insert({ user_id: userId }).select("id").single();
-    if (error || !created) throw error || new Error("Không thể tạo giỏ hàng");
-    return created.id;
+    if (created) return created.id;
+    if (error?.code === "23505") {
+      const { data: again } = await findCart();
+      if (again) return again.id;
+    }
+    throw error || new Error("Không thể tạo giỏ hàng");
   };
 
   type CartItemRow = {
