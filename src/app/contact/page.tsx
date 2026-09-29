@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import {
   Phone,
   Mail,
@@ -10,7 +9,6 @@ import {
   MessageCircle,
   Send,
   CheckCircle2,
-  HelpCircle,
   ShieldCheck,
 } from "lucide-react";
 import { CONTACT_INFO } from "@/lib/contactInfo";

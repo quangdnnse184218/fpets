@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { Star, Eye, EyeOff, MessageSquare, Search, X } from "lucide-react";
+import { formatDate } from "@/lib/formatters";
 
 interface ReviewRow {
   id: string;
@@ -144,7 +145,7 @@ export default function AdminReviewsPage() {
               <tr key={rev.id} className="hover:bg-surface-muted/50 transition-colors">
                 <td className="p-3.5">
                   <div className="font-bold text-pine-950 text-xs">{rev.profiles?.full_name || "Khách hàng"}</div>
-                  <div className="text-[10px] text-bark-400 mt-0.5">Đơn: {rev.orders?.order_code} · {new Date(rev.created_at).toLocaleDateString("vi-VN")}</div>
+                  <div className="text-[10px] text-bark-400 mt-0.5">Đơn: {rev.orders?.order_code} · {formatDate(rev.created_at)}</div>
                 </td>
                 <td className="p-3.5">
                   <div className="flex text-honey-500">

@@ -2,8 +2,8 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { productRowToProduct, ProductWithCategory } from "@/lib/adapters";
-import { Product } from "@/mock/products";
 import { Tables } from "@/types/database";
+import { Product } from "@/types/models";
 
 export interface CurationQueueRow {
   id: string;

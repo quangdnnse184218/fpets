@@ -28,7 +28,7 @@ import BrandLogo from "@/components/common/BrandLogo";
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout, user } = useApp();
+  const { logout } = useApp();
 
   const menuItems = [
     { href: "/admin/dashboard", label: "Tổng quan Dashboard", icon: LayoutDashboard },

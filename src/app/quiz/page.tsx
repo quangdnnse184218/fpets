@@ -4,10 +4,10 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useApp } from "@/context/AppContext";
-import { BoxType, SubscriptionPlan } from "@/mock/boxTypes";
 import { fetchBoxTypes, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
-import { ArrowLeft, CheckCircle2, Gift, Dog, Cat, PackageOpen, PawPrint, Baby, Zap, Moon } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Gift, Dog, Cat, Baby, Zap, Moon } from "lucide-react";
+import { BoxType, SubscriptionPlan } from "@/types/models";
 
 // Câu trả lời quiz được giữ tạm khi khách phải đăng ký/đăng nhập giữa chừng,
 // quay lại /quiz?resume=1 sẽ tự tạo Pet Profile và tiếp tục đặt hộp (SPEC §3).
@@ -595,7 +595,6 @@ export default function PetQuizPage() {
           <div className="p-5 rounded-box bg-surface-muted border border-surface-border flex flex-col sm:flex-row items-center justify-between gap-5">
             <div className="flex items-center gap-4">
               <div className="relative w-16 h-16 rounded-box overflow-hidden border border-surface-border shrink-0">
-                {/* TODO: thay bằng ảnh thật của FPETS khi có */}
                 <Image
                   src={recommendedBox.imageUrl}
                   alt={recommendedBox.name}

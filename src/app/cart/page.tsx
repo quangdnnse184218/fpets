@@ -7,7 +7,7 @@ import ProductItemImage from "@/components/common/ProductItemImage";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import { formatVND } from "@/lib/formatters";
-import { Trash2, ShoppingBag, Truck, Tag, CheckCircle2, AlertCircle, PackageOpen, UtensilsCrossed, PawPrint } from "lucide-react";
+import { Trash2, ShoppingBag, Truck, Tag, CheckCircle2, AlertCircle, PackageOpen } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 
@@ -118,7 +118,6 @@ export default function CartPage() {
               <div className="flex items-center gap-3.5 min-w-0 flex-1">
                 {/* Ảnh thật của sản phẩm / Mystery Box */}
                 <div className="w-16 h-16 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
-                  {/* TODO: thay bằng ảnh thật của FPETS khi có */}
                   {item.type === 'box' && item.boxType?.imageUrl ? (
                     <Image
                       src={item.boxType.imageUrl}

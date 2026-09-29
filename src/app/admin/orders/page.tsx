@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { formatVND } from "@/lib/formatters";
+import { formatVND, formatDate } from "@/lib/formatters";
 import { Truck, Eye, Search, CheckCircle2 } from "lucide-react";
 
 type OrderStatus = "cho_thanh_toan" | "da_xac_nhan" | "dang_chuan_bi" | "dang_giao" | "da_giao" | "da_huy" | "doi_tra";
@@ -197,7 +197,7 @@ export default function AdminOrdersPage() {
                     {ORDER_TYPE_LABEL[order.order_type] || "Mua lẻ"}{order.order_type === "subscription_cycle" && order.cycle_index ? ` (kỳ ${order.cycle_index})` : ""}
                   </span>
                 </td>
-                <td className="p-3.5 text-bark-600">{new Date(order.created_at).toLocaleDateString("vi-VN")}</td>
+                <td className="p-3.5 text-bark-600">{formatDate(order.created_at)}</td>
                 <td className="p-3.5">
                   <span className="font-semibold text-bark-800 uppercase">{order.payment_method}</span>
                   <span className={`block text-[10px] ${order.payment_status === "paid" ? "text-grass-700" : "text-amber-700"}`}>

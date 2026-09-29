@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { PackagePlus, AlertTriangle, History } from "lucide-react";
+import { formatDateTime } from "@/lib/formatters";
 
 interface MovementRow {
   id: string;
@@ -137,7 +138,7 @@ export default function AdminInventoryPage() {
           <tbody className="divide-y divide-surface-border">
             {movements.map((m) => (
               <tr key={m.id} className="hover:bg-surface-muted/50">
-                <td className="p-3.5 text-bark-600">{new Date(m.created_at).toLocaleString("vi-VN")}</td>
+                <td className="p-3.5 text-bark-600">{formatDateTime(m.created_at)}</td>
                 <td className="p-3.5 font-bold text-pine-950">{m.products?.name || "—"}</td>
                 <td className="p-3.5">
                   <span className="px-2 py-0.5 rounded-tag bg-surface-muted text-bark-700 font-semibold text-[10px]">

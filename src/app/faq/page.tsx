@@ -13,8 +13,6 @@ import {
   CreditCard,
   MessageCircle,
   Phone,
-  ArrowRight,
-  ShieldCheck,
 } from "lucide-react";
 
 interface FAQItem {

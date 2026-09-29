@@ -6,11 +6,11 @@ import Image from "next/image";
 import { Gift, CheckCircle2, Star, PackageOpen, PawPrint, Check, Truck, RefreshCw, CreditCard, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchBoxTypes, fetchProducts, fetchSubscriptionPlans } from "@/lib/catalog";
-import { formatVND } from "@/lib/formatters";
+import { formatVND, formatDate } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/client";
-import { Product } from "@/mock/products";
 import ProductItemImage from "@/components/common/ProductItemImage";
 import { EXCHANGE_POLICY, EXCHANGE_POLICY_SHORT, PREMIUM_ITEMS, QUIZ_LENGTH, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
+import { Product } from "@/types/models";
 
 const HOME_FAQ = [
   {
@@ -410,7 +410,7 @@ export default function HomePage() {
                   <p className="text-xs text-bark-700 leading-relaxed line-clamp-5">&ldquo;{rev.comment}&rdquo;</p>
                   <div className="pt-2 border-t border-surface-border flex items-center justify-between text-xs">
                     <span className="font-bold text-pine-950">{rev.profiles?.full_name || "Khách hàng FPETS"}</span>
-                    <span className="text-[11px] text-bark-500">{new Date(rev.created_at).toLocaleDateString("vi-VN")}</span>
+                    <span className="text-[11px] text-bark-500">{formatDate(rev.created_at)}</span>
                   </div>
                 </div>
               ))}

@@ -4,18 +4,17 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
-import { 
-  ShoppingCart, 
-  User, 
-  Menu, 
-  X, 
-  LogOut, 
-  Package, 
-  Dog, 
-  ShieldAlert, 
+import {
+  ShoppingCart,
+  Menu,
+  X,
+  LogOut,
+  Package,
+  Dog,
+  ShieldAlert,
   ChevronDown,
   LogIn,
-  UserPlus
+  UserPlus,
 } from "lucide-react";
 import BrandLogo from "@/components/common/BrandLogo";
 import NotificationBell from "@/components/common/NotificationBell";

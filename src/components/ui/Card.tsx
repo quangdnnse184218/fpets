@@ -33,32 +33,4 @@ export function Card({
   );
 }
 
-export interface SectionProps extends React.HTMLAttributes<HTMLElement> {
-  variant?: "plain" | "divided" | "tinted";
-  children: React.ReactNode;
-}
-
-/**
- * Section: Dành cho các khối tóm tắt, feature liệt kê, banner thông tin
- * Dùng khoảng cách, đường kẻ mảnh hoặc nền màu nhạt để phân vùng, không lặp lại công thức card.
- */
-export function Section({
-  variant = "plain",
-  className = "",
-  children,
-  ...props
-}: SectionProps) {
-  const variantStyles = {
-    plain: "space-y-4",
-    divided: "space-y-4 pb-6 border-b border-surface-border",
-    tinted: "p-4 sm:p-5 rounded-container bg-surface-muted/50 border border-surface-border/60 space-y-3",
-  };
-
-  return (
-    <section className={`${variantStyles[variant]} ${className}`} {...props}>
-      {children}
-    </section>
-  );
-}
-
 export default Card;

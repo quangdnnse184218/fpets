@@ -2,13 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Product } from "@/mock/products";
 import { fetchProducts } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
 import ProductItemImage from "@/components/common/ProductItemImage";
 import {
-  Star,
   ShoppingCart,
   Check,
   Filter,
@@ -23,6 +21,7 @@ import {
   Search,
 } from "lucide-react";
 import { CATEGORY_LABEL } from "@/lib/adapters";
+import { Product } from "@/types/models";
 
 // Ngưỡng hiện nhãn "Chỉ còn X" (SPEC §4)
 const LOW_STOCK = 5;
@@ -361,14 +360,6 @@ export default function ShopPage() {
                           </h3>
                         </Link>
                       </div>
-
-                      {product.reviewCount > 0 && (
-                        <div className="flex items-center gap-1 text-[11px] text-bark-500">
-                          <Star className="w-3 h-3 text-honey-500 fill-honey-500" />
-                          <span className="font-bold text-bark-800">{product.rating}</span>
-                          <span>({product.reviewCount})</span>
-                        </div>
-                      )}
                     </div>
 
                     {/* Giá & Nút thêm giỏ */}

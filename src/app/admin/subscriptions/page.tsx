@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Search, Pause, Play, XCircle, AlertCircle, CheckCircle2 } from "lucide-react";
+import { formatDate } from "@/lib/formatters";
 
 type SubStatus = "cho_thanh_toan" | "dang_hoat_dong" | "tam_dung" | "qua_han" | "het_han" | "da_huy";
 
@@ -188,10 +189,10 @@ export default function AdminSubscriptionsPage() {
                     </div>
                   </td>
                   <td className="p-3.5">
-                    <div className="font-semibold text-bark-900">{new Date(sub.next_delivery_date).toLocaleDateString("vi-VN")}</div>
+                    <div className="font-semibold text-bark-900">{formatDate(sub.next_delivery_date)}</div>
                     <div className="text-[10px] text-bark-500">{sub.delivery_schedule === "dau_thang" ? "Đầu tháng" : "Giữa tháng"}</div>
                   </td>
-                  <td className="p-3.5"><div className="text-[11px]"><strong className="text-bark-800">{new Date(sub.cutoff_date).toLocaleDateString("vi-VN")}</strong></div></td>
+                  <td className="p-3.5"><div className="text-[11px]"><strong className="text-bark-800">{formatDate(sub.cutoff_date)}</strong></div></td>
                   <td className="p-3.5">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {!["da_huy", "het_han"].includes(sub.status) && (

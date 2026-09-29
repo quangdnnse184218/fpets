@@ -7,6 +7,7 @@ import {
   Star, Camera, Filter, MessageSquare, Gift,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { formatDate } from "@/lib/formatters";
 
 interface ReviewRow {
   id: string;
@@ -219,7 +220,7 @@ export default function ReviewsPage() {
                         />
                       ))}
                     </div>
-                    <span className="text-xs text-bark-400">· {new Date(rev.created_at).toLocaleDateString("vi-VN")}</span>
+                    <span className="text-xs text-bark-400">· {formatDate(rev.created_at)}</span>
                   </div>
                 </div>
 
@@ -261,7 +262,7 @@ export default function ReviewsPage() {
                     <div className="flex items-center gap-1.5 font-bold text-pine-900 text-[11px]">
                       <MessageSquare className="w-3.5 h-3.5 text-pine-800" />
                       <span>Phản hồi từ FPETS</span>
-                      {rev.admin_reply_at && <span className="text-pine-500 font-normal">· {new Date(rev.admin_reply_at).toLocaleDateString("vi-VN")}</span>}
+                      {rev.admin_reply_at && <span className="text-pine-500 font-normal">· {formatDate(rev.admin_reply_at)}</span>}
                     </div>
                     <p className="text-[11px] text-pine-950 leading-relaxed">
                       {rev.admin_reply}
@@ -292,7 +293,6 @@ export default function ReviewsPage() {
             onClick={() => setSelectedPhoto(null)}
           >
             <div className="relative max-w-2xl max-h-[85vh] w-full h-[70vh] rounded-container overflow-hidden bg-black">
-              {/* TODO: thay bằng ảnh thật của FPETS khi có */}
               <Image
                 src={selectedPhoto}
                 alt="Ảnh unbox phóng to"

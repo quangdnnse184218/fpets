@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Search, AlertTriangle, Eye, ThumbsUp, Meh, ThumbsDown, Package, X } from "lucide-react";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 import { Tables } from "@/types/database";
+import { formatDate } from "@/lib/formatters";
 
 type PetRow = Tables<"pets"> & { profiles: { full_name: string | null; phone: string | null } | null };
 interface FeedbackRow {
@@ -201,7 +202,7 @@ export default function AdminPetsPage() {
                       <div key={item.id} className="p-2 rounded bg-surface-muted flex items-start justify-between gap-2">
                         <div>
                           <span className="font-semibold text-bark-900 block">{item.products?.name || "Sản phẩm"}</span>
-                          <span className="text-[10px] text-bark-500 block">{new Date(item.created_at).toLocaleDateString("vi-VN")}</span>
+                          <span className="text-[10px] text-bark-500 block">{formatDate(item.created_at)}</span>
                           {item.notes && <p className="text-[11px] text-bark-600 mt-1 italic">&ldquo;{item.notes}&rdquo;</p>}
                         </div>
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${badge.className}`}>

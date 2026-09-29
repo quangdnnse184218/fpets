@@ -4,10 +4,10 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { formatVND } from "@/lib/formatters";
+import { formatVND, formatDate } from "@/lib/formatters";
 import { fetchPlanOptions } from "@/lib/catalog";
-import { SubscriptionPlan } from "@/mock/boxTypes";
 import { Pause, Play, CheckCircle2, AlertTriangle, RefreshCw, CreditCard } from "lucide-react";
+import { SubscriptionPlan } from "@/types/models";
 
 type SubStatus = "cho_thanh_toan" | "dang_hoat_dong" | "tam_dung" | "qua_han" | "het_han" | "da_huy";
 
@@ -257,17 +257,17 @@ export default function MySubscriptionsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-box bg-surface-muted text-xs">
               <div>
                 <span className="text-bark-500 block">Ngày giao dự kiến tiếp theo:</span>
-                <strong className="text-pine-950">{new Date(sub.next_delivery_date).toLocaleDateString("vi-VN")}</strong>
+                <strong className="text-pine-950">{formatDate(sub.next_delivery_date)}</strong>
               </div>
               <div>
                 <span className="text-bark-500 block">Ngày chốt hộp kỳ này:</span>
-                <strong className="text-honey-800">{new Date(sub.cutoff_date).toLocaleDateString("vi-VN")}</strong>
+                <strong className="text-honey-800">{formatDate(sub.cutoff_date)}</strong>
               </div>
             </div>
 
             {isOverdue && sub.grace_period_expires_at && (
               <div className="p-3.5 rounded-box bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                Gói đã giao hết hộp. Gia hạn trước <strong>{new Date(sub.grace_period_expires_at).toLocaleDateString("vi-VN")}</strong> để giữ ưu đãi và lịch giao cho bé.
+                Gói đã giao hết hộp. Gia hạn trước <strong>{formatDate(sub.grace_period_expires_at)}</strong> để giữ ưu đãi và lịch giao cho bé.
               </div>
             )}
             {sub.status === "da_huy" && sub.remaining_cycles > 0 && (

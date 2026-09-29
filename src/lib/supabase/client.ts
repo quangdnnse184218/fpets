@@ -1,24 +1,11 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "@/types/database";
 
-export function getSupabaseConfigStatus() {
+// Thiếu biến môi trường Supabase thì các trang đăng nhập/giỏ hàng báo bảo trì thay vì gọi API lỗi
+export function isSupabaseConfigured(): boolean {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-
-  const missing: string[] = [];
-  if (!url) missing.push("NEXT_PUBLIC_SUPABASE_URL");
-  if (!key) missing.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-  if (url && !url.startsWith("http")) missing.push("URL phải bắt đầu bằng https://");
-
-  return {
-    isConfigured: missing.length === 0,
-    missing,
-    urlPreview: url ? url.substring(0, 20) + "..." : "chưa có",
-  };
-}
-
-export function isSupabaseConfigured(): boolean {
-  return getSupabaseConfigStatus().isConfigured;
+  return !!url && url.startsWith("http") && !!key;
 }
 
 export function createClient() {

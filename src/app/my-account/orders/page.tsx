@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { formatVND } from "@/lib/formatters";
+import { formatVND, formatDateTime } from "@/lib/formatters";
 import { Truck, CheckCircle2, Star, PackageOpen, UtensilsCrossed, Heart, ThumbsDown, Minus } from "lucide-react";
 
 type OrderStatus = "cho_thanh_toan" | "da_xac_nhan" | "dang_chuan_bi" | "dang_giao" | "da_giao" | "da_huy" | "doi_tra";
@@ -212,7 +212,7 @@ export default function MyOrdersPage() {
                   )}
                 </div>
                 <p className="text-[11px] text-bark-500">
-                  Đặt lúc: {new Date(order.created_at).toLocaleString("vi-VN")}
+                  Đặt lúc: {formatDateTime(order.created_at)}
                 </p>
               </div>
               <div className="flex items-center gap-2">{getStatusBadge(order.status)}</div>

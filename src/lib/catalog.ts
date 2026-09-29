@@ -2,8 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { productRowToProduct, boxTypeRowToBoxType, ProductWithCategory } from "@/lib/adapters";
-import { Product } from "@/mock/products";
-import { BoxType, SubscriptionPlan } from "@/mock/boxTypes";
+import { Product, BoxType, SubscriptionPlan } from "@/types/models";
 
 // Lấy dữ liệu sản phẩm / box thật từ Supabase (bảng products/box_types),
 // thay cho việc đọc thẳng từ src/mock/*.

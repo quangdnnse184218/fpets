@@ -8,7 +8,7 @@ import { Heart, Package, RefreshCw, User, LogIn, Lock } from "lucide-react";
 
 export default function MyAccountLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { isLoggedIn, user, login } = useApp();
+  const { isLoggedIn, user } = useApp();
 
   const navTabs = [
     { href: "/my-account/pets", label: "Thú cưng của tôi", icon: Heart },

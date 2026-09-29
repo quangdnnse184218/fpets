@@ -2,17 +2,13 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  ShieldCheck,
   PackageOpen,
-  RefreshCw,
   HeartHandshake,
   Check,
-  ChevronRight,
   Compass,
   UtensilsCrossed,
   Bone,
   Mail,
-  Award,
 } from "lucide-react";
 import { EXCHANGE_POLICY, QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
 

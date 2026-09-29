@@ -8,11 +8,8 @@ import {
   Gamepad2,
   Brush,
   Droplets,
-  HeartHandshake,
   Package,
-  Layers,
   CircleDot,
-  ShoppingBag,
 } from "lucide-react";
 
 interface ProductItemImageProps {
@@ -92,7 +89,6 @@ export default function ProductItemImage({
 
   return (
     <div className={`relative overflow-hidden ${className}`}>
-      {/* TODO: thay bằng ảnh thật của FPETS khi có */}
       <Image
         src={src}
         alt={alt}

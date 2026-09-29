@@ -3,8 +3,14 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useApp } from "@/context/AppContext";
-import { Pet } from "@/mock/pets";
-import { Plus, Edit2, Trash2, ShieldAlert, Check, Dog, Cat, PawPrint } from "lucide-react";
+import { Plus, Edit2, Trash2, Dog, Cat } from "lucide-react";
+import { Pet } from "@/types/models";
+
+const AGE_LABEL: Record<Pet["ageGroup"], string> = {
+  puppy_kitten: "Dưới 1 tuổi",
+  adult: "Trưởng thành",
+  senior: "Trên 7 tuổi",
+};
 
 export default function MyPetsPage() {
   const { pets, addPet, updatePet, deletePet } = useApp();
@@ -31,7 +37,7 @@ export default function MyPetsPage() {
       weight: Number(weight) || 5,
       size: weight >= 10 ? 'large' : 'small',
       ageGroup: ageGroup,
-      ageLabel: ageGroup === 'puppy_kitten' ? 'Dưới 1 tuổi' : ageGroup === 'adult' ? 'Trưởng thành' : 'Trên 7 tuổi',
+      ageLabel: AGE_LABEL[ageGroup],
       gender: gender,
       allergies: allergiesText ? allergiesText.split(",").map(s => s.trim()).filter(Boolean) : [],
       preferences: preferencesText ? preferencesText.split(",").map(s => s.trim()).filter(Boolean) : [],
@@ -55,6 +61,9 @@ export default function MyPetsPage() {
       breed: editingPet.breed,
       weight: Number(editingPet.weight),
       size: Number(editingPet.weight) >= 10 ? 'large' : 'small',
+      ageGroup: editingPet.ageGroup,
+      ageLabel: AGE_LABEL[editingPet.ageGroup],
+      gender: editingPet.gender,
       allergies: editingPet.allergies,
       preferences: editingPet.preferences,
     });
@@ -236,6 +245,32 @@ export default function MyPetsPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-bark-800 block mb-1">Độ tuổi: *</label>
+                  <select
+                    value={ageGroup}
+                    onChange={(e) => setAgeGroup(e.target.value as Pet['ageGroup'])}
+                    className="w-full px-3 py-2 rounded-box border border-surface-border bg-white"
+                  >
+                    <option value="puppy_kitten">Dưới 1 tuổi</option>
+                    <option value="adult">Trưởng thành</option>
+                    <option value="senior">Trên 7 tuổi</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-bark-800 block mb-1">Giới tính:</label>
+                  <select
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value as Pet['gender'])}
+                    className="w-full px-3 py-2 rounded-box border border-surface-border bg-white"
+                  >
+                    <option value="Đực">Đực</option>
+                    <option value="Cái">Cái</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="font-bold text-bark-800 block mb-1">
                   Thành phần dị ứng (cách nhau bằng dấu phẩy):
@@ -319,6 +354,32 @@ export default function MyPetsPage() {
                     onChange={(e) => setEditingPet({ ...editingPet, weight: parseFloat(e.target.value) })}
                     className="w-full px-3 py-2 rounded-box border border-surface-border"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-bark-800 block mb-1">Độ tuổi: *</label>
+                  <select
+                    value={editingPet.ageGroup}
+                    onChange={(e) => setEditingPet({ ...editingPet, ageGroup: e.target.value as Pet['ageGroup'] })}
+                    className="w-full px-3 py-2 rounded-box border border-surface-border bg-white"
+                  >
+                    <option value="puppy_kitten">Dưới 1 tuổi</option>
+                    <option value="adult">Trưởng thành</option>
+                    <option value="senior">Trên 7 tuổi</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-bark-800 block mb-1">Giới tính:</label>
+                  <select
+                    value={editingPet.gender}
+                    onChange={(e) => setEditingPet({ ...editingPet, gender: e.target.value as Pet['gender'] })}
+                    className="w-full px-3 py-2 rounded-box border border-surface-border bg-white"
+                  >
+                    <option value="Đực">Đực</option>
+                    <option value="Cái">Cái</option>
+                  </select>
                 </div>
               </div>
 

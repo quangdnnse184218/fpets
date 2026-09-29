@@ -1,12 +1,7 @@
 import { Tables } from "@/types/database";
-import { Product } from "@/mock/products";
-import { BoxType } from "@/mock/boxTypes";
-import { Pet } from "@/mock/pets";
+import { Product, BoxType, Pet } from "@/types/models";
 
-// Chuyển dữ liệu thật từ Supabase sang đúng hình dạng (shape) mà UI hiện tại
-// đang dùng (vốn được thiết kế theo src/mock/*). Làm vậy để không phải sửa
-// lại hàng loạt component hiển thị, trong khi dữ liệu nguồn đã là dữ liệu
-// thật 100% từ database, không còn là mock nữa.
+// Chuyển dòng dữ liệu Supabase sang kiểu UI trong src/types/models.ts
 
 // Shop chỉ hiển thị 3 nhóm danh mục (khớp bộ lọc); danh mục chi tiết trong DB gom về 3 nhóm này
 export const CATEGORY_LABEL: Record<Product["category"], string> = {
@@ -66,10 +61,6 @@ export function productRowToProduct(row: ProductWithCategory): Product {
     targetAge: (row.target_age as Product["targetAge"]) || "all",
     ingredients: row.ingredients || [],
     description: row.description || "",
-    rating: 0,
-    reviewCount: 0,
-    isRetail: row.is_retail,
-    isBoxItem: row.is_box_item,
     placeholderColor: catInfo?.color || "#E1EDE8",
     image: resolveImageUrl(row.images?.[0], FALLBACK_PRODUCT_IMAGE),
   };
@@ -88,8 +79,6 @@ export function boxTypeRowToBoxType(row: Tables<"box_types">): BoxType {
     minRetailValue: row.min_retail_value,
     basePrice: row.baseprice,
     description: row.description || "",
-    highlight: `Giá trị tối thiểu ${row.min_retail_value.toLocaleString("vi-VN")}₫`,
-    imagePlaceholderColor: "#E1EDE8",
     imageUrl: resolveImageUrl(row.images?.[0], FALLBACK_PRODUCT_IMAGE),
     typicalItems: BOX_TYPICAL_ITEMS[row.slug] || [],
   };

@@ -6,17 +6,12 @@ import Image from "next/image";
 import {
   Calendar,
   Gift,
-  Truck,
-  ShieldCheck,
   CheckCircle2,
   PauseCircle,
   XCircle,
   RefreshCw,
   ArrowRight,
   HelpCircle,
-  ChevronDown,
-  Clock,
-  HeartHandshake,
 } from "lucide-react";
 import { formatVND } from "@/lib/formatters";
 import { fetchBoxTypes, fetchSubscriptionPlans } from "@/lib/catalog";

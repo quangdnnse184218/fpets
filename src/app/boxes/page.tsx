@@ -3,24 +3,23 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { BoxType } from "@/mock/boxTypes";
 import { fetchBoxTypes } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { EXCHANGE_POLICY_SHORT, PREMIUM_ITEMS, QUIZ_LENGTH, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
-import { 
-  CheckCircle2, 
-  Filter, 
-  Dog, 
-  Cat, 
-  ShieldCheck, 
-  RefreshCw, 
-  Gift, 
-  ArrowRight, 
-  Star, 
-  PackageOpen, 
-  Check, 
-  HeartHandshake, 
-  HelpCircle 
+import { BoxType } from "@/types/models";
+import {
+  CheckCircle2,
+  Filter,
+  Dog,
+  Cat,
+  ShieldCheck,
+  RefreshCw,
+  Gift,
+  ArrowRight,
+  Star,
+  PackageOpen,
+  Check,
+  HeartHandshake,
 } from "lucide-react";
 
 export default function BoxesPage() {

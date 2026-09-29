@@ -4,12 +4,12 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { BoxType, SubscriptionPlan } from "@/mock/boxTypes";
 import { fetchBoxTypeBySlug, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
 import { CheckCircle2, ShieldCheck, PlusCircle, PawPrint, Truck, ChevronDown, Gift } from "lucide-react";
 import { EXCHANGE_POLICY, QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
+import { BoxType, SubscriptionPlan } from "@/types/models";
 
 const BOX_FAQ = [
   {
@@ -148,7 +148,6 @@ export default function BoxDetailPage() {
         {/* Cột Trái: Minh họa hộp */}
         <div className="lg:col-span-6 space-y-4">
           <div className="w-full aspect-square rounded-container overflow-hidden border border-surface-border relative bg-surface-muted shadow-sm">
-            {/* TODO: thay bằng ảnh thật của FPETS khi có */}
             <Image
               src={box.imageUrl}
               alt={box.name}

@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Product } from "@/mock/products";
 import { fetchProductBySlug, fetchProducts } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import ProductItemImage from "@/components/common/ProductItemImage";
 import { useApp } from "@/context/AppContext";
-import { Star, ShoppingCart, ArrowLeft, Truck, RotateCcw } from "lucide-react";
+import { ShoppingCart, ArrowLeft, Truck, RotateCcw } from "lucide-react";
+import { Product } from "@/types/models";
 
 const SPECIES_LABEL: Record<Product["species"], string> = { dog: "Chó", cat: "Mèo", both: "Chó và mèo" };
 const SIZE_LABEL: Record<Product["targetSize"], string> = { small: "Dưới 10 kg", large: "Từ 10 kg", all: "Mọi cân nặng" };
@@ -116,11 +116,6 @@ export default function ProductDetailPage() {
             sizes="(max-width: 768px) 100vw, 50vw"
             priority
           />
-          {product.badge && (
-            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-badge bg-honey-600 text-white text-xs font-bold shadow-xs z-10">
-              {product.badge}
-            </span>
-          )}
         </div>
 
         {/* Thông tin sản phẩm */}
@@ -133,16 +128,6 @@ export default function ProductDetailPage() {
               {product.name}
             </h1>
             <div className="flex items-center gap-2 mt-2 text-xs text-bark-500">
-              {product.reviewCount > 0 ? (
-                <>
-                  <div className="flex items-center text-honey-500">
-                    <Star className="w-3.5 h-3.5 fill-honey-500" />
-                    <span className="font-bold text-bark-800 ml-1">{product.rating}</span>
-                  </div>
-                  <span>{product.reviewCount} đánh giá từ ba mẹ</span>
-                  <span>·</span>
-                </>
-              ) : null}
               <span className={product.stock > 0 ? "text-grass-700 font-medium" : "text-red-600 font-medium"}>
                 {product.stock > 0 ? `Còn ${product.stock} sản phẩm` : "Hết hàng"}
               </span>

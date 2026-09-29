@@ -8,8 +8,8 @@ import { formatVND } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/client";
 import { calcShippingFee } from "@/lib/shipping";
 import { fetchBoxTypeById, fetchPlanOptions } from "@/lib/catalog";
-import { BoxType, SubscriptionPlan } from "@/mock/boxTypes";
 import { CreditCard, Truck, ArrowLeft, Lock, Banknote, Smartphone } from "lucide-react";
+import { BoxType, SubscriptionPlan } from "@/types/models";
 
 function CheckoutFormContent() {
   const router = useRouter();

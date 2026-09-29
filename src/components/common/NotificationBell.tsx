@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { formatDateTime } from "@/lib/formatters";
 
 interface NotificationRow {
   id: string;
@@ -109,7 +110,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
                         <div className="text-xs font-bold text-pine-950">{n.title}</div>
                         <p className="text-[11px] text-bark-600 leading-relaxed mt-0.5">{n.message}</p>
                         <span className="text-[10px] text-bark-400">
-                          {new Date(n.created_at).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })}
+                          {formatDateTime(n.created_at)}
                         </span>
                       </div>
                     </div>

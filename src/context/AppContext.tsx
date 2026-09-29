@@ -1,12 +1,10 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
-import { Pet } from "@/mock/pets";
-import { Product } from "@/mock/products";
-import { BoxType } from "@/mock/boxTypes";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { calcShippingFee } from "@/lib/shipping";
 import { petRowToPet, productRowToProduct, boxTypeRowToBoxType, ProductWithCategory } from "@/lib/adapters";
+import { Pet, Product, BoxType } from "@/types/models";
 
 const GUEST_CART_KEY = "fpets_guest_cart";
 
@@ -43,20 +41,17 @@ interface AppContextType {
   isLoggedIn: boolean;
   isLoadingAuth: boolean;
   user: UserProfile;
-  login: () => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 
   // Pets (Supabase thật, chỉ có khi đã đăng nhập)
   pets: Pet[];
-  petsLoading: boolean;
   addPet: (pet: Omit<Pet, "id" | "receivedBoxesCount" | "avatarColor">) => Promise<Pet>;
   updatePet: (id: string, updated: Partial<Pet>) => Promise<void>;
   deletePet: (id: string) => Promise<void>;
 
   // Cart (Supabase khi đăng nhập, localStorage khi là khách vãng lai)
   cart: CartItem[];
-  cartLoading: boolean;
   addToCart: (item: Omit<CartItem, "id">) => Promise<void>;
   updateQuantity: (id: string, delta: number) => Promise<void>;
   updatePetForBox: (cartItemId: string, petId: string, petName: string) => Promise<void>;
@@ -188,7 +183,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
+        async (_event, session) => {
           if (session?.user) {
             await fetchUserProfile(session.user.id, session.user.email);
           } else {
@@ -208,7 +203,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  const login = () => setIsLoggedIn(true);
 
   const logout = async () => {
     try {
@@ -237,18 +231,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // PETS: dữ liệu thật từ Supabase, chỉ tồn tại khi đã đăng nhập (RLS pets_own_all).
   // ---------------------------------------------------------------------------
   const [pets, setPets] = useState<Pet[]>([]);
-  const [petsLoading, setPetsLoading] = useState(false);
-
   const loadPets = async () => {
-    setPetsLoading(true);
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase.from("pets").select("*").order("created_at", { ascending: false });
-      if (!error && data) {
-        setPets(data.map(petRowToPet));
-      }
-    } finally {
-      setPetsLoading(false);
+    const supabase = createClient();
+    const { data, error } = await supabase.from("pets").select("*").order("created_at", { ascending: false });
+    if (!error && data) {
+      setPets(data.map(petRowToPet));
     }
   };
 
@@ -661,16 +648,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isLoggedIn,
         isLoadingAuth,
         user,
-        login,
         logout,
         refreshUser,
         pets,
-        petsLoading,
         addPet,
         updatePet,
         deletePet,
         cart,
-        cartLoading,
         addToCart,
         updateQuantity,
         updatePetForBox,

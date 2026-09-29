@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { formatVND } from "@/lib/formatters";
+import { formatVND, formatDate } from "@/lib/formatters";
 import { Search, Lock, Unlock, Eye, Phone, Mail, Heart, X } from "lucide-react";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 
@@ -129,7 +129,7 @@ export default function AdminCustomersPage() {
                 <tr key={customer.id} className="hover:bg-surface-muted/50 transition-colors">
                   <td className="p-3.5">
                     <div className="font-bold text-pine-950 text-xs">{customer.full_name || "(Chưa đặt tên)"}</div>
-                    <div className="text-[11px] text-bark-400">Tham gia: {new Date(customer.created_at).toLocaleDateString("vi-VN")}</div>
+                    <div className="text-[11px] text-bark-400">Tham gia: {formatDate(customer.created_at)}</div>
                   </td>
                   <td className="p-3.5 space-y-0.5">
                     <div className="flex items-center gap-1.5 text-bark-600"><Phone className="w-3 h-3 text-bark-400" /><span>{customer.phone || "—"}</span></div>

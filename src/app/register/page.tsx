@@ -3,21 +3,21 @@
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient, isSupabaseConfigured, getSupabaseConfigStatus } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { safeRedirect } from "@/lib/safeRedirect";
 import { useApp } from "@/context/AppContext";
 import BrandLogo from "@/components/common/BrandLogo";
 import GoogleSignInButton from "@/components/common/GoogleSignInButton";
-import { 
-  Eye, 
-  EyeOff, 
-  Lock, 
-  Mail, 
-  User, 
-  Phone, 
-  CheckCircle2, 
-  AlertCircle, 
-  ArrowRight
+import {
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  User,
+  Phone,
+  CheckCircle2,
+  AlertCircle,
+  ArrowRight,
 } from "lucide-react";
 
 function RegisterForm() {
@@ -71,9 +71,8 @@ function RegisterForm() {
       return;
     }
 
-    const configStatus = getSupabaseConfigStatus();
-    if (!configStatus.isConfigured) {
-      setErrorMessage(`Chưa nhận được biến môi trường trên Vercel: [${configStatus.missing.join(", ")}]. Hãy kiểm tra lại mục Environment Variables trên Vercel.`);
+    if (!isSupabaseConfigured()) {
+      setErrorMessage("Hệ thống đang bảo trì, vui lòng thử lại sau ít phút.");
       return;
     }
 
@@ -94,7 +93,6 @@ function RegisterForm() {
       });
 
       if (error) {
-        console.error("Lỗi đăng ký (dev):", error.message);
         if (error.message.includes("User already registered") || error.message.includes("already exists")) {
           setErrorMessage("Email này đã được đăng ký tài khoản. Vui lòng đăng nhập hoặc sử dụng email khác.");
         } else if (error.message.includes("Password should be at least")) {
@@ -123,8 +121,7 @@ function RegisterForm() {
         setIsSuccess(true);
         setNeedsEmailVerification(true);
       }
-    } catch (err: unknown) {
-      console.error("Lỗi đăng ký (dev):", err);
+    } catch {
       setErrorMessage("Không thể kết nối đến máy chủ. Vui lòng thử lại sau ít phút.");
     } finally {
       setIsLoading(false);
