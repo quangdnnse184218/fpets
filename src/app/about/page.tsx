@@ -8,7 +8,6 @@ import {
   HeartHandshake,
   Check,
   ChevronRight,
-  Sparkle,
   Compass,
   UtensilsCrossed,
   Bone,

@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Gift, CheckCircle2, Crown, Sparkles, Star, PackageOpen, PawPrint, Check, Truck, RefreshCw, CreditCard, ChevronDown } from "lucide-react";
+import { Gift, CheckCircle2, Star, PackageOpen, PawPrint, Check, Truck, RefreshCw, CreditCard, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchBoxTypes, fetchProducts, fetchSubscriptionPlans } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
@@ -275,19 +275,11 @@ export default function HomePage() {
                     : "relative bg-surface-card text-bark-900 rounded-container p-6 sm:p-8 flex flex-col justify-between border-2 border-transparent"
                 }
               >
-                {box.highlight && (
-                  <>
-                    <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-4 py-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-pine-950 text-[11px] font-extrabold uppercase tracking-wider shadow-md whitespace-nowrap">
-                      <Crown className="w-3.5 h-3.5" /> Cao cấp
-                    </span>
-                    <Sparkles className="absolute top-5 right-5 w-5 h-5 text-amber-500/80" aria-hidden="true" />
-                  </>
-                )}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className={`text-xl font-bold ${box.highlight ? "text-[#5A3E0A] font-display" : "text-pine-950"}`}>{box.name}</h3>
                     {box.highlight && (
-                      <span className="mr-7 text-[11px] font-bold px-2.5 py-1 rounded-tag bg-white/70 text-amber-800 border border-amber-300">Nhiều món hơn</span>
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-tag bg-white/70 text-amber-800 border border-amber-300">Nhiều món hơn</span>
                     )}
                   </div>
                   <div className="flex items-baseline gap-2">
