@@ -245,7 +245,7 @@ export default function FAQPage() {
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <Link
               href="/contact"
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-box bg-honey-500 hover:bg-honey-600 text-pine-950 font-bold text-xs transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 min-h-11 px-4 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-xs transition-colors shadow-sm"
             >
               <MessageCircle className="w-4 h-4" />
               <span>Gửi tin nhắn</span>

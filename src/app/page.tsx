@@ -308,7 +308,7 @@ export default function HomePage() {
                     href={box.highlight ? "/boxes?tier=premium" : "/boxes?tier=standard"}
                     className={
                       box.highlight
-                        ? "block w-full py-3 rounded-box text-center text-sm font-extrabold text-pine-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 hover:brightness-105 shadow-md transition"
+                        ? "block w-full py-3 rounded-box text-center text-sm font-bold bg-pine-900 hover:bg-pine-800 text-white transition-colors"
                         : "block w-full py-3 rounded-box text-center text-sm font-bold bg-pine-900 hover:bg-pine-800 text-white transition-colors"
                     }
                   >
@@ -332,7 +332,7 @@ export default function HomePage() {
                   </span>
                 ))}
               </div>
-              <Link href="/subscription" className="shrink-0 text-center px-5 py-2.5 rounded-box bg-honey-500 hover:bg-honey-600 text-pine-950 text-xs font-bold">
+              <Link href="/subscription" className="shrink-0 text-center min-h-11 inline-flex items-center justify-center px-5 rounded-box bg-white hover:bg-pine-50 text-pine-950 text-xs font-bold">
                 Xem gói định kỳ
               </Link>
             </div>

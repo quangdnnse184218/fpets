@@ -1298,6 +1298,21 @@ export type Database = {
         }
         Returns: Json
       }
+      next_delivery_window: {
+        Args: {
+          p_from: string
+          p_schedule: Database["public"]["Enums"]["delivery_schedule"]
+        }
+        Returns: string
+      }
+      update_my_subscription_delivery: {
+        Args: {
+          p_address?: Json
+          p_delivery_schedule?: Database["public"]["Enums"]["delivery_schedule"]
+          p_subscription_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       delivery_schedule: "dau_thang" | "giua_thang"

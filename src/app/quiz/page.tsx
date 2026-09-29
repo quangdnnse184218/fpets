@@ -8,6 +8,7 @@ import { fetchBoxTypes, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { ArrowLeft, CheckCircle2, Gift, Dog, Cat, Baby, Zap, Moon } from "lucide-react";
 import { BoxType, SubscriptionPlan } from "@/types/models";
+import { ALLERGY_OPTIONS, PREFERENCE_OPTIONS } from "@/lib/petOptions";
 
 // Câu trả lời quiz được giữ tạm khi khách phải đăng ký/đăng nhập giữa chừng,
 // quay lại /quiz?resume=1 sẽ tự tạo Pet Profile và tiếp tục đặt hộp (SPEC §3).
@@ -67,12 +68,10 @@ export default function PetQuizPage() {
   const [showResult, setShowResult] = useState(false);
 
   // Danh sách dị ứng phổ biến theo loài
-  const allergyOptions = species === 'dog'
-    ? ["Gà", "Bò", "Ngũ cốc / Lúa mì", "Trứng", "Sữa bò", "Hải sản"]
-    : ["Gà", "Cá biển", "Sữa động vật", "Ngũ cốc", "Thịt bò"];
-
-  const dogPreferences = ["Gặm xương giòn", "Đồ chơi dây thừng kéo co", "Thịt cừu sấy", "Bóng nảy cao", "Pate bổ sung dinh dưỡng"];
-  const catPreferences = ["Cỏ bạc hà Catnip", "Pate cá hồi", "Cần câu lông vũ", "Bánh thưởng giòn răng", "Đồ chơi chuột nhồi"];
+  // Danh sách chuẩn dùng chung với hồ sơ thú cưng và cảnh báo dị ứng khi mua hàng
+  const allergyOptions = ALLERGY_OPTIONS;
+  const dogPreferences = PREFERENCE_OPTIONS.dog;
+  const catPreferences = PREFERENCE_OPTIONS.cat;
 
   const toggleAllergy = (item: string) => {
     if (selectedAllergies.includes(item)) {

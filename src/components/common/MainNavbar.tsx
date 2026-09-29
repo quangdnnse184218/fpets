@@ -13,6 +13,9 @@ import {
   Dog,
   ShieldAlert,
   ChevronDown,
+  RefreshCw,
+  Bell,
+  User,
   LogIn,
   UserPlus,
 } from "lucide-react";
@@ -25,6 +28,7 @@ export default function MainNavbar() {
   const { cart, isLoggedIn, user, logout } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [boxMenuOpen, setBoxMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Đóng dropdown khi click bên ngoài
@@ -47,12 +51,23 @@ export default function MainNavbar() {
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  // "Mystery Box" là 1 mục có 2 mục con: loại hộp và bảng giá gói định kỳ
+  const boxLinks = [
+    { href: "/boxes", label: "Các loại hộp", desc: "Hộp Tiêu chuẩn và Premium cho chó, mèo" },
+    { href: "/subscription", label: "Bảng giá gói", desc: "Gói 3, 6 hộp giảm đến 15%, miễn phí ship" },
+  ];
   const navLinks = [
-    { href: "/boxes", label: "Mystery Box" },
-    { href: "/subscription", label: "Gói định kỳ" },
     { href: "/shop", label: "Shop bán lẻ" },
     { href: "/reviews", label: "Đánh giá" },
   ];
+  const accountLinks = [
+    { href: "/my-account/pets", label: "Thú cưng của tôi", icon: Dog },
+    { href: "/my-account/orders", label: "Đơn hàng & Vận chuyển", icon: Package },
+    { href: "/my-account/subscriptions", label: "Gói định kỳ", icon: RefreshCw },
+    { href: "/my-account/notifications", label: "Thông báo", icon: Bell },
+    { href: "/my-account/profile", label: "Thông tin & Địa chỉ", icon: User },
+  ];
+  const boxMenuActive = boxLinks.some((l) => pathname.startsWith(l.href));
 
   const isActive = (href: string) => {
     if (href === "/" && pathname === "/") return true;
@@ -69,7 +84,7 @@ export default function MainNavbar() {
 
   const roleLabels: Record<string, string> = {
     admin: "Quản trị viên",
-    customer: "Thành viên",
+    customer: "Thành viên FPETS",
   };
 
   return (
@@ -80,6 +95,32 @@ export default function MainNavbar() {
 
         {/* Menu Desktop */}
         <nav className="hidden md:flex items-center gap-1">
+          <div className="relative" onMouseLeave={() => setBoxMenuOpen(false)}>
+            <button
+              type="button"
+              onClick={() => setBoxMenuOpen((v) => !v)}
+              onMouseEnter={() => setBoxMenuOpen(true)}
+              aria-expanded={boxMenuOpen}
+              aria-haspopup="true"
+              className={`flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-box transition-colors ${
+                boxMenuActive ? "text-pine-950 bg-pine-50 font-semibold" : "text-bark-700 hover:text-pine-900 hover:bg-surface-muted"
+              }`}
+            >
+              Mystery Box <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+            {boxMenuOpen && (
+              <div className="absolute left-0 top-full pt-1 z-50">
+                <div className="w-72 p-1.5 rounded-box bg-surface-card border border-surface-border shadow-xl">
+                  {boxLinks.map((l) => (
+                    <Link key={l.href} href={l.href} onClick={() => setBoxMenuOpen(false)} className="block px-3 py-2.5 rounded-box hover:bg-surface-muted">
+                      <span className="block text-sm font-bold text-pine-950">{l.label}</span>
+                      <span className="block text-[11px] text-bark-500">{l.desc}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           {navLinks.map((link) => {
             const active = isActive(link.href);
             return (
@@ -113,8 +154,9 @@ export default function MainNavbar() {
           {/* Giỏ hàng */}
           <Link
             href="/cart"
-            className="relative p-2 rounded-box text-bark-700 hover:bg-surface-muted transition-colors"
+            className="relative min-w-11 min-h-11 flex items-center justify-center rounded-box text-bark-700 hover:bg-surface-muted transition-colors"
             title="Giỏ hàng"
+            aria-label={totalCartItems > 0 ? `Giỏ hàng, ${totalCartItems} sản phẩm` : "Giỏ hàng"}
           >
             <ShoppingCart className="w-5 h-5 text-pine-950" />
             {totalCartItems > 0 && (
@@ -140,7 +182,7 @@ export default function MainNavbar() {
                 </div>
                 <div className="text-left hidden xl:block max-w-[120px]">
                   <div className="text-xs font-semibold text-bark-900 truncate">{user.name}</div>
-                  <div className="text-[10px] text-bark-500 truncate">{roleLabels[user.role] || "Thành viên"}</div>
+                  <div className="text-[10px] text-bark-500 truncate">{roleLabels[user.role] || "Thành viên FPETS"}</div>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-bark-500" />
               </button>
@@ -158,23 +200,17 @@ export default function MainNavbar() {
                   </div>
 
                   <div className="py-1">
-                    <Link
-                      href="/my-account/pets"
-                      onClick={() => setUserDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-bark-800 hover:bg-surface-muted hover:text-pine-900 transition-colors"
-                    >
-                      <Dog className="w-4 h-4 text-pine-700" />
-                      <span>Hồ sơ thú cưng của tôi</span>
-                    </Link>
-
-                    <Link
-                      href="/my-account/orders"
-                      onClick={() => setUserDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-bark-800 hover:bg-surface-muted hover:text-pine-900 transition-colors"
-                    >
-                      <Package className="w-4 h-4 text-pine-700" />
-                      <span>Đơn hàng & Gói định kỳ</span>
-                    </Link>
+                    {accountLinks.map(({ href, label, icon: Icon }) => (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-4 min-h-10 text-xs font-medium text-bark-800 hover:bg-surface-muted hover:text-pine-900 transition-colors"
+                      >
+                        <Icon className="w-4 h-4 text-pine-700" />
+                        <span>{label}</span>
+                      </Link>
+                    ))}
 
                     {/* Nếu là Admin -> Liên kết đến Admin Dashboard */}
                     {user.role === "admin" && (
@@ -295,12 +331,20 @@ export default function MainNavbar() {
             </div>
           )}
 
+          <div className="py-1">
+            <span className="block text-[11px] font-bold uppercase tracking-wide text-bark-500">Mystery Box</span>
+            {boxLinks.map((l) => (
+              <Link key={l.href} href={l.href} onClick={() => setMobileMenuOpen(false)} className="flex items-center min-h-11 pl-3 text-sm font-medium text-bark-800 hover:text-pine-900">
+                {l.label}
+              </Link>
+            ))}
+          </div>
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-between py-2 text-sm font-medium text-bark-800 hover:text-pine-900"
+              className="flex items-center justify-between min-h-11 text-sm font-medium text-bark-800 hover:text-pine-900"
             >
               <span>{link.label}</span>
             </Link>

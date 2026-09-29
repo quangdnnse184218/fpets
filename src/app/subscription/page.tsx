@@ -236,9 +236,7 @@ export default function SubscriptionIntroPage() {
                       className={`w-full py-3 rounded-box text-center font-bold text-xs flex items-center justify-center gap-1.5 transition-colors ${
                         isPopular
                           ? "bg-pine-900 hover:bg-pine-800 text-white shadow-xs"
-                          : isBest
-                          ? "bg-honey-500 hover:bg-honey-600 text-pine-950 shadow-xs"
-                          : "bg-surface-muted hover:bg-surface-border text-pine-950 border border-surface-border"
+                          : "bg-white hover:bg-pine-50 text-pine-900 border border-pine-800/40"
                       }`}
                     >
                       <span>Đăng ký {plan.name}</span>

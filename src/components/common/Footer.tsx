@@ -6,11 +6,13 @@ import { usePathname } from "next/navigation";
 import { Phone, Mail, MapPin, MessageCircle } from "lucide-react";
 import { CONTACT_INFO } from "@/lib/contactInfo";
 import BrandLogo from "@/components/common/BrandLogo";
+import { useApp } from "@/context/AppContext";
 
 const PAYMENT_METHODS = ["MoMo", "VNPay", "COD"];
 
 export default function Footer() {
   const pathname = usePathname();
+  const { isLoggedIn } = useApp();
 
   // Không hiển thị Footer của khách khi đang ở các trang Admin
   if (pathname.startsWith("/admin")) {
@@ -44,7 +46,12 @@ export default function Footer() {
               <Link href="/boxes" className="hover:text-white transition-colors">Mystery Box</Link>
               <Link href="/subscription" className="hover:text-white transition-colors">Gói định kỳ</Link>
               <Link href="/shop" className="hover:text-white transition-colors">Shop bán lẻ</Link>
-              <Link href="/order-tracking" className="hover:text-white transition-colors">Tra cứu đơn hàng</Link>
+              {/* Đã đăng nhập thì xem đơn trong tài khoản, không cần tra cứu bằng mã */}
+              {isLoggedIn ? (
+                <Link href="/my-account/orders" className="hover:text-white transition-colors">Đơn hàng của tôi</Link>
+              ) : (
+                <Link href="/order-tracking" className="hover:text-white transition-colors">Tra cứu đơn hàng</Link>
+              )}
             </nav>
           </div>
 

@@ -198,7 +198,7 @@ export default function BoxesPage() {
               onClick={() => setTierFilter('premium')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                 tierFilter === 'premium'
-                  ? 'bg-amber-600 text-white shadow-xs'
+                  ? 'bg-pine-900 text-white shadow-xs'
                   : 'text-bark-600 hover:text-pine-900'
               }`}
             >
@@ -339,7 +339,7 @@ export default function BoxesPage() {
                     href={`/boxes/${box.slug}`}
                     className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-center text-xs font-bold shadow-xs transition-all ${
                       isPremium
-                        ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                        ? 'bg-pine-900 hover:bg-pine-800 text-white'
                         : 'bg-pine-900 hover:bg-pine-800 text-white'
                     }`}
                   >

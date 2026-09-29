@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -19,6 +20,7 @@ interface NotificationRow {
 export default function NotificationBell({ userId }: { userId: string }) {
   const router = useRouter();
   const [items, setItems] = useState<NotificationRow[]>([]);
+  const [unreadTotal, setUnreadTotal] = useState(0);
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
@@ -31,6 +33,9 @@ export default function NotificationBell({ userId }: { userId: string }) {
       .order("created_at", { ascending: false })
       .limit(15);
     setItems((data as NotificationRow[]) || []);
+    // Số trên badge = tổng số chưa đọc, không chỉ trong 15 thông báo gần nhất
+    const { count } = await supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("is_read", false);
+    setUnreadTotal(count || 0);
   }, [userId]);
 
   useEffect(() => {
@@ -47,11 +52,13 @@ export default function NotificationBell({ userId }: { userId: string }) {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  const unread = items.filter((n) => !n.is_read).length;
+  const unread = unreadTotal;
 
   const markRead = async (ids: string[]) => {
     if (ids.length === 0) return;
+    const newlyRead = items.filter((n) => ids.includes(n.id) && !n.is_read).length;
     setItems((prev) => prev.map((n) => (ids.includes(n.id) ? { ...n, is_read: true } : n)));
+    setUnreadTotal((c) => Math.max(0, c - newlyRead));
     const supabase = createClient();
     await supabase.from("notifications").update({ is_read: true }).in("id", ids);
   };
@@ -73,7 +80,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
       >
         <Bell className="w-5 h-5 text-pine-950" />
         {unread > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-extrabold flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-honey-600 text-white text-[10px] font-extrabold flex items-center justify-center">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -119,6 +126,9 @@ export default function NotificationBell({ userId }: { userId: string }) {
               ))}
             </ul>
           )}
+          <Link href="/my-account/notifications" onClick={() => setOpen(false)} className="block px-4 py-3 text-center text-xs font-bold text-pine-900 border-t border-surface-border hover:bg-surface-muted">
+            Xem tất cả thông báo
+          </Link>
         </div>
       )}
     </div>
