@@ -27,6 +27,8 @@ export default function BoxesPage() {
   const [tierFilter, setTierFilter] = useState<'all' | 'standard' | 'premium'>('all');
   const [boxes, setBoxes] = useState<BoxType[]>([]);
   const [loading, setLoading] = useState(true);
+  // Đến từ trang Gói định kỳ (?plan=3): giữ gói đã chọn khi sang trang chi tiết hộp
+  const [planParam, setPlanParam] = useState("");
 
   // Lọc sẵn theo link: /boxes?tier=premium (trang chủ), /boxes?species=cat (hồ sơ thú cưng)
   useEffect(() => {
@@ -35,6 +37,8 @@ export default function BoxesPage() {
     const species = params.get("species");
     if (tier === "premium" || tier === "standard") setTierFilter(tier);
     if (species === "dog" || species === "cat") setSpeciesFilter(species);
+    const plan = params.get("plan");
+    if (plan && /^[0-9]+$/.test(plan)) setPlanParam(plan);
   }, []);
 
   useEffect(() => {
@@ -336,11 +340,9 @@ export default function BoxesPage() {
                   </div>
 
                   <Link
-                    href={`/boxes/${box.slug}`}
+                    href={`/boxes/${box.slug}${planParam ? `?plan=${planParam}` : ""}`}
                     className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-center text-xs font-bold shadow-xs transition-all ${
-                      isPremium
-                        ? 'bg-pine-900 hover:bg-pine-800 text-white'
-                        : 'bg-pine-900 hover:bg-pine-800 text-white'
+                      'bg-pine-900 hover:bg-pine-800 text-white'
                     }`}
                   >
                     <span>Xem chi tiết & đặt box</span>

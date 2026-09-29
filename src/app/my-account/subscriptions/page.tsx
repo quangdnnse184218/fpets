@@ -158,7 +158,7 @@ export default function MySubscriptionsPage() {
         <CalendarClock className="w-10 h-10 mx-auto text-pine-800" />
         <h2 className="text-base font-bold text-pine-950">Bạn chưa có gói định kỳ</h2>
         <p className="text-sm text-bark-600 max-w-md mx-auto">
-          Trả trước 3 hoặc 6 hộp, mỗi tháng bé nhận 1 hộp chọn riêng theo hồ sơ. Giảm đến 15%, miễn phí ship, tạm dừng hoặc hủy bất kỳ lúc nào.
+          Trả trước 1, 3 hoặc 6 hộp, mỗi tháng bé nhận 1 hộp chọn riêng theo hồ sơ. Gói 3, 6 hộp giảm đến 15% và miễn phí ship; tạm dừng hoặc hủy bất kỳ lúc nào.
         </p>
         <ButtonLink href="/subscription">Chọn gói cho bé</ButtonLink>
       </div>

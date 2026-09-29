@@ -12,6 +12,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { CONTACT_INFO } from "@/lib/contactInfo";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/Button";
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -24,17 +26,29 @@ export default function ContactPage() {
 
   const [submitted, setSubmitted] = useState(false);
 
-  // Chưa có hệ thống ticket: mở ứng dụng email của khách với nội dung điền sẵn gửi tới hộp thư hỗ trợ
-  const handleSubmit = (e: React.FormEvent) => {
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+
+  // Lưu góp ý vào hệ thống để admin xử lý tại mục Review & Feedback
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const body = [
-      `Họ tên: ${formData.fullName}`,
-      `SĐT: ${formData.phone}`,
-      `Email: ${formData.email}`,
-      "",
-      formData.message,
-    ].join("\n");
-    window.location.href = `mailto:${CONTACT_INFO.email}?subject=${encodeURIComponent(`[FPETS] ${formData.subject}`)}&body=${encodeURIComponent(body)}`;
+    setError("");
+    setSending(true);
+    const { error: rpcError } = await createClient().rpc("submit_feedback", {
+      p_full_name: formData.fullName,
+      p_phone: formData.phone,
+      p_email: formData.email,
+      p_subject: formData.subject,
+      p_message: formData.message,
+    });
+    setSending(false);
+    if (rpcError) {
+      const msg = rpcError.message;
+      if (msg.includes("ERR_PHONE_INVALID")) return setError("Số điện thoại cần 10 số, bắt đầu bằng 0.");
+      if (msg.includes("ERR_MESSAGE_TOO_SHORT")) return setError("Nội dung cần ít nhất 5 ký tự.");
+      if (msg.includes("ERR_TOO_MANY_REQUESTS")) return setError(`Bạn đã gửi nhiều tin trong 1 giờ qua. Vui lòng gọi ${CONTACT_INFO.hotline} nếu cần hỗ trợ gấp.`);
+      return setError(`Chưa gửi được tin nhắn. Vui lòng thử lại hoặc gọi ${CONTACT_INFO.hotline}.`);
+    }
     setSubmitted(true);
   };
 
@@ -152,21 +166,20 @@ export default function ContactPage() {
                     <CheckCircle2 className="w-8 h-8" />
                   </div>
                   <h3 className="text-xl font-bold text-pine-950 font-display">
-                    Đã mở ứng dụng email của bạn
+                    Đã nhận tin nhắn của bạn
                   </h3>
                   <p className="text-sm text-bark-600 max-w-md mx-auto leading-relaxed">
-                    Nội dung đã được điền sẵn, bạn chỉ cần bấm <strong>Gửi</strong> trong ứng dụng email. Nếu ứng dụng không mở, hãy gửi thư trực tiếp tới <a className="font-bold text-pine-900 underline" href={`mailto:${CONTACT_INFO.email}`}>{CONTACT_INFO.email}</a> hoặc gọi {CONTACT_INFO.hotline}.
+                    FPETS sẽ liên hệ lại qua số {formData.phone} trong giờ làm việc ({CONTACT_INFO.hours}). Cần hỗ trợ gấp, bạn gọi <a className="font-bold text-pine-900 underline" href={`tel:${CONTACT_INFO.hotlineTel}`}>{CONTACT_INFO.hotline}</a>.
                   </p>
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
                     onClick={() => {
                       setSubmitted(false);
                       setFormData({ fullName: "", phone: "", email: "", subject: "Hỏi về Mystery Box", message: "" });
                     }}
-                    className="inline-flex px-4 py-2 rounded-box bg-pine-900 text-white text-xs font-bold hover:bg-pine-800 transition-colors"
                   >
                     Gửi yêu cầu khác
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -195,7 +208,10 @@ export default function ContactPage() {
                       </label>
                       <input
                         type="tel"
+                        inputMode="tel"
                         required
+                        pattern="0[0-9 ]{9,12}"
+                        title="Số điện thoại 10 số, bắt đầu bằng 0"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         placeholder="Ví dụ: 0912 345 678"
@@ -243,6 +259,8 @@ export default function ContactPage() {
                     </label>
                     <textarea
                       required
+                      minLength={5}
+                      maxLength={3000}
                       rows={5}
                       value={formData.message}
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
@@ -251,13 +269,12 @@ export default function ContactPage() {
                     />
                   </div>
 
-                  <button
-                    type="submit"
-                    className="w-full sm:w-auto px-6 py-3 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
-                  >
+                  {error && <p role="alert" className="text-xs font-semibold text-red-700">{error}</p>}
+
+                  <Button type="submit" loading={sending} loadingText="Đang gửi…" className="w-full sm:w-auto">
                     <Send className="w-3.5 h-3.5" />
-                    <span>Gửi qua email</span>
-                  </button>
+                    <span>Gửi tin nhắn</span>
+                  </Button>
                 </form>
               )}
             </div>

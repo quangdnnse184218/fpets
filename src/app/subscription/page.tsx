@@ -17,6 +17,7 @@ import { formatVND } from "@/lib/formatters";
 import { fetchBoxTypes, fetchSubscriptionPlans } from "@/lib/catalog";
 import { QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
 import { SHIPPING_CONFIG } from "@/lib/shipping";
+import { useApp } from "@/context/AppContext";
 
 // Lịch giao minh họa cho gói 3 hộp, đợt đầu tháng (SPEC §5: chốt hộp 7 ngày trước đợt giao)
 const SAMPLE_SCHEDULE = [
@@ -26,6 +27,9 @@ const SAMPLE_SCHEDULE = [
 ];
 
 export default function SubscriptionIntroPage() {
+  // Khách đã có hồ sơ bé thì chọn hộp luôn; chưa có thì làm Pet Quiz để tạo hồ sơ trước
+  const { pets } = useApp();
+  const planHref = (cycles: number) => (pets.length > 0 ? `/boxes?plan=${cycles}` : `/quiz?plan=${cycles}`);
   const [selectedBoxLevel, setSelectedBoxLevel] = useState<'standard' | 'premium'>('standard');
   const [standardPrice, setStandardPrice] = useState(299000);
   const [premiumPrice, setPremiumPrice] = useState(499000);
@@ -232,7 +236,7 @@ export default function SubscriptionIntroPage() {
 
                   <div className="pt-6 mt-4">
                     <Link
-                      href={`/quiz?plan=${plan.cycle_count}`}
+                      href={planHref(plan.cycle_count)}
                       className={`w-full py-3 rounded-box text-center font-bold text-xs flex items-center justify-center gap-1.5 transition-colors ${
                         isPopular
                           ? "bg-pine-900 hover:bg-pine-800 text-white shadow-xs"

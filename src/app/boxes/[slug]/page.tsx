@@ -56,9 +56,12 @@ export default function BoxDetailPage() {
     Promise.all([fetchBoxTypeBySlug(slug), fetchPlanOptions()]).then(([data, planData]) => {
       setBox(data);
       setPlans(planData);
-      // Mua 1 hộp đã có lựa chọn riêng, nên phần gói định kỳ chỉ còn gói 3 và 6 hộp
-      const defaultPlan = planData.find((p) => p.cycles === 3) || planData.find((p) => p.cycles > 1);
+      // Đến từ trang Gói định kỳ (?plan=N) thì chọn sẵn gói đó; mặc định gợi ý gói 3 hộp
+      const planParam = Number(new URLSearchParams(window.location.search).get("plan"));
+      const fromLink = planData.find((p) => p.cycles === planParam);
+      const defaultPlan = fromLink || planData.find((p) => p.cycles === 3) || planData[0];
       if (defaultPlan) setSelectedPlanId(defaultPlan.id);
+      if (fromLink) setPurchaseMode("subscription");
       setLoading(false);
     });
   }, [slug]);
@@ -78,7 +81,6 @@ export default function BoxDetailPage() {
       });
   }, [user.id]);
 
-  const subscriptionPlans = plans.filter((p) => p.cycles > 1);
   const firstDelivery = nextDeliveryWindow(schedule);
 
   // Chỉ bé cùng loài (và với chó: cùng size) mới nhận được loại box này — server cũng chặn lại
@@ -325,11 +327,11 @@ export default function BoxDetailPage() {
                 <span className="absolute -top-2 right-2 px-2 py-0.5 rounded-tag bg-grass-100 text-grass-800 border border-grass-200 text-[10px] font-bold">
                   Tiết kiệm đến {maxDiscount}%
                 </span>
-                <div className="text-xs font-bold text-pine-950">{purchaseMode === 'subscription' ? "✓ " : ""}Đăng ký 3 hoặc 6 tháng</div>
+                <div className="text-xs font-bold text-pine-950">{purchaseMode === 'subscription' ? "✓ " : ""}Đăng ký định kỳ</div>
                 <div className="text-base font-extrabold text-pine-950 font-display mt-0.5">
                   Từ {formatVND(Math.round(box.basePrice * (1 - maxDiscount / 100)))}/hộp
                 </div>
-                <div className="text-[11px] text-grass-700 font-medium mt-1">Miễn phí ship với gói 3, 6 hộp</div>
+                <div className="text-[11px] text-grass-700 font-medium mt-1">Gói 1, 3, 6 hộp · freeship gói 3, 6</div>
               </button>
             </div>
           </div>
@@ -341,8 +343,8 @@ export default function BoxDetailPage() {
                 Chọn gói:
               </span>
 
-              <div className="grid grid-cols-2 gap-2">
-                {subscriptionPlans.map((plan) => {
+              <div className="grid grid-cols-3 gap-2">
+                {plans.map((plan) => {
                   const isPlanSelected = plan.id === selectedPlanId;
                   const discountedPerBox = Math.round(box.basePrice * (1 - plan.discountPercent / 100));
 

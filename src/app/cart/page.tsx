@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import { formatVND } from "@/lib/formatters";
 import { Trash2, ShoppingBag, Truck, Tag, CheckCircle2, AlertCircle, PackageOpen, Minus, Plus } from "lucide-react";
-import { IconButton, ButtonLink } from "@/components/ui/Button";
+import { Button, IconButton, ButtonLink } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { findAllergyConflicts } from "@/lib/petOptions";
 import type { CartItem } from "@/context/AppContext";
@@ -249,7 +249,7 @@ export default function CartPage() {
             <div>
               <span className="font-bold text-pine-950">Muốn nhận hộp đều đặn mỗi tháng cho bé?</span>
               <p className="text-bark-600 mt-0.5">
-                Gói 3 hoặc 6 hộp giảm 10–15% và miễn phí vận chuyển.
+                Gói 1, 3 hoặc 6 hộp, giao mỗi tháng. Gói 3 và 6 hộp giảm 10–15%, miễn phí vận chuyển.
               </p>
             </div>
             <ButtonLink href="/subscription" variant="secondary" size="sm" className="shrink-0">
@@ -277,14 +277,11 @@ export default function CartPage() {
                   placeholder="Nhập mã giảm giá"
                   value={inputCode}
                   onChange={(e) => setInputCode(e.target.value)}
-                  className="flex-1 px-3 py-2 text-xs rounded-box border border-surface-border focus:border-pine-900 focus:outline-none bg-surface-card"
+                  className="flex-1 min-h-11 md:min-h-9 px-3 text-xs rounded-box border border-surface-border focus:border-pine-900 focus:outline-none bg-surface-card"
                 />
-                <button
-                  type="submit"
-                  className="px-3.5 py-2 rounded-box bg-pine-900 hover:bg-pine-800 text-white text-xs font-bold transition-colors cursor-pointer"
-                >
+                <Button type="submit" variant="secondary" size="sm" disabled={!inputCode.trim()}>
                   Áp dụng
-                </button>
+                </Button>
               </div>
 
               {voucherMessage && (

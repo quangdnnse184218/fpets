@@ -5,6 +5,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { Star, Eye, EyeOff, MessageSquare, Search, X } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
+import FeedbackInbox from "./FeedbackInbox";
 
 interface ReviewRow {
   id: string;
@@ -28,6 +29,47 @@ function validImages(images: string[] | null | undefined): string[] {
 }
 
 export default function AdminReviewsPage() {
+  const [tab, setTab] = useState<"reviews" | "feedback">("reviews");
+  const [newFeedback, setNewFeedback] = useState<number | null>(null);
+
+  // Đếm góp ý chưa xử lý ngay khi mở trang để admin thấy trên tab
+  useEffect(() => {
+    createClient()
+      .from("feedback_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "new")
+      .then(({ count }) => setNewFeedback(count ?? 0));
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-extrabold text-pine-950 font-display">Đánh giá & Feedback</h1>
+        <p className="text-xs text-bark-500">Kiểm duyệt đánh giá sau khi nhận hàng và xử lý góp ý, liên hệ gửi từ trang Liên hệ.</p>
+      </div>
+      <div role="tablist" className="flex gap-1 border-b border-surface-border text-sm">
+        {([
+          ["reviews", "Đánh giá đơn hàng"],
+          ["feedback", `Góp ý & Liên hệ${newFeedback ? ` (${newFeedback} mới)` : ""}`],
+        ] as const).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+            className={`min-h-11 px-4 -mb-px border-b-2 font-bold transition-colors ${tab === key ? "border-pine-900 text-pine-950" : "border-transparent text-bark-500 hover:text-pine-900"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === "reviews" ? <ReviewsPanel /> : <FeedbackInbox onCountChange={setNewFeedback} />}
+    </div>
+  );
+}
+
+function ReviewsPanel() {
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [starFilter, setStarFilter] = useState<number | "all">("all");
@@ -86,11 +128,6 @@ export default function AdminReviewsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-pine-950 font-display">Quản lý Đánh giá & Phản hồi ({reviews.length} đánh giá)</h1>
-        <p className="text-xs text-bark-500">Kiểm duyệt hình ảnh unbox, ẩn/hiện đánh giá công khai và phản hồi từ CSKH FPETS.</p>
-      </div>
-
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div className="p-3.5 rounded-container bg-surface-card border border-surface-border">
           <span className="text-bark-500 block text-[11px]">Đánh giá trung bình</span>
@@ -121,7 +158,7 @@ export default function AdminReviewsPage() {
         </div>
         <div className="flex items-center gap-1.5 flex-wrap text-xs">
           <button onClick={() => setStarFilter("all")} className={`px-3 py-1.5 rounded-box font-semibold transition-colors ${starFilter === "all" ? "bg-pine-900 text-white" : "bg-surface-muted text-bark-700 hover:bg-bark-200"}`}>Tất cả</button>
-          {[5, 4, 3].map((star) => (
+          {[5, 4, 3, 2, 1].map((star) => (
             <button key={star} onClick={() => setStarFilter(star)} className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-box font-semibold transition-colors ${starFilter === star ? "bg-pine-900 text-white" : "bg-surface-muted text-bark-700 hover:bg-bark-200"}`}>
               <span>{star}</span><Star className="w-3 h-3 fill-honey-500 text-honey-500" />
             </button>

@@ -348,6 +348,48 @@ export type Database = {
           },
         ]
       }
+      feedback_messages: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          handled_at: string | null
+          id: string
+          message: string
+          phone: string
+          status: string
+          subject: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          email?: string | null
+          full_name: string
+          handled_at?: string | null
+          id?: string
+          message: string
+          phone: string
+          status?: string
+          subject: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          handled_at?: string | null
+          id?: string
+          message?: string
+          phone?: string
+          status?: string
+          subject?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       inventory_movements: {
         Row: {
           created_at: string
@@ -1302,6 +1344,16 @@ export type Database = {
         Args: {
           p_from: string
           p_schedule: Database["public"]["Enums"]["delivery_schedule"]
+        }
+        Returns: string
+      }
+      submit_feedback: {
+        Args: {
+          p_email: string
+          p_full_name: string
+          p_message: string
+          p_phone: string
+          p_subject: string
         }
         Returns: string
       }

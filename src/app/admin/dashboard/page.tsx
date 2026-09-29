@@ -24,6 +24,8 @@ export default function AdminDashboardPage() {
   const [pausedSubs, setPausedSubs] = useState(0);
   const [cancelledSubs, setCancelledSubs] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
+  const [newFeedback, setNewFeedback] = useState(0);
+  const [pendingReviews, setPendingReviews] = useState(0);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
@@ -42,6 +44,12 @@ export default function AdminDashboardPage() {
       supabase.from("products").select("stock_quantity, low_stock_threshold").eq("is_active", true),
       supabase.from("orders").select("status"),
     ]);
+    const [{ count: feedbackCount }, { count: unrepliedCount }] = await Promise.all([
+      supabase.from("feedback_messages").select("id", { count: "exact", head: true }).eq("status", "new"),
+      supabase.from("reviews").select("id", { count: "exact", head: true }).is("admin_reply", null).lte("rating", 3),
+    ]);
+    setNewFeedback(feedbackCount || 0);
+    setPendingReviews(unrepliedCount || 0);
 
     setPendingCurations(curationCount || 0);
     setRevenueThisMonth((paidOrders || []).reduce((s, o) => s + o.total_amount, 0));
@@ -114,6 +122,18 @@ export default function AdminDashboardPage() {
             <span className="text-2xl font-extrabold text-amber-700 font-display block">{lowStockCount} sản phẩm</span>
           </div>
         </div>
+      </div>
+
+      {/* Việc CSKH cần xử lý */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+        <Link href="/admin/reviews" className="p-4 rounded-container bg-surface-card border border-surface-border hover:border-pine-800/40 flex items-center justify-between gap-3 transition-colors">
+          <span className="text-bark-600">Góp ý / liên hệ chưa xử lý</span>
+          <span className={`text-lg font-extrabold ${newFeedback > 0 ? "text-amber-700" : "text-pine-950"}`}>{newFeedback}</span>
+        </Link>
+        <Link href="/admin/reviews" className="p-4 rounded-container bg-surface-card border border-surface-border hover:border-pine-800/40 flex items-center justify-between gap-3 transition-colors">
+          <span className="text-bark-600">Đánh giá 1–3 sao chưa phản hồi</span>
+          <span className={`text-lg font-extrabold ${pendingReviews > 0 ? "text-amber-700" : "text-pine-950"}`}>{pendingReviews}</span>
+        </Link>
       </div>
 
       <div className="p-6 rounded-container bg-surface-card border border-surface-border space-y-4">
