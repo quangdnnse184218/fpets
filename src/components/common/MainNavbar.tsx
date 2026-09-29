@@ -53,7 +53,6 @@ export default function MainNavbar() {
     { href: "/subscription", label: "Gói định kỳ" },
     { href: "/shop", label: "Shop bán lẻ" },
     { href: "/reviews", label: "Đánh giá" },
-    { href: "/order-tracking", label: "Tra cứu đơn" },
   ];
 
   const isActive = (href: string) => {
@@ -107,7 +106,7 @@ export default function MainNavbar() {
             href="/quiz"
             className="hidden lg:inline-flex items-center px-3.5 py-2 text-xs font-bold rounded-box bg-honey-500 hover:bg-honey-600 text-pine-950 shadow-sm transition-colors"
           >
-            <span>Quiz tìm Box</span>
+            <span>Pet Quiz</span>
           </Link>
 
           {isLoggedIn && user.id && <NotificationBell userId={user.id} />}
@@ -314,7 +313,7 @@ export default function MainNavbar() {
               onClick={() => setMobileMenuOpen(false)}
               className="flex-1 text-center py-2.5 text-xs font-bold rounded-xl bg-honey-500 text-pine-950"
             >
-              Quiz tìm Mystery Box
+              Làm Pet Quiz
             </Link>
           </div>
         </div>

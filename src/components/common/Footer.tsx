@@ -3,9 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Phone, MessageCircle, ShieldCheck } from "lucide-react";
+import { Phone, Mail, MapPin, MessageCircle } from "lucide-react";
 import { CONTACT_INFO } from "@/lib/contactInfo";
 import BrandLogo from "@/components/common/BrandLogo";
+
+const PAYMENT_METHODS = ["MoMo", "VNPay", "COD"];
 
 export default function Footer() {
   const pathname = usePathname();
@@ -16,76 +18,84 @@ export default function Footer() {
   }
 
   return (
-    <footer className="bg-pine-950 text-pine-100 mt-auto border-t border-pine-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* KHỐI NỘI DUNG CHÍNH GỌN GÀNG */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8 items-start">
-          
-          {/* CỘT 1: Logo & Thông điệp ngắn gọn */}
-          <div className="md:col-span-5 space-y-2.5">
+    // pb-20 trên mobile: chừa chỗ cho thanh điều hướng cố định ở đáy màn hình
+    <footer className="bg-pine-950 text-pine-100 mt-auto border-t border-pine-900 pb-20 md:pb-0">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+          {/* Logo & mô tả ngắn */}
+          <div className="lg:col-span-4 space-y-2.5">
             <BrandLogo variant="dark" size="md" />
             <p className="text-xs text-pine-300/85 leading-relaxed max-w-sm">
-              Hộp quà bí ẩn cá nhân hóa cho chó mèo, tuyển chọn riêng theo sở thích và thể trạng của từng bé cưng.
+              Mystery Box cho chó mèo, chọn riêng theo hồ sơ của từng bé. Mua thử 1 hộp hoặc đăng ký nhận hằng tháng.
             </p>
-            <div className="inline-flex items-center gap-1.5 text-[11px] text-pine-400">
-              <ShieldCheck className="w-3.5 h-3.5 text-grass-400 shrink-0" />
-              <span>Loại trừ thành phần dị ứng theo hồ sơ của bé</span>
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {PAYMENT_METHODS.map((m) => (
+                <span key={m} className="px-2 py-0.5 rounded-tag bg-pine-900 border border-pine-800 text-[10px] font-bold text-pine-200">
+                  {m}
+                </span>
+              ))}
             </div>
           </div>
 
-          {/* CỘT 2: Thông tin & Trợ giúp (Đã lược bỏ Tra cứu đơn hàng) */}
-          <div className="md:col-span-3 space-y-2.5">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-pine-400">
-              Thông tin & Trợ giúp
-            </h4>
+          {/* Mua hàng */}
+          <div className="lg:col-span-2 space-y-2.5">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-pine-400">Mua hàng</h4>
             <nav className="flex flex-col space-y-1.5 text-xs text-pine-200">
-              <Link href="/about" className="hover:text-white transition-colors">
-                Về chúng tôi
-              </Link>
-              <Link href="/faq" className="hover:text-white transition-colors">
-                FAQ & Hướng dẫn mua hàng
-              </Link>
-              <Link href="/faq#doi-tra" className="hover:text-white transition-colors">
-                Chính sách đổi trả trong 3 ngày
-              </Link>
-              <Link href="/contact" className="hover:text-white transition-colors">
-                Liên hệ
-              </Link>
+              <Link href="/boxes" className="hover:text-white transition-colors">Mystery Box</Link>
+              <Link href="/subscription" className="hover:text-white transition-colors">Gói định kỳ</Link>
+              <Link href="/shop" className="hover:text-white transition-colors">Shop bán lẻ</Link>
+              <Link href="/order-tracking" className="hover:text-white transition-colors">Tra cứu đơn hàng</Link>
             </nav>
           </div>
 
-          {/* CỘT 3: Kênh liên hệ nhanh */}
-          <div className="md:col-span-4 space-y-2.5">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-pine-400">
-              Chăm sóc khách hàng
-            </h4>
+          {/* Hỗ trợ & chính sách */}
+          <div className="lg:col-span-3 space-y-2.5">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-pine-400">Hỗ trợ</h4>
+            <nav className="flex flex-col space-y-1.5 text-xs text-pine-200">
+              <Link href="/faq" className="hover:text-white transition-colors">Câu hỏi thường gặp</Link>
+              <Link href="/faq#doi-tra" className="hover:text-white transition-colors">Chính sách đổi trả</Link>
+              <Link href="/terms" className="hover:text-white transition-colors">Điều khoản dịch vụ</Link>
+              <Link href="/privacy" className="hover:text-white transition-colors">Chính sách bảo mật</Link>
+              <Link href="/about" className="hover:text-white transition-colors">Về chúng tôi</Link>
+            </nav>
+          </div>
+
+          {/* Liên hệ */}
+          <div className="lg:col-span-3 space-y-2.5">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-pine-400">Liên hệ</h4>
             <div className="space-y-2 text-xs text-pine-300">
-              <div className="flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5 text-pine-400 shrink-0" />
-                <span>Hotline: <a href={`tel:${CONTACT_INFO.hotlineTel}`} className="text-white font-semibold hover:underline">{CONTACT_INFO.hotline}</a> ({CONTACT_INFO.hours} hàng ngày)</span>
+              <div className="flex items-start gap-2">
+                <Phone className="w-3.5 h-3.5 text-pine-400 shrink-0 mt-0.5" />
+                <span>
+                  <a href={`tel:${CONTACT_INFO.hotlineTel}`} className="text-white font-semibold hover:underline">{CONTACT_INFO.hotline}</a>
+                  {" "}({CONTACT_INFO.hours} hằng ngày)
+                </span>
               </div>
-              {CONTACT_INFO.zaloUrl && (
-                <div className="flex items-center gap-2">
+              <div className="flex items-start gap-2">
+                <Mail className="w-3.5 h-3.5 text-pine-400 shrink-0 mt-0.5" />
+                <a href={`mailto:${CONTACT_INFO.email}`} className="text-white hover:underline">{CONTACT_INFO.email}</a>
+              </div>
+              <div className="flex items-start gap-2">
+                <MapPin className="w-3.5 h-3.5 text-pine-400 shrink-0 mt-0.5" />
+                <span className="leading-relaxed">{CONTACT_INFO.address}</span>
+              </div>
+              {(CONTACT_INFO.zaloUrl || CONTACT_INFO.messengerUrl) && (
+                <div className="flex items-center gap-2 pt-1">
                   <MessageCircle className="w-3.5 h-3.5 text-grass-400 shrink-0" />
-                  <a href={CONTACT_INFO.zaloUrl} target="_blank" rel="noopener noreferrer" className="text-white font-semibold hover:underline">Chat Zalo với FPETS</a>
+                  {CONTACT_INFO.zaloUrl && (
+                    <a href={CONTACT_INFO.zaloUrl} target="_blank" rel="noopener noreferrer" className="text-white font-semibold hover:underline">Zalo</a>
+                  )}
+                  {CONTACT_INFO.messengerUrl && (
+                    <a href={CONTACT_INFO.messengerUrl} target="_blank" rel="noopener noreferrer" className="text-white font-semibold hover:underline">Messenger</a>
+                  )}
                 </div>
               )}
-              <p className="text-[11px] text-pine-400/80 leading-normal">
-                Tư vấn thực đơn dinh dưỡng và hộp quà bất ngờ theo từng giống loài.
-              </p>
             </div>
           </div>
-
         </div>
 
-        {/* DÒNG BẢN QUYỀN CUỐI TRANG - TINH GỌN */}
-        <div className="mt-6 pt-4 border-t border-pine-900/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-pine-400">
-          <div>
-            © {new Date().getFullYear()} FPETS. Hộp quà thú cưng cá nhân hóa.
-          </div>
-          <div className="text-pine-400/70">
-            Giờ làm việc: {CONTACT_INFO.hours} hằng ngày
-          </div>
+        <div className="mt-6 pt-4 border-t border-pine-900/80 text-[11px] text-pine-400">
+          © {new Date().getFullYear()} FPETS. Mystery Box cho chó mèo.
         </div>
       </div>
     </footer>

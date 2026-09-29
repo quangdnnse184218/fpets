@@ -15,6 +15,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Tiêu đề chia dòng cân đối, đoạn văn tránh rớt 1 chữ cuối xuống dòng */
+h1, h2, h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+
 /* Tùy chỉnh focus state rõ ràng cho trợ năng (a11y) */
 a:focus-visible,
 button:focus-visible,

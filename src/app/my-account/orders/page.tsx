@@ -385,7 +385,7 @@ export default function MyOrdersPage() {
                 <div>
                   <label className="font-bold text-bark-800 block mb-1">Lý do yêu cầu đổi trả: *</label>
                   <select value={returnReason} onChange={(e) => setReturnReason(e.target.value)} className="w-full p-2.5 rounded-box border border-surface-border bg-white">
-                    <option value="Món chứa thành phần dị ứng đã khai báo">Món chứa thành phần dị ứng đã khai trong Pet Profile</option>
+                    <option value="Món chứa thành phần dị ứng đã khai báo">Món chứa thành phần dị ứng đã khai trong hồ sơ thú cưng</option>
                     <option value="Hàng hỏng, vỡ, hết hạn sử dụng">Hàng hỏng, vỡ, hết hạn sử dụng</option>
                     <option value="Giao thiếu món">Giao thiếu món so với cam kết</option>
                   </select>

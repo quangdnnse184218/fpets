@@ -496,7 +496,7 @@ export default function PetQuizPage() {
               Câu 5: Thành phần dị ứng cần tránh & Sở thích của bé?
             </h2>
             <p className="text-xs text-bark-500">
-              FPETS cam kết 100% không bao giờ nhặt các món có thành phần ba mẹ tick bên dưới.
+              FPETS sẽ không chọn món chứa các thành phần bạn đánh dấu bên dưới.
             </p>
           </div>
 
@@ -580,7 +580,7 @@ export default function PetQuizPage() {
           <div className="text-center space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-tag bg-grass-100 text-grass-700 text-xs font-bold">
               <CheckCircle2 className="w-4 h-4" />
-              <span>Đã khớp thành công Pet Profile</span>
+              <span>Gợi ý theo hồ sơ của bé</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
               Chiếc hộp phù hợp nhất cho bé {petName || (species === 'dog' ? "Cún" : "Miu")}
@@ -636,15 +636,15 @@ export default function PetQuizPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-bark-700">
             <div className="p-3 rounded-box bg-pine-50 border border-pine-100 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-pine-700 shrink-0" />
-              <span>Đã loại trừ 100% món dị ứng</span>
+              <span>Loại món dị ứng theo khai báo</span>
             </div>
             <div className="p-3 rounded-box bg-pine-50 border border-pine-100 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-pine-700 shrink-0" />
-              <span>Lưu sẵn vào Pet Profile của bạn</span>
+              <span>Lưu vào hồ sơ thú cưng của bạn</span>
             </div>
             <div className="p-3 rounded-box bg-pine-50 border border-pine-100 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-pine-700 shrink-0" />
-              <span>Được đổi món miễn phí nếu lỗi</span>
+              <span>Đổi món miễn phí nếu lỗi do FPETS</span>
             </div>
           </div>
 

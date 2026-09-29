@@ -47,10 +47,10 @@ export default function ContactPage() {
         <div className="text-center space-y-3 max-w-xl mx-auto">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-tag bg-pine-100 text-pine-900 text-xs font-bold">
             <MessageCircle className="w-3.5 h-3.5 text-pine-800" />
-            <span>Liên hệ & Chăm sóc khách hàng</span>
+            <span>Chăm sóc khách hàng</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold text-pine-950 font-display">
-            Chúng Tôi Luôn Lắng Nghe Bạn
+            Liên hệ FPETS
           </h1>
           <p className="text-xs sm:text-sm text-bark-600">
             Có thắc mắc về đơn hàng, gói quà hay cần tư vấn khẩu vị cho bé cưng? Đội ngũ FPETS sẵn sàng hỗ trợ bạn nhanh chóng.
@@ -71,19 +71,20 @@ export default function ContactPage() {
                     <Phone className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-pine-400 block text-xs">Tổng đài hỗ trợ:</span>
+                    <span className="text-pine-400 block text-xs">Hotline:</span>
                     <a href={`tel:${CONTACT_INFO.hotlineTel}`} className="font-bold text-white hover:text-honey-400 text-base">
                       {CONTACT_INFO.hotline}
                     </a>
                   </div>
                 </div>
 
+                {(CONTACT_INFO.zaloUrl || CONTACT_INFO.messengerUrl) && (
                 <div className="flex items-start gap-3.5">
                   <div className="w-9 h-9 rounded-box bg-pine-850 flex items-center justify-center shrink-0 text-grass-400">
                     <MessageCircle className="w-4 h-4" />
                   </div>
                   <div className="space-y-1.5">
-                    <span className="text-pine-400 block text-xs">Nhắn tin trực tiếp:</span>
+                    <span className="text-pine-400 block text-xs">Nhắn tin:</span>
                     <div className="flex flex-wrap gap-2">
                       {CONTACT_INFO.zaloUrl && (
                         <a href={CONTACT_INFO.zaloUrl} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-box bg-[#0068FF] hover:bg-[#0057d6] text-white text-xs font-bold">
@@ -95,12 +96,10 @@ export default function ContactPage() {
                           Chat Messenger
                         </a>
                       )}
-                      <a href={`tel:${CONTACT_INFO.hotlineTel}`} className="px-3 py-1.5 rounded-box bg-pine-800 hover:bg-pine-700 text-white text-xs font-bold">
-                        Gọi hotline
-                      </a>
                     </div>
                   </div>
                 </div>
+                )}
 
                 <div className="flex items-start gap-3.5">
                   <div className="w-9 h-9 rounded-box bg-pine-850 flex items-center justify-center shrink-0 text-grass-400">

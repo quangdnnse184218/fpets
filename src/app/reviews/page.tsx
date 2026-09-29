@@ -56,6 +56,8 @@ export default function ReviewsPage() {
     return true;
   });
 
+  // Ít đánh giá thì điểm trung bình dễ gây nghi ngờ ("5.0 từ 1 lượt"), nên chỉ hiện thống kê khi đủ số lượng
+  const showStats = reviews.length >= 5;
   const avgRating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : "0.0";
   const starCounts = [5, 4, 3, 2, 1].map((star) => ({
     star,
@@ -73,16 +75,17 @@ export default function ReviewsPage() {
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-extrabold text-pine-950 font-display">
-            Niềm Vui Unbox Thực Tế
+            Đánh giá từ khách đã nhận hộp
           </h1>
 
           <p className="text-xs sm:text-sm text-bark-600">
-            Xem những khoảnh khắc mở hộp thực tế và phản hồi chi tiết về từng món đồ chơi, thức ăn từ các bé cưng.
+            Nhận xét và ảnh mở hộp từ khách hàng đã mua tại FPETS.
           </p>
         </div>
 
         {/* KHỐI TỔNG QUAN ĐÁNH GIÁ (OVERVIEW STATS) */}
-        <div className="p-6 sm:p-8 rounded-container bg-surface-card border border-surface-border shadow-xs grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+        <div className={`p-6 sm:p-8 rounded-container bg-surface-card border border-surface-border shadow-xs grid grid-cols-1 gap-6 items-center ${showStats ? "md:grid-cols-12" : ""}`}>
+          {showStats && (<>
           <div className="md:col-span-4 text-center md:text-left space-y-2 md:border-r border-surface-border md:pr-6">
             <div className="text-4xl sm:text-5xl font-extrabold text-pine-950 font-display flex items-center justify-center md:justify-start gap-2">
               <span>{avgRating}</span>
@@ -114,6 +117,7 @@ export default function ReviewsPage() {
             })}
           </div>
 
+          </>)}
           {/* Mời khách đã nhận hàng vào đánh giá */}
           <div className="md:col-span-3 p-4 rounded-box bg-honey-50 border border-honey-200 text-xs space-y-2 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-1.5 font-bold text-honey-900">
@@ -126,7 +130,8 @@ export default function ReviewsPage() {
           </div>
         </div>
 
-        {/* THANH BỘ LỌC ĐÁNH GIÁ */}
+        {/* THANH BỘ LỌC ĐÁNH GIÁ: chỉ cần khi có nhiều đánh giá */}
+        {showStats && (
         <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-box bg-surface-card border border-surface-border text-xs">
           {/* Lọc theo sao */}
           <div className="flex flex-wrap items-center gap-1.5">
@@ -176,6 +181,8 @@ export default function ReviewsPage() {
             </label>
           </div>
         </div>
+
+        )}
 
         {/* DANH SÁCH REVIEW CARDS */}
         <div className="space-y-6">
@@ -253,7 +260,7 @@ export default function ReviewsPage() {
                   <div className="p-3.5 rounded-box bg-pine-50 border border-pine-200 text-xs space-y-1">
                     <div className="flex items-center gap-1.5 font-bold text-pine-900 text-[11px]">
                       <MessageSquare className="w-3.5 h-3.5 text-pine-800" />
-                      <span>FPETS Care Team</span>
+                      <span>Phản hồi từ FPETS</span>
                       {rev.admin_reply_at && <span className="text-pine-500 font-normal">· {new Date(rev.admin_reply_at).toLocaleDateString("vi-VN")}</span>}
                     </div>
                     <p className="text-[11px] text-pine-950 leading-relaxed">
@@ -266,14 +273,14 @@ export default function ReviewsPage() {
           ) : (
             <div className="p-12 text-center rounded-container bg-surface-card border border-surface-border text-bark-500 space-y-2">
               <Star className="w-8 h-8 text-bark-400 mx-auto" />
-              <p className="text-sm font-semibold">Chưa có đánh giá nào phù hợp với bộ lọc hiện tại.</p>
-              <button
+              <p className="text-sm font-semibold">{reviews.length === 0 && !loading ? "Chưa có đánh giá nào." : "Chưa có đánh giá nào phù hợp với bộ lọc hiện tại."}</p>
+              {reviews.length > 0 && <button
                 type="button"
                 onClick={() => { setStarFilter('all'); setHasPhotoOnly(false); }}
                 className="text-xs text-pine-900 font-bold hover:underline"
               >
                 Xóa tất cả bộ lọc
-              </button>
+              </button>}
             </div>
           )}
         </div>

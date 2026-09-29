@@ -331,11 +331,11 @@ function RegisterForm() {
                 />
                 <label htmlFor="agreeTerms" className="text-xs text-bark-600 cursor-pointer select-none">
                   Tôi đồng ý với{" "}
-                  <Link href="/about" className="text-pine-900 underline font-medium">
+                  <Link href="/terms" target="_blank" className="text-pine-900 underline font-medium">
                     Điều khoản dịch vụ
                   </Link>{" "}
                   và{" "}
-                  <Link href="/about" className="text-pine-900 underline font-medium">
+                  <Link href="/privacy" target="_blank" className="text-pine-900 underline font-medium">
                     Chính sách bảo mật
                   </Link>{" "}
                   của FPETS.

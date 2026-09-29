@@ -8,6 +8,13 @@ import { Pet } from "@/mock/pets";
 // lại hàng loạt component hiển thị, trong khi dữ liệu nguồn đã là dữ liệu
 // thật 100% từ database, không còn là mock nữa.
 
+// Shop chỉ hiển thị 3 nhóm danh mục (khớp bộ lọc); danh mục chi tiết trong DB gom về 3 nhóm này
+export const CATEGORY_LABEL: Record<Product["category"], string> = {
+  food: "Thức ăn & bánh thưởng",
+  toy: "Đồ chơi",
+  accessory: "Chăm sóc & phụ kiện",
+};
+
 const CATEGORY_BUCKET: Record<string, { bucket: Product["category"]; color: string }> = {
   "thuc-an-dinh-duong": { bucket: "food", color: "#FEF7E6" },
   "banh-thuong-snack": { bucket: "food", color: "#FDECC4" },
@@ -33,9 +40,10 @@ export function resolveImageUrl(raw: string | undefined, fallback: string): stri
 const BOX_TYPICAL_ITEMS: Record<string, string[]> = {
   "box-tieu-chuan-cho-nho": ["Snack thịt sấy giòn", "Bánh quy sạch răng", "Bóng phát tiếng kêu nhỏ", "Khăn lau tai mắt dịu nhẹ"],
   "box-tieu-chuan-cho-lon": ["Gặm xương sạch răng size L", "Dây thừng kéo co siêu bền", "Thịt sấy giàu đạm", "Xịt khử mùi chân lông"],
-  "box-tieu-chuan-meo": ["Pate cá hồi Na Uy 85g", "Cá nhồi cỏ catnip", "Súp thưởng nắp vặn", "Cần câu lông vũ chuông"],
-  "box-premium-cho": ["Thịt bò Úc sấy thăng hoa", "Đồ chơi giấu thức ăn IQ", "Gel dinh dưỡng lông bóng", "Khăn yếm thiết kế riêng", "Bóng nảy siêu đàn hồi"],
-  "box-premium-meo": ["Pate tôm hùm thượng hạng", "Cá ngừ đại dương sấy lạnh", "Lược chải nút bấm thông minh", "Đồ chơi chuột chạy pin mini", "Dầu cá Omega 3"],
+  "box-tieu-chuan-meo": ["Pate cá hồi & bí đỏ", "Cá nhồi catnip", "Súp thưởng cá ngừ", "Cần câu lông vũ"],
+  "box-premium-cho": ["Thịt bò Úc sấy lạnh", "Đồ chơi giấu thức ăn", "Bóng cao su phát tiếng", "Khăn yếm cho cún", "Snack ức gà sấy lạnh"],
+  "box-premium-cho-lon": ["Thịt bò Úc sấy lạnh", "Dây thừng kéo co cỡ lớn", "Đồ chơi giấu thức ăn", "Xịt khử mùi tinh dầu bưởi", "Bánh quy canxi vị bò"],
+  "box-premium-meo": ["Pate cá hồi & bí đỏ", "Cá ngừ sấy lạnh", "Lược chải lông nút bấm", "Chuột đồ chơi chạy pin", "Súp thưởng cá ngừ"],
 };
 
 export type ProductWithCategory = Tables<"products"> & {
@@ -49,7 +57,7 @@ export function productRowToProduct(row: ProductWithCategory): Product {
     name: row.name,
     slug: row.slug,
     category: catInfo?.bucket || "accessory",
-    categoryLabel: row.categories?.name || "Sản phẩm",
+    categoryLabel: CATEGORY_LABEL[catInfo?.bucket || "accessory"],
     price: row.price,
     originalPrice: row.original_price || undefined,
     stock: row.stock_quantity,
@@ -74,7 +82,8 @@ export function boxTypeRowToBoxType(row: Tables<"box_types">): BoxType {
     slug: row.slug,
     species: row.species,
     size: row.size,
-    sizeLabel: row.size === "small" ? "Dưới 10 kg" : "Từ 10 kg trở lên",
+    // Box mèo không chia size nên không hiện nhãn cân nặng
+    sizeLabel: row.species === "cat" ? "Mọi bé mèo" : row.size === "small" ? "Chó dưới 10 kg" : "Chó từ 10 kg",
     itemCount: `${row.item_count_min}–${row.item_count_max} món`,
     minRetailValue: row.min_retail_value,
     basePrice: row.baseprice,

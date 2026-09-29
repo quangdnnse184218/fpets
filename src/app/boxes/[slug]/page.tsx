@@ -8,7 +8,23 @@ import { BoxType, SubscriptionPlan } from "@/mock/boxTypes";
 import { fetchBoxTypeBySlug, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
-import { CheckCircle2, ShieldCheck, PlusCircle, PawPrint } from "lucide-react";
+import { CheckCircle2, ShieldCheck, PlusCircle, PawPrint, Truck, ChevronDown, Gift } from "lucide-react";
+import { EXCHANGE_POLICY, QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
+
+const BOX_FAQ = [
+  {
+    q: "Tôi có được chọn món trong hộp không?",
+    a: "Không, món trong hộp là bất ngờ. Đội ngũ FPETS chọn sát ngày giao dựa trên hồ sơ của bé; bạn có thể cập nhật sở thích và dị ứng trong hồ sơ thú cưng bất kỳ lúc nào.",
+  },
+  {
+    q: "Bé không thích món trong hộp thì sao?",
+    a: EXCHANGE_POLICY,
+  },
+  {
+    q: "Mua 1 hộp khác gì gói định kỳ?",
+    a: "Mua 1 hộp không cam kết, có thể trả COD. Gói 3 hoặc 6 hộp trả trước, giảm 10–15% mỗi hộp, freeship và giao mỗi tháng 1 hộp.",
+  },
+];
 
 export default function BoxDetailPage() {
   const params = useParams();
@@ -90,7 +106,21 @@ export default function BoxDetailPage() {
   };
 
   if (loading) {
-    return <div className="max-w-5xl mx-auto px-4 py-16 text-center text-xs text-bark-500">Đang tải thông tin box...</div>;
+    return (
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-10" aria-busy="true">
+        <div className="h-3 w-48 rounded bg-surface-muted animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          <div className="lg:col-span-6 aspect-square rounded-container bg-surface-muted animate-pulse" />
+          <div className="lg:col-span-6 space-y-4">
+            <div className="h-5 w-24 rounded bg-surface-muted animate-pulse" />
+            <div className="h-8 w-3/4 rounded bg-surface-muted animate-pulse" />
+            <div className="h-16 rounded bg-surface-muted animate-pulse" />
+            <div className="h-32 rounded-box bg-surface-muted animate-pulse" />
+            <div className="h-24 rounded-box bg-surface-muted animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!box) {
@@ -121,29 +151,20 @@ export default function BoxDetailPage() {
             {/* TODO: thay bằng ảnh thật của FPETS khi có */}
             <Image
               src={box.imageUrl}
-              alt={`Ảnh chụp thật ${box.name}`}
+              alt={box.name}
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
               priority
             />
-            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-5 text-white">
-              <span className="text-xs font-bold px-2 py-0.5 rounded-tag bg-white/20 backdrop-blur-sm text-white border border-white/30 inline-block mb-1">
-                {box.sizeLabel}
-              </span>
-              <h3 className="text-lg font-bold font-display">{box.name}</h3>
-              <p className="text-xs text-white/90 mt-0.5 line-clamp-1">{box.highlight}</p>
-            </div>
           </div>
 
           <div className="p-4 rounded-box bg-surface-card border border-surface-border text-xs space-y-2">
             <div className="font-bold text-pine-950 flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-grass-700" />
-              <span>Cam kết chất lượng FPETS:</span>
+              <span>Chính sách đổi món</span>
             </div>
-            <p className="text-bark-600 leading-relaxed">
-              Món cụ thể do admin tuyển chọn sát ngày giao. Nếu món chứa thành phần dị ứng mà bạn đã khai báo trong Pet Profile, chúng tôi <strong>đổi món mới miễn phí 100%</strong>.
-            </p>
+            <p className="text-bark-600 leading-relaxed">{EXCHANGE_POLICY}</p>
           </div>
         </div>
 
@@ -159,6 +180,10 @@ export default function BoxDetailPage() {
             <p className="text-sm text-bark-600 mt-2 leading-relaxed">
               {box.description}
             </p>
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold">
+              <span className="px-2.5 py-1 rounded-tag bg-surface-muted text-bark-700">{box.itemCount}</span>
+              <span className="px-2.5 py-1 rounded-tag bg-grass-50 text-grass-800">Trị giá sản phẩm từ {formatVND(box.minRetailValue)}</span>
+            </div>
           </div>
 
           {/* 1. BƯỚC 1: Chọn Bé nhận Box (Bắt buộc) */}
@@ -172,7 +197,7 @@ export default function BoxDetailPage() {
                 className="text-[11px] font-bold text-honey-700 hover:text-honey-800 flex items-center gap-1"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
-                <span>Thêm bé mới qua Quiz</span>
+                <span>Thêm bé qua {QUIZ_NAME}</span>
               </Link>
             </div>
 
@@ -212,8 +237,8 @@ export default function BoxDetailPage() {
                 {!isLoggedIn
                   ? "Đăng nhập để chọn bé nhận hộp."
                   : pets.length === 0
-                  ? "Bạn chưa có hồ sơ bé nào. Vui lòng làm Quiz 2 phút để tạo hồ sơ bé trước khi đặt hộp."
-                  : `Chưa có bé nào phù hợp với hộp này (dành cho ${box.species === "dog" ? "chó" : "mèo"}${box.species === "dog" ? ` ${box.sizeLabel.toLowerCase()}` : ""}). Hãy chọn loại box khác hoặc thêm hồ sơ bé mới.`}
+                  ? `Bạn chưa có hồ sơ thú cưng. Làm ${QUIZ_NAME} (${QUIZ_LENGTH}) để tạo hồ sơ trước khi đặt hộp.`
+                  : `Chưa có bé nào hợp với hộp này (dành cho ${box.sizeLabel.toLowerCase()}). Hãy chọn loại box khác hoặc thêm hồ sơ thú cưng mới.`}
               </div>
             )}
           </div>
@@ -318,9 +343,9 @@ export default function BoxDetailPage() {
                     <span>Đã thêm vào giỏ hàng! Đang chuyển hướng...</span>
                   </>
                 ) : !isLoggedIn ? (
-                  <span>Đăng nhập để thêm Mystery Box vào giỏ ({formatVND(box.basePrice)})</span>
+                  <span>Đăng nhập để đặt hộp ({formatVND(box.basePrice)})</span>
                 ) : (
-                  <span>Thêm Mystery Box vào giỏ hàng ({formatVND(box.basePrice)})</span>
+                  <span>Thêm vào giỏ hàng ({formatVND(box.basePrice)})</span>
                 )}
               </button>
             ) : (
@@ -338,8 +363,62 @@ export default function BoxDetailPage() {
               </button>
             )}
           </div>
+          {!isLoggedIn && (
+            <p className="text-[11px] text-bark-500 text-center">
+              Mystery Box cần tài khoản để gắn với hồ sơ của bé. Sản phẩm lẻ ở Shop mua được không cần đăng nhập.
+            </p>
+          )}
         </div>
       </div>
+
+      {/* Nội dung chi tiết: món ví dụ, giao hàng, câu hỏi thường gặp */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {box.typicalItems.length > 0 && (
+          <section className="p-5 rounded-container bg-surface-card border border-surface-border space-y-3">
+            <h2 className="text-base font-bold text-pine-950 flex items-center gap-2">
+              <Gift className="w-4 h-4 text-honey-600" />
+              <span>Ví dụ món có thể có trong hộp</span>
+            </h2>
+            <ul className="space-y-2 text-sm text-bark-700">
+              {box.typicalItems.map((item) => (
+                <li key={item} className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-grass-600 shrink-0" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-bark-500">Món thật trong hộp thay đổi theo hồ sơ của bé và các món đã gửi trước đó.</p>
+          </section>
+        )}
+
+        <section className="p-5 rounded-container bg-surface-card border border-surface-border space-y-3">
+          <h2 className="text-base font-bold text-pine-950 flex items-center gap-2">
+            <Truck className="w-4 h-4 text-pine-800" />
+            <span>Giao hàng</span>
+          </h2>
+          <ul className="space-y-2 text-sm text-bark-700">
+            <li>Mua 1 hộp: giao 1–2 ngày nội thành TP.HCM, 3–5 ngày tỉnh khác.</li>
+            <li>Gói định kỳ: giao mỗi tháng 1 hộp, đợt đầu tháng (ngày 1–5) hoặc giữa tháng (ngày 15–20).</li>
+            <li>Phí ship 25.000₫ nội thành TP.HCM, 35.000₫ tỉnh khác; freeship đơn từ 500.000₫ và gói 3, 6 hộp.</li>
+          </ul>
+          <Link href="/reviews" className="inline-block text-xs font-bold text-pine-900 hover:underline">Xem đánh giá của khách đã nhận hộp</Link>
+        </section>
+      </div>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold text-pine-950 font-display">Câu hỏi thường gặp</h2>
+        <div className="rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border">
+          {BOX_FAQ.map((item) => (
+            <details key={item.q} className="group p-4">
+              <summary className="flex items-center justify-between gap-3 cursor-pointer list-none text-sm font-bold text-pine-950">
+                <span>{item.q}</span>
+                <ChevronDown className="w-4 h-4 text-bark-500 shrink-0 transition-transform group-open:rotate-180" />
+              </summary>
+              <p className="mt-2 text-xs sm:text-sm text-bark-600 leading-relaxed">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

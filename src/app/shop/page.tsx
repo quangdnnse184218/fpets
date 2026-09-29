@@ -20,7 +20,16 @@ import {
   X,
   RotateCcw,
   ShieldCheck,
+  Search,
 } from "lucide-react";
+import { CATEGORY_LABEL } from "@/lib/adapters";
+
+// Ngưỡng hiện nhãn "Chỉ còn X" (SPEC §4)
+const LOW_STOCK = 5;
+
+// So khớp không dấu để khách gõ "pate ca hoi" vẫn ra "Pate cá hồi"
+const normalize = (text: string) =>
+  text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
 export default function ShopPage() {
   const { addToCart } = useApp();
@@ -31,6 +40,7 @@ export default function ShopPage() {
   const [addedId, setAddedId] = useState<string | null>(null);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"newest" | "price_asc" | "price_desc">("newest");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     fetchProducts().then((data) => {
@@ -41,15 +51,15 @@ export default function ShopPage() {
 
   const categories = [
     { id: "all", label: "Tất cả sản phẩm" },
-    { id: "food", label: "Thức ăn & Bánh thưởng", icon: UtensilsCrossed },
-    { id: "toy", label: "Đồ chơi tương tác", icon: PawPrint },
-    { id: "accessory", label: "Chăm sóc & Phụ kiện", icon: HeartHandshake },
+    { id: "food", label: CATEGORY_LABEL.food, icon: UtensilsCrossed },
+    { id: "toy", label: CATEGORY_LABEL.toy, icon: PawPrint },
+    { id: "accessory", label: CATEGORY_LABEL.accessory, icon: HeartHandshake },
   ];
 
   const speciesOptions = [
     { id: "all", label: "Tất cả loài" },
-    { id: "dog", label: "Cho Chó", icon: Dog },
-    { id: "cat", label: "Cho Mèo", icon: Cat },
+    { id: "dog", label: "Cho chó", icon: Dog },
+    { id: "cat", label: "Cho mèo", icon: Cat },
   ];
 
   const filteredProducts = products
@@ -57,7 +67,8 @@ export default function ShopPage() {
       const matchCat = selectedCategory === "all" || p.category === selectedCategory;
       const matchSpecies =
         selectedSpecies === "all" || p.species === selectedSpecies || p.species === "both";
-      return matchCat && matchSpecies;
+      const matchQuery = !query.trim() || normalize(`${p.name} ${p.description}`).includes(normalize(query.trim()));
+      return matchCat && matchSpecies && matchQuery;
     })
     .sort((a, b) => (sortBy === "price_asc" ? a.price - b.price : sortBy === "price_desc" ? b.price - a.price : 0));
 
@@ -73,11 +84,12 @@ export default function ShopPage() {
     setTimeout(() => setAddedId(null), 1200);
   };
 
-  const isFiltering = selectedCategory !== "all" || selectedSpecies !== "all";
+  const isFiltering = selectedCategory !== "all" || selectedSpecies !== "all" || query.trim() !== "";
 
   const handleResetFilters = () => {
     setSelectedCategory("all");
     setSelectedSpecies("all");
+    setQuery("");
   };
 
   return (
@@ -85,11 +97,24 @@ export default function ShopPage() {
       {/* Tiêu đề trang & Tóm tắt */}
       <div className="space-y-1 sm:space-y-2">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
-          Cửa hàng đồ ăn & phụ kiện lẻ
+          Shop bán lẻ
         </h1>
         <p className="text-xs sm:text-sm text-bark-600 max-w-2xl leading-relaxed">
-          Tất cả sản phẩm được chọn lọc an toàn cho sức khỏe thú cưng, có thể mua lẻ riêng hoặc dùng làm món tuyển chọn trong Mystery Box.
+          Đồ ăn, đồ chơi và phụ kiện cho chó mèo. Mua lẻ không cần tài khoản; nhiều món cũng có mặt trong Mystery Box.
         </p>
+      </div>
+
+      {/* Ô tìm kiếm */}
+      <div className="relative max-w-xl">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-bark-400" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Tìm sản phẩm, ví dụ: pate, bóng, lược..."
+          aria-label="Tìm sản phẩm"
+          className="w-full pl-10 pr-3.5 py-2.5 rounded-box border border-surface-border bg-surface-card text-sm text-bark-900 focus:outline-none focus:border-pine-800"
+        />
       </div>
 
       {/* Thanh điều khiển Mobile: Hiện nút Mở Bộ Lọc & Số lượng kết quả */}
@@ -237,7 +262,7 @@ export default function ShopPage() {
               <span>Tiêu chuẩn tuyển chọn</span>
             </div>
             <p className="text-[11px] text-bark-600 leading-relaxed">
-              100% thức ăn không hạt độn, hạn sử dụng tối thiểu 6 tháng, đồ chơi dai bền đạt chuẩn an toàn thú cưng.
+              Chọn sản phẩm có nguồn gốc rõ ràng, còn hạn dài; đồ chơi có kích cỡ theo loài và cân nặng.
             </p>
           </div>
         </aside>
@@ -284,7 +309,7 @@ export default function ShopPage() {
                 <Filter className="w-6 h-6" />
               </div>
               <h3 className="text-base font-bold text-pine-950">Không có sản phẩm nào phù hợp</h3>
-              <p className="text-xs text-bark-600">Hãy thử đổi tiêu chí loài hoặc danh mục lọc bạn nhé.</p>
+              <p className="text-xs text-bark-600">Thử từ khóa khác hoặc đổi bộ lọc loài, danh mục.</p>
               <button
                 type="button"
                 onClick={handleResetFilters}
@@ -297,6 +322,7 @@ export default function ShopPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
               {filteredProducts.map((product) => {
                 const isJustAdded = addedId === product.id;
+                const outOfStock = product.stock <= 0;
                 return (
                   <div
                     key={product.id}
@@ -313,11 +339,15 @@ export default function ShopPage() {
                             placeholderColor={product.placeholderColor}
                             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                           />
-                          {product.badge && (
-                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-badge bg-honey-600 text-white text-[10px] font-bold shadow-xs z-10">
-                              {product.badge}
+                          {outOfStock ? (
+                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-badge bg-bark-700 text-white text-[10px] font-bold shadow-xs z-10">
+                              Hết hàng
                             </span>
-                          )}
+                          ) : product.stock <= LOW_STOCK ? (
+                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-badge bg-honey-600 text-white text-[10px] font-bold shadow-xs z-10">
+                              Chỉ còn {product.stock}
+                            </span>
+                          ) : null}
                         </div>
                       </Link>
 
@@ -343,7 +373,7 @@ export default function ShopPage() {
 
                     {/* Giá & Nút thêm giỏ */}
                     <div className="p-3.5 sm:p-4 pt-2 border-t border-surface-border flex items-center justify-between gap-2">
-                      <div>
+                      <div className="min-h-[2.5rem] flex flex-col justify-center">
                         <div className="text-sm sm:text-base font-extrabold text-pine-950 font-display">
                           {formatVND(product.price)}
                         </div>
@@ -360,12 +390,13 @@ export default function ShopPage() {
                       <button
                         type="button"
                         onClick={() => handleQuickAdd(product)}
-                        className={`p-2 sm:px-3 sm:py-2 rounded-box text-xs font-bold flex items-center gap-1.5 transition-colors ${
+                        disabled={outOfStock}
+                        className={`p-2 sm:px-3 sm:py-2 rounded-box text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                           isJustAdded
                             ? "bg-grass-600 text-white"
                             : "bg-pine-900 hover:bg-pine-800 text-white"
                         }`}
-                        title="Thêm vào giỏ hàng"
+                        title={outOfStock ? "Hết hàng" : "Thêm vào giỏ hàng"}
                       >
                         {isJustAdded ? (
                           <>

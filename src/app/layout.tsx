@@ -20,8 +20,11 @@ const beVietnamPro = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
-  title: "FPETS – Mystery Box Cá Nhân Hóa & Đồ Cưng Cao Cấp",
-  description: "Hộp quà bất ngờ dành riêng cho chó và mèo. Đồ ăn, đồ chơi, phụ kiện được tuyển chọn theo từng Pet Profile. Mua thử 1 hộp hoặc đăng ký định kỳ.",
+  title: {
+    default: "FPETS – Mystery Box cho chó mèo",
+    template: "%s | FPETS",
+  },
+  description: "Hộp quà bất ngờ dành riêng cho chó và mèo. Đồ ăn, đồ chơi, phụ kiện được chọn theo hồ sơ của từng bé. Mua thử 1 hộp hoặc đăng ký định kỳ.",
 };
 
 export default function RootLayout({
@@ -37,7 +40,9 @@ export default function RootLayout({
           <MainNavbar />
 
           {/* Nội dung trang */}
-          <main className="flex-1 pb-20 md:pb-10">
+          {/* Không đặt padding đáy ở main: vùng đệm cho thanh điều hướng mobile nằm trong Footer,
+              tránh lộ dải nền khác màu giữa trang và footer */}
+          <main className="flex-1">
             {children}
           </main>
 

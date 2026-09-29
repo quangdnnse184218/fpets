@@ -8,7 +8,16 @@ import { fetchProductBySlug, fetchProducts } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import ProductItemImage from "@/components/common/ProductItemImage";
 import { useApp } from "@/context/AppContext";
-import { Star, ShoppingCart, ArrowLeft } from "lucide-react";
+import { Star, ShoppingCart, ArrowLeft, Truck, RotateCcw } from "lucide-react";
+
+const SPECIES_LABEL: Record<Product["species"], string> = { dog: "Chó", cat: "Mèo", both: "Chó và mèo" };
+const SIZE_LABEL: Record<Product["targetSize"], string> = { small: "Dưới 10 kg", large: "Từ 10 kg", all: "Mọi cân nặng" };
+const AGE_LABEL: Record<Product["targetAge"], string> = {
+  puppy_kitten: "Dưới 1 tuổi",
+  adult: "Trưởng thành",
+  senior: "Trên 7 tuổi",
+  all: "Mọi độ tuổi",
+};
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -56,7 +65,21 @@ export default function ProductDetailPage() {
   };
 
   if (loading) {
-    return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 text-center text-xs text-bark-500">Đang tải sản phẩm...</div>;
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8" aria-busy="true">
+        <div className="h-3 w-40 rounded bg-surface-muted animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="aspect-square rounded-container bg-surface-muted animate-pulse" />
+          <div className="space-y-4">
+            <div className="h-3 w-24 rounded bg-surface-muted animate-pulse" />
+            <div className="h-7 w-3/4 rounded bg-surface-muted animate-pulse" />
+            <div className="h-9 w-32 rounded bg-surface-muted animate-pulse" />
+            <div className="h-20 rounded bg-surface-muted animate-pulse" />
+            <div className="h-12 rounded-box bg-surface-muted animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!product) {
@@ -130,16 +153,28 @@ export default function ProductDetailPage() {
             <span className="text-3xl font-extrabold text-pine-950 font-display">
               {formatVND(product.price)}
             </span>
-            {product.originalPrice && (
+            {product.originalPrice && product.originalPrice > product.price && (
               <span className="text-sm text-bark-500 line-through">
                 {formatVND(product.originalPrice)}
               </span>
             )}
           </div>
 
-          <div className="text-xs text-bark-700 leading-relaxed border-t border-b border-surface-border py-3">
+          <div className="text-sm text-bark-700 leading-relaxed border-t border-surface-border pt-3">
             {product.description}
           </div>
+
+          {/* Thông số lấy từ thuộc tính sản phẩm trong DB (SPEC §9: loài, size, độ tuổi, thành phần) */}
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs border-b border-surface-border pb-3">
+            <dt className="text-bark-500">Dành cho</dt>
+            <dd className="font-semibold text-pine-950">{SPECIES_LABEL[product.species]}</dd>
+            <dt className="text-bark-500">Cân nặng phù hợp</dt>
+            <dd className="font-semibold text-pine-950">{SIZE_LABEL[product.targetSize]}</dd>
+            <dt className="text-bark-500">Độ tuổi</dt>
+            <dd className="font-semibold text-pine-950">{AGE_LABEL[product.targetAge]}</dd>
+            <dt className="text-bark-500">Danh mục</dt>
+            <dd className="font-semibold text-pine-950">{product.categoryLabel}</dd>
+          </dl>
 
           {/* Thành phần dinh dưỡng */}
           {product.ingredients.length > 0 && (
@@ -197,6 +232,17 @@ export default function ProductDetailPage() {
                   : `Thêm vào giỏ hàng • ${formatVND(product.price * quantity)}`}
               </span>
             </button>
+          </div>
+
+          <div className="space-y-2 text-xs text-bark-600 pt-1">
+            <div className="flex items-start gap-2">
+              <Truck className="w-4 h-4 text-pine-800 shrink-0" />
+              <span>Giao 1–2 ngày nội thành TP.HCM, 3–5 ngày tỉnh khác. Freeship đơn từ 500.000₫.</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <RotateCcw className="w-4 h-4 text-pine-800 shrink-0" />
+              <span>Đổi trả trong 7 ngày nếu còn nguyên seal (khách chịu phí ship). Mua không cần tài khoản.</span>
+            </div>
           </div>
         </div>
       </div>

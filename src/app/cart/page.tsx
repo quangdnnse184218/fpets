@@ -97,7 +97,7 @@ export default function CartPage() {
           <Truck className="w-4 h-4 text-pine-800" />
           {remainingForFreeship === 0 ? (
             <span className="font-bold text-grass-700">
-              Bạn đã đủ điều kiện nhận MIỄN PHÍ VẬN CHUYỂN toàn quốc!
+              Đơn của bạn được miễn phí vận chuyển.
             </span>
           ) : (
             <span className="text-bark-700">

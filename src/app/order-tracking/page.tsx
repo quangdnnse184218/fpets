@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { formatVND } from "@/lib/formatters";
 import { Search, Truck, AlertCircle } from "lucide-react";
@@ -60,7 +61,7 @@ export default function OrderTrackingPage() {
       <div className="text-center space-y-2 max-w-lg mx-auto">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">Tra cứu tiến độ đơn hàng</h1>
         <p className="text-xs sm:text-sm text-bark-600">
-          Dành cho khách hàng chưa đăng nhập hoặc cần kiểm tra nhanh vị trí kiện hàng.
+          Nhập mã đơn và số điện thoại đặt hàng, không cần đăng nhập. Nếu có tài khoản, bạn cũng xem được mọi đơn trong <Link href="/my-account/orders" className="font-semibold text-pine-900 underline">Đơn hàng của tôi</Link>.
         </p>
       </div>
 
