@@ -98,7 +98,7 @@ export default function AdminPetsPage() {
       </div>
 
       <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>
               <th className="p-3.5">Bé cưng</th>

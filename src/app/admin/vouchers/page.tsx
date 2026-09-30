@@ -149,7 +149,7 @@ export default function AdminVouchersPage() {
       </div>
 
       <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>
               <th className="p-3.5">Mã</th>
@@ -210,14 +210,14 @@ export default function AdminVouchersPage() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bark-900/60 backdrop-blur-xs">
-          <div className="bg-surface-card rounded-container border border-surface-border p-6 max-w-lg w-full shadow-xl space-y-4 max-h-[90vh] overflow-y-auto text-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-bark-900/60 backdrop-blur-xs">
+          <div className="bg-surface-card rounded-container border border-surface-border p-4 sm:p-6 max-w-lg w-full shadow-xl space-y-4 max-h-[90vh] overflow-y-auto text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-surface-border">
               <h3 className="font-bold text-pine-950 text-sm">{editingVoucher ? `Chỉnh sửa mã: ${editingVoucher.code}` : "Tạo mã khuyến mãi mới"}</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-1 text-bark-400 hover:text-bark-700 rounded"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleSave} className="space-y-3.5">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-semibold text-bark-700 block mb-1">Mã Voucher *</label>
                   <input type="text" required value={formCode} onChange={(e) => setFormCode(e.target.value.toUpperCase())}
@@ -233,7 +233,7 @@ export default function AdminVouchersPage() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-semibold text-bark-700 block mb-1">{formType === "percentage" ? "Mức giảm (%)" : "Số tiền giảm (VND)"}</label>
                   <input type="number" value={formDiscountValue} onChange={(e) => setFormDiscountValue(Number(e.target.value))}
@@ -252,7 +252,7 @@ export default function AdminVouchersPage() {
                     className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none" />
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-semibold text-bark-700 block mb-1">Phạm vi áp dụng</label>
                   <select value={formScope} onChange={(e) => setFormScope(e.target.value as "all" | "retail" | "box" | "first_subscription")}

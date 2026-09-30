@@ -213,7 +213,7 @@ export default function AdminOrdersPage() {
       </div>
 
       <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>
               <th className="p-3.5">Mã đơn</th>
@@ -273,8 +273,8 @@ export default function AdminOrdersPage() {
       </div>
 
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-surface-card rounded-container p-6 space-y-4 shadow-xl border border-surface-border text-xs max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-3 sm:p-4">
+          <div className="w-full max-w-lg bg-surface-card rounded-container p-4 sm:p-6 space-y-4 shadow-xl border border-surface-border text-xs max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-surface-border">
               <div>
                 <h3 className="text-base font-bold text-pine-950">Chi tiết đơn hàng {selectedOrder.order_code}</h3>

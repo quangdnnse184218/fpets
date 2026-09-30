@@ -108,7 +108,7 @@ export default function AdminCustomersPage() {
       </div>
 
       <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>
               <th className="p-3.5">Khách hàng</th>
@@ -183,8 +183,8 @@ export default function AdminCustomersPage() {
       </div>
 
       {selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bark-900/60 backdrop-blur-xs">
-          <div className="bg-surface-card rounded-container border border-surface-border p-6 max-w-lg w-full shadow-xl space-y-4 max-h-[90vh] overflow-y-auto text-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-bark-900/60 backdrop-blur-xs">
+          <div className="bg-surface-card rounded-container border border-surface-border p-4 sm:p-6 max-w-lg w-full shadow-xl space-y-4 max-h-[90vh] overflow-y-auto text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-surface-border">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-full bg-pine-100 text-pine-900 font-bold flex items-center justify-center text-sm">

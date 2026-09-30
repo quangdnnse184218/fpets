@@ -195,7 +195,7 @@ export default function AdminProductsPage() {
       </div>
 
       <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>
               <th className="p-3.5">Tên sản phẩm</th>
@@ -278,8 +278,8 @@ export default function AdminProductsPage() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bark-900/60 backdrop-blur-xs">
-          <div className="bg-surface-card rounded-container border border-surface-border p-6 max-w-xl w-full shadow-xl space-y-4 max-h-[90vh] overflow-y-auto text-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-bark-900/60 backdrop-blur-xs">
+          <div className="bg-surface-card rounded-container border border-surface-border p-4 sm:p-6 max-w-xl w-full shadow-xl space-y-4 max-h-[90vh] overflow-y-auto text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-surface-border">
               <h3 className="font-bold text-pine-950 text-sm flex items-center gap-2">
                 <PackagePlus className="w-4 h-4 text-pine-800" />
@@ -295,7 +295,7 @@ export default function AdminProductsPage() {
                   className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none text-xs" />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-semibold text-bark-700 block mb-1">Danh mục *</label>
                   <select value={formCategoryId} onChange={(e) => setFormCategoryId(e.target.value)}
@@ -314,7 +314,7 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="font-semibold text-bark-700 block mb-1">Giá bán lẻ (VND) *</label>
                   <input type="number" required value={formPrice} onChange={(e) => setFormPrice(Number(e.target.value))}

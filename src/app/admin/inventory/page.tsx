@@ -124,7 +124,7 @@ export default function AdminInventoryPage() {
           <History className="w-4 h-4" />
           <span>Lịch sử biến động kho (100 gần nhất)</span>
         </div>
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs min-w-[700px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>
               <th className="p-3.5">Thời gian</th>

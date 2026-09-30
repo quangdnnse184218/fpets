@@ -134,8 +134,8 @@ export default function AdminAnalyticsPage() {
         {monthlyRevenue.every((m) => m.value === 0) ? (
           <p className="text-xs text-bark-500 py-8 text-center">Chưa có đơn hàng thanh toán nào trong năm nay.</p>
         ) : (
-          <div className="pt-6 pb-2">
-            <div className="h-52 flex items-end justify-between gap-2 sm:gap-4 px-2 border-b border-surface-border">
+          <div className="pt-6 pb-2 overflow-x-auto">
+            <div className="h-52 flex items-end justify-between gap-2 sm:gap-4 px-2 border-b border-surface-border min-w-[500px]">
               {monthlyRevenue.map((item, idx) => (
                 <div key={idx} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
                   <span className="text-[10px] font-bold text-pine-900 opacity-0 group-hover:opacity-100 transition-opacity">{formatVND(item.value)}</span>

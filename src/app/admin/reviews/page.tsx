@@ -167,7 +167,7 @@ function ReviewsPanel() {
       </div>
 
       <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs min-w-[700px]">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>
               <th className="p-3.5">Khách hàng</th>
@@ -229,8 +229,8 @@ function ReviewsPanel() {
       </div>
 
       {replyingReview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bark-900/60 backdrop-blur-xs">
-          <div className="bg-surface-card rounded-container border border-surface-border p-6 max-w-md w-full shadow-xl space-y-4 text-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-bark-900/60 backdrop-blur-xs">
+          <div className="bg-surface-card rounded-container border border-surface-border p-4 sm:p-6 max-w-md w-full shadow-xl space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-surface-border">
               <h3 className="font-bold text-pine-950 text-sm">Phản hồi đánh giá của {replyingReview.profiles?.full_name}</h3>
               <button onClick={() => setReplyingReview(null)} className="p-1 text-bark-400 hover:text-bark-700 rounded"><X className="w-4 h-4" /></button>

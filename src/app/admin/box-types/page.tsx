@@ -188,7 +188,7 @@ export default function AdminBoxTypesPage() {
       </div>
 
       <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>
               <th className="p-3.5">Hộp quà Mystery Box</th>
@@ -249,8 +249,8 @@ export default function AdminBoxTypesPage() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bark-900/60 backdrop-blur-xs">
-          <div className="bg-surface-card rounded-container border border-surface-border p-5 max-w-lg w-full shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-bark-900/60 backdrop-blur-xs">
+          <div className="bg-surface-card rounded-container border border-surface-border p-4 sm:p-5 max-w-lg w-full shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-surface-border">
               <h3 className="font-bold text-pine-950 text-sm">{editingBox ? `Chỉnh sửa: ${editingBox.name}` : "Thêm loại Mystery Box mới"}</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-1 text-bark-400 hover:text-bark-700 rounded"><X className="w-4 h-4" /></button>
@@ -261,7 +261,7 @@ export default function AdminBoxTypesPage() {
                 <input type="text" required value={formName} onChange={(e) => setFormName(e.target.value)}
                   className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-semibold text-bark-700 block mb-1">Dành cho loài *</label>
                   <select value={formSpecies} onChange={(e) => setFormSpecies(e.target.value as "dog" | "cat")}
@@ -279,7 +279,7 @@ export default function AdminBoxTypesPage() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="font-semibold text-bark-700 block mb-1">Số món tối thiểu</label>
                   <input type="number" value={formItemMin} onChange={(e) => setFormItemMin(Number(e.target.value))}
