@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Gift, CheckCircle2, Star, PackageOpen, PawPrint, Check, Truck, RefreshCw, CreditCard, ChevronDown } from "lucide-react";
+import { Gift, CheckCircle2, Star, PawPrint, Check, Truck, RefreshCw, CreditCard, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchBoxTypes, fetchProducts, fetchSubscriptionPlans } from "@/lib/catalog";
 import { formatVND, formatDate } from "@/lib/formatters";
@@ -165,11 +165,6 @@ export default function HomePage() {
                   className="object-cover"
                   priority
                 />
-                <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-white/95 backdrop-blur-xs text-pine-950 text-xs font-bold shadow-xs border border-white/80 flex items-center gap-1.5 z-10">
-                  <PackageOpen className="w-3.5 h-3.5 text-pine-900" />
-                  <span>Mỗi hộp chọn riêng cho một bé</span>
-                </div>
-                <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/45 text-white text-[10px] z-10">Ảnh minh họa</span>
               </div>
 
               <div className="p-3.5 sm:p-4 bg-[#FAF9F6] rounded-xl border border-surface-border/80 mt-2 space-y-2">
