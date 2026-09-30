@@ -1,0 +1,26 @@
+# Ping Supabase mỗi ngày để project free không bị tạm dừng do không hoạt động
+name: Supabase keepalive
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # 02:00 UTC = 09:00 Asia/Ho_Chi_Minh
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          for path in "rest/v1/" "auth/v1/health"; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" --retry 3 --retry-delay 5 \
+              -H "apikey: ${SUPABASE_ANON_KEY}" \
+              "${SUPABASE_URL}/${path}")
+            echo "${path} -> HTTP ${code}"
+            # Lỗi máy chủ (5xx) hoặc không kết nối được thì fail job
+            if [ "${code}" -ge 500 ] || [ "${code}" -eq 000 ]; then exit 1; fi
+          done
