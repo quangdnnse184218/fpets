@@ -107,7 +107,120 @@ export default function AdminCustomersPage() {
         </div>
       </div>
 
-      <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      {/* Mobile Card List (< md) */}
+      <div className="md:hidden space-y-2.5">
+        {filtered.length === 0 ? (
+          <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
+            Không tìm thấy khách hàng phù hợp.
+          </div>
+        ) : (
+          filtered.map((customer) => {
+            const customerPets = petsByUser.get(customer.id) || [];
+            const stats = orderStatsByUser.get(customer.id) || { count: 0, total: 0 };
+            const activeSub = activeSubByUser.get(customer.id);
+            return (
+              <div
+                key={customer.id}
+                className="p-3.5 rounded-container bg-surface-card border border-surface-border space-y-2.5 shadow-2xs"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="font-bold text-pine-950 text-xs">
+                      {customer.full_name || "(Chưa đặt tên)"}
+                    </h3>
+                    <div className="text-[10px] text-bark-400 mt-0.5">
+                      Tham gia: {formatDate(customer.created_at)}
+                    </div>
+                  </div>
+                  <div>
+                    {!customer.is_active ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-bark-100 text-bark-700">
+                        <Lock className="w-3 h-3" />
+                        <span>Đã khóa</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-grass-50 text-grass-700">
+                        <span>Hoạt động</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-1.5 text-bark-600">
+                    <Phone className="w-3 h-3 text-bark-400" />
+                    <span>{customer.phone || "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-bark-500 text-[11px]">
+                    <Mail className="w-3 h-3 text-bark-400" />
+                    <span className="truncate">{customer.email}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-surface-border/70 flex items-center justify-between gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] text-bark-400 block">Thú cưng:</span>
+                    <div className="flex flex-wrap gap-1 mt-0.5">
+                      {customerPets.map((p) => (
+                        <PetSpeciesIcon key={p.id} species={p.species} variant="badge" size="xs" label={p.name} />
+                      ))}
+                      {customerPets.length === 0 && <span className="text-bark-400 text-[11px]">Chưa có</span>}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-bark-400 block">Đơn / Chi tiêu:</span>
+                    <span className="font-semibold text-pine-900 text-xs">{stats.count} đơn</span>
+                    <span className="text-[11px] font-bold text-bark-800 ml-1">({formatVND(stats.total)})</span>
+                  </div>
+                </div>
+
+                {activeSub && (
+                  <div className="text-[11px]">
+                    <span className="text-bark-400">Gói: </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-grass-100 text-grass-800">
+                      {activeSub}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-surface-border/50">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(customer.id)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-pine-900 bg-pine-50 hover:bg-pine-100 rounded transition-colors"
+                  >
+                    <Eye className="w-3 h-3" />
+                    <span>Chi tiết</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleLockCustomer(customer.id, customer.is_active)}
+                    disabled={busy}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded transition-colors disabled:opacity-60 ${
+                      !customer.is_active ? "bg-grass-100 text-grass-800" : "bg-bark-100 text-bark-700"
+                    }`}
+                  >
+                    {!customer.is_active ? (
+                      <>
+                        <Unlock className="w-3 h-3" />
+                        <span>Mở</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-3 h-3" />
+                        <span>Khóa</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Table (>= md) */}
+      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>

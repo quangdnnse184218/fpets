@@ -97,7 +97,86 @@ export default function AdminPetsPage() {
         </div>
       </div>
 
-      <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      {/* Mobile Card List (< md) */}
+      <div className="md:hidden space-y-2.5">
+        {filteredPets.length === 0 ? (
+          <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
+            Chưa có hồ sơ thú cưng nào phù hợp.
+          </div>
+        ) : (
+          filteredPets.map((pet) => (
+            <div
+              key={pet.id}
+              className="p-3.5 rounded-container bg-surface-card border border-surface-border space-y-2.5 shadow-2xs"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <PetSpeciesIcon species={pet.species} variant="avatar" size="sm" />
+                  <div>
+                    <h3 className="font-bold text-pine-950 text-xs">
+                      {pet.name}
+                    </h3>
+                    <div className="text-[10px] text-bark-400">
+                      {AGE_LABEL[pet.age_group]} · {pet.breed || (pet.species === "dog" ? "Chó" : "Mèo")}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-xs font-bold text-pine-900 block">{pet.weight || "—"} kg</span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-muted text-bark-600">
+                    {pet.size === "small" ? "Size Nhỏ" : "Size Lớn"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-surface-border/70 text-xs space-y-1">
+                <div className="flex items-center justify-between text-bark-600">
+                  <span className="text-bark-400 text-[11px]">Chủ nuôi:</span>
+                  <span className="font-medium text-pine-950">{pet.profiles?.full_name || "—"} ({pet.profiles?.phone || "—"})</span>
+                </div>
+
+                <div>
+                  <span className="text-bark-400 text-[11px] block">Dị ứng:</span>
+                  {pet.allergies.length > 0 ? (
+                    <div className="flex flex-wrap gap-1 mt-0.5">
+                      {pet.allergies.map((all, idx) => (
+                        <span key={idx} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-bark-100 text-bark-800">
+                          <AlertTriangle className="w-2.5 h-2.5 text-bark-600" />
+                          <span>{all}</span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-grass-700 text-[11px] font-medium">Không có</span>
+                  )}
+                </div>
+
+                {pet.preferences.length > 0 && (
+                  <div className="text-[11px] text-bark-600 pt-0.5">
+                    <span className="text-bark-400">Sở thích: </span>
+                    {pet.preferences.join(", ")}
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-surface-border/50 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => openPet(pet)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-pine-900 bg-pine-50 hover:bg-pine-100 rounded transition-colors"
+                >
+                  <Eye className="w-3 h-3" />
+                  <span>Xem feedback &amp; lịch sử</span>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table (>= md) */}
+      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>

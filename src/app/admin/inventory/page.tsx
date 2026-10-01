@@ -119,7 +119,53 @@ export default function AdminInventoryPage() {
         </div>
       )}
 
-      <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      {/* Mobile Card List (< md) */}
+      <div className="md:hidden space-y-2.5">
+        <div className="flex items-center gap-2 font-bold text-pine-950 text-xs px-1">
+          <History className="w-4 h-4" />
+          <span>Biến động kho gần đây ({movements.length})</span>
+        </div>
+        {movements.length === 0 ? (
+          <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
+            Chưa có biến động kho nào.
+          </div>
+        ) : (
+          movements.map((m) => (
+            <div
+              key={m.id}
+              className="p-3.5 rounded-container bg-surface-card border border-surface-border space-y-2 shadow-2xs"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h4 className="font-bold text-pine-950 text-xs">{m.products?.name || "—"}</h4>
+                  <div className="text-[10px] text-bark-400 mt-0.5">{formatDateTime(m.created_at)}</div>
+                </div>
+                <div className={`text-sm font-extrabold font-display shrink-0 ${m.quantity < 0 ? "text-red-600" : "text-grass-700"}`}>
+                  {m.quantity > 0 ? "+" : ""}{m.quantity}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-surface-border/70 text-[11px]">
+                <span className="px-2 py-0.5 rounded-tag bg-surface-muted text-bark-700 font-semibold text-[10px]">
+                  {MOVEMENT_LABEL[m.movement_type] || m.movement_type}
+                </span>
+                <span className="text-bark-600">
+                  Tồn: <strong>{m.previous_stock}</strong> → <strong>{m.new_stock}</strong>
+                </span>
+              </div>
+
+              {m.note && (
+                <div className="text-[11px] text-bark-500 bg-surface-muted p-2 rounded-box">
+                  Ghi chú: {m.note}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table (>= md) */}
+      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <div className="p-4 border-b border-surface-border flex items-center gap-2 font-bold text-pine-950 text-sm">
           <History className="w-4 h-4" />
           <span>Lịch sử biến động kho (100 gần nhất)</span>

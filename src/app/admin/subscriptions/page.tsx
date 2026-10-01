@@ -147,7 +147,101 @@ export default function AdminSubscriptionsPage() {
         </select>
       </div>
 
-      <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      {/* Mobile Card List (< md) */}
+      <div className="md:hidden space-y-2.5">
+        {filtered.length === 0 ? (
+          <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
+            Chưa có gói định kỳ nào phù hợp.
+          </div>
+        ) : (
+          filtered.map((sub) => {
+            const Icon = STATUS_ICON[sub.status];
+            const completed = sub.total_cycles - sub.remaining_cycles;
+            return (
+              <div
+                key={sub.id}
+                className="p-3.5 rounded-container bg-surface-card border border-surface-border space-y-2.5 shadow-2xs"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono font-bold text-pine-950 text-xs">
+                    {sub.subscription_code}
+                  </span>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${STATUS_STYLE[sub.status]}`}>
+                    <Icon className="w-2.5 h-2.5" />
+                    <span>{STATUS_LABEL[sub.status]}</span>
+                  </span>
+                </div>
+
+                <div className="flex items-start justify-between gap-2 pt-0.5">
+                  <div>
+                    <h3 className="font-bold text-pine-950 text-xs">{sub.profiles?.full_name}</h3>
+                    <div className="text-[11px] text-bark-500">
+                      Bé: <strong className="text-pine-900">{sub.pets?.name}</strong>{sub.pets?.breed ? ` (${sub.pets.breed})` : ""}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-semibold text-bark-900 block">{sub.box_types?.name}</span>
+                    <span className="text-[10px] text-grass-700 font-bold">{sub.subscription_plans?.name}</span>
+                  </div>
+                </div>
+
+                {/* Tiến trình kỳ */}
+                <div className="pt-2 border-t border-surface-border/70 text-xs space-y-1">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-bark-500">Tiến trình:</span>
+                    <span className="font-bold text-pine-900">Đã giao {completed}/{sub.total_cycles} hộp</span>
+                  </div>
+                  <div className="w-full bg-surface-muted h-1.5 rounded-full overflow-hidden">
+                    <div className="bg-grass-600 h-full rounded-full" style={{ width: `${(completed / sub.total_cycles) * 100}%` }} />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 text-[11px] text-bark-500 pt-1">
+                  <span>Giao kế tiếp: <strong>{formatDate(sub.next_delivery_date)}</strong></span>
+                  <span>Cutoff: <strong>{formatDate(sub.cutoff_date)}</strong></span>
+                </div>
+
+                {!["da_huy", "het_han"].includes(sub.status) && (
+                  <div className="pt-2 border-t border-surface-border/50 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePause(sub)}
+                      disabled={busyId === sub.id}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded transition-colors disabled:opacity-60 ${
+                        sub.status === "tam_dung" ? "bg-grass-100 text-grass-800" : "bg-surface-muted text-bark-700"
+                      }`}
+                    >
+                      {sub.status === "tam_dung" ? (
+                        <>
+                          <Play className="w-3 h-3" />
+                          <span>Tiếp tục</span>
+                        </>
+                      ) : (
+                        <>
+                          <Pause className="w-3 h-3" />
+                          <span>Tạm dừng</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCancelSub(sub)}
+                      disabled={busyId === sub.id}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-bark-100 text-bark-700 hover:bg-bark-200 rounded transition-colors disabled:opacity-60"
+                    >
+                      <XCircle className="w-3 h-3" />
+                      <span>Hủy</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Table (>= md) */}
+      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>

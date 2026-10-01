@@ -99,31 +99,36 @@ export default function AdminAnalyticsPage() {
           <h1 className="text-2xl font-extrabold text-pine-950 font-display">Báo cáo & Thống kê Hoạt động</h1>
           <p className="text-xs text-bark-500">Doanh thu, cơ cấu trạng thái gói định kỳ và hiệu suất sản phẩm — số liệu thật từ hệ thống.</p>
         </div>
-        <button onClick={handleExportCsv} className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-grass-800 text-white rounded-box text-xs font-bold hover:bg-grass-900 transition-colors shadow-xs">
-          <Download className="w-3.5 h-3.5" /><span>Xuất báo cáo (CSV)</span>
+        <button
+          type="button"
+          onClick={handleExportCsv}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-pine-900 text-white rounded-box text-xs font-bold hover:bg-pine-800 transition-colors shadow-xs"
+        >
+          <Download className="w-3.5 h-3.5" />
+          <span>Xuất báo cáo (CSV)</span>
         </button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-        <div className="p-4 rounded-container bg-surface-card border border-surface-border">
+        <div className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border">
           <span className="text-bark-500 text-[11px] block mb-1">Tổng doanh thu (YTD)</span>
-          <span className="font-extrabold text-pine-950 text-xl font-display">{formatVND(ytdRevenue)}</span>
+          <span className="font-extrabold text-pine-950 text-base sm:text-xl font-display truncate block">{formatVND(ytdRevenue)}</span>
         </div>
-        <div className="p-4 rounded-container bg-surface-card border border-surface-border">
-          <span className="text-bark-500 text-[11px] block mb-1">Gói Subscription đang hoạt động</span>
-          <span className="font-extrabold text-pine-900 text-xl font-display">{subCounts.active} gói</span>
+        <div className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border">
+          <span className="text-bark-500 text-[11px] block mb-1">Subscription hoạt động</span>
+          <span className="font-extrabold text-pine-900 text-lg sm:text-xl font-display">{subCounts.active} gói</span>
         </div>
-        <div className="p-4 rounded-container bg-surface-card border border-surface-border">
+        <div className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border">
           <span className="text-bark-500 text-[11px] block mb-1">Đã hủy</span>
-          <span className="font-extrabold text-bark-800 text-xl font-display">{subCounts.cancelled} gói</span>
+          <span className="font-extrabold text-bark-800 text-lg sm:text-xl font-display">{subCounts.cancelled} gói</span>
         </div>
-        <div className="p-4 rounded-container bg-surface-card border border-surface-border">
-          <span className="text-bark-500 text-[11px] block mb-1">Hết hạn chưa gia hạn</span>
-          <span className="font-extrabold text-amber-700 text-xl font-display">{subCounts.expired} gói</span>
+        <div className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border">
+          <span className="text-bark-500 text-[11px] block mb-1">Hết hạn</span>
+          <span className="font-extrabold text-amber-700 text-lg sm:text-xl font-display">{subCounts.expired} gói</span>
         </div>
       </div>
 
-      <div className="p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs">
+      <div className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-pine-800" />
@@ -148,8 +153,8 @@ export default function AdminAnalyticsPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs text-xs">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        <div className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs text-xs">
           <div className="flex items-center justify-between pb-2 border-b border-surface-border">
             <h3 className="font-bold text-pine-950 text-sm">Cơ cấu Trạng thái Subscription</h3>
             <span className="text-bark-500 text-[11px]">Tổng {totalSubs} gói</span>
@@ -174,7 +179,7 @@ export default function AdminAnalyticsPage() {
           </div>
         </div>
 
-        <div className="p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs text-xs">
+        <div className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs text-xs">
           <div className="flex items-center justify-between pb-2 border-b border-surface-border">
             <h3 className="font-bold text-pine-950 text-sm">Lý do Hủy gói (thực tế)</h3>
           </div>
@@ -198,36 +203,67 @@ export default function AdminAnalyticsPage() {
         </div>
       </div>
 
-      <div className="p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs">
+      <div className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs">
         <h3 className="font-bold text-pine-950 text-sm">Top 5 Sản phẩm Hiệu quả nhất</h3>
         {topProducts.length === 0 ? (
           <p className="text-xs text-bark-500 py-4 text-center">Chưa có dữ liệu bán hàng.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
-                <tr>
-                  <th className="p-3">Sản phẩm</th>
-                  <th className="p-3">Tuyển vào Box</th>
-                  <th className="p-3">Bán lẻ Shop</th>
-                  <th className="p-3">Tổng doanh thu</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-border text-bark-700">
-                {topProducts.map((p, idx) => (
-                  <tr key={idx} className="hover:bg-surface-muted/50 transition-colors">
-                    <td className="p-3 font-semibold text-pine-950 flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-pine-100 text-pine-900 text-[10px] font-bold flex items-center justify-center shrink-0">{idx + 1}</span>
-                      <span>{p.name}</span>
-                    </td>
-                    <td className="p-3 font-medium text-bark-900">{p.boxCount} lượt</td>
-                    <td className="p-3 font-medium text-bark-900">{p.retailCount} món</td>
-                    <td className="p-3 font-bold text-grass-800">{formatVND(p.revenue)}</td>
+          <>
+            {/* Mobile Card List */}
+            <div className="md:hidden space-y-2.5">
+              {topProducts.map((p, idx) => (
+                <div key={idx} className="p-3 rounded-box bg-surface-muted border border-surface-border space-y-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-pine-100 text-pine-900 text-[10px] font-bold flex items-center justify-center shrink-0">
+                      {idx + 1}
+                    </span>
+                    <span className="font-bold text-pine-950 truncate flex-1">{p.name}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 text-center text-[11px] pt-1.5 border-t border-surface-border">
+                    <div className="bg-surface-card p-1.5 rounded border border-surface-border">
+                      <span className="text-bark-500 block text-[10px]">Vào Box</span>
+                      <span className="font-bold text-bark-800">{p.boxCount} lượt</span>
+                    </div>
+                    <div className="bg-surface-card p-1.5 rounded border border-surface-border">
+                      <span className="text-bark-500 block text-[10px]">Bán lẻ</span>
+                      <span className="font-bold text-bark-800">{p.retailCount} món</span>
+                    </div>
+                    <div className="bg-surface-card p-1.5 rounded border border-surface-border">
+                      <span className="text-bark-500 block text-[10px]">Doanh thu</span>
+                      <span className="font-bold text-grass-700 truncate block">{formatVND(p.revenue)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
+                  <tr>
+                    <th className="p-3">Sản phẩm</th>
+                    <th className="p-3">Tuyển vào Box</th>
+                    <th className="p-3">Bán lẻ Shop</th>
+                    <th className="p-3">Tổng doanh thu</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-surface-border text-bark-700">
+                  {topProducts.map((p, idx) => (
+                    <tr key={idx} className="hover:bg-surface-muted/50 transition-colors">
+                      <td className="p-3 font-semibold text-pine-950 flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-pine-100 text-pine-900 text-[10px] font-bold flex items-center justify-center shrink-0">{idx + 1}</span>
+                        <span>{p.name}</span>
+                      </td>
+                      <td className="p-3 font-medium text-bark-900">{p.boxCount} lượt</td>
+                      <td className="p-3 font-medium text-bark-900">{p.retailCount} món</td>
+                      <td className="p-3 font-bold text-grass-800">{formatVND(p.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

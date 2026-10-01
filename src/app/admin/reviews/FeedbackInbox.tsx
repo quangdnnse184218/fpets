@@ -80,7 +80,7 @@ export default function FeedbackInbox({ onCountChange }: { onCountChange?: (newC
             className="w-full pl-9 pr-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none"
           />
         </div>
-        <div className="flex items-center gap-1.5 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
           {(Object.keys(FILTER_LABEL) as Filter[]).map((f) => (
             <button
               key={f}

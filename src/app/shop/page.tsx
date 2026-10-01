@@ -1,7 +1,7 @@
 "use client";
 
 import React, { Suspense, useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { fetchProducts } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
@@ -48,8 +48,9 @@ export default function ShopPage() {
 }
 
 function ShopContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const { addToCart } = useApp();
+  const { addToCart, isLoggedIn } = useApp();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -99,6 +100,10 @@ function ShopContent() {
     .sort((a, b) => (sortBy === "price_asc" ? a.price - b.price : sortBy === "price_desc" ? b.price - a.price : 0));
 
   const handleQuickAdd = (product: Product) => {
+    if (!isLoggedIn) {
+      router.push(`/login?redirect=${encodeURIComponent("/shop")}`);
+      return;
+    }
     addToCart({
       type: "retail",
       productId: product.id,
@@ -126,7 +131,7 @@ function ShopContent() {
           Cửa hàng FPETS
         </h1>
         <p className="text-xs sm:text-sm text-bark-600 max-w-2xl leading-relaxed">
-          Đồ ăn, đồ chơi và phụ kiện cho chó mèo. Mua lẻ không cần tài khoản; nhiều món cũng có mặt trong Mystery Box.
+          Đồ ăn, đồ chơi và phụ kiện cho chó mèo. Đăng nhập để mua sắm và nhận nhiều ưu đãi thành viên.
         </p>
       </div>
 

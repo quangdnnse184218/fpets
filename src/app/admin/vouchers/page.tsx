@@ -148,7 +148,101 @@ export default function AdminVouchersPage() {
         </div>
       </div>
 
-      <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      {/* Mobile Card List (< md) */}
+      <div className="md:hidden space-y-2.5">
+        {filtered.length === 0 ? (
+          <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
+            Chưa có voucher nào phù hợp.
+          </div>
+        ) : (
+          filtered.map((v) => (
+            <div
+              key={v.id}
+              className="p-3.5 rounded-container bg-surface-card border border-surface-border space-y-2.5 shadow-2xs"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-pine-900 font-mono text-sm tracking-wide">
+                    {v.code}
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-muted text-bark-700 border border-surface-border">
+                    {SCOPE_LABEL[v.scope]}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleActive(v)}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${
+                    v.is_active ? "bg-grass-100 text-grass-800" : "bg-bark-100 text-bark-600"
+                  }`}
+                >
+                  <Power className="w-2.5 h-2.5" />
+                  <span>{v.is_active ? "Bật" : "Tắt"}</span>
+                </button>
+              </div>
+
+              <div className="flex items-baseline justify-between text-xs pt-0.5">
+                <div>
+                  <span className="text-bark-500 text-[11px] block">{TYPE_LABEL[v.voucher_type]}:</span>
+                  <span className="font-bold text-pine-900 text-sm">
+                    {v.voucher_type === "percentage"
+                      ? `${v.discount_value}%`
+                      : v.voucher_type === "fixed_amount"
+                      ? formatVND(v.discount_value)
+                      : "Freeship"}
+                  </span>
+                  {v.max_discount && (
+                    <span className="text-[10px] text-bark-500 block">Tối đa {formatVND(v.max_discount)}</span>
+                  )}
+                </div>
+
+                <div className="text-right">
+                  <span className="text-bark-500 text-[11px] block">Đơn tối thiểu:</span>
+                  <span className="font-bold text-bark-800 text-xs">
+                    {v.min_order_value > 0 ? formatVND(v.min_order_value) : "0₫"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-surface-border/70 text-xs space-y-1">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-bark-500">Lượt dùng:</span>
+                  <span className="font-bold text-bark-800">{v.used_count} / {v.usage_limit_total}</span>
+                </div>
+                <div className="w-full bg-surface-muted h-1 rounded-full overflow-hidden">
+                  <div
+                    className="bg-pine-700 h-full rounded-full"
+                    style={{ width: `${Math.min(100, (v.used_count / v.usage_limit_total) * 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-1 text-[11px] text-bark-500">
+                <span>Hạn: {formatDate(v.valid_from)} – {formatDate(v.valid_to)}</span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(v)}
+                    className="px-2 py-0.5 rounded bg-pine-50 hover:bg-pine-100 text-pine-900 font-semibold text-[11px]"
+                  >
+                    Sửa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeletingVoucher(v)}
+                    className="px-2 py-0.5 rounded bg-red-50 hover:bg-red-100 text-red-700 font-semibold text-[11px]"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table (>= md) */}
+      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>

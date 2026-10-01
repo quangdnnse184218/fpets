@@ -86,9 +86,9 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="space-y-16 sm:space-y-24 pb-16 sm:pb-24">
+    <div className="space-y-10 sm:space-y-16 pb-12 sm:pb-20">
       {/* 1. HERO SECTION */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#F6F4EE] via-[#FAF9F6] to-[#F1EFE8] border-b border-surface-border/80 pt-6 pb-12 sm:pt-10 sm:pb-16">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#F6F4EE] via-[#FAF9F6] to-[#F1EFE8] border-b border-surface-border/80 pt-5 pb-8 sm:pt-10 sm:pb-16">
         <div className="absolute top-1/4 right-1/4 w-[420px] h-[420px] rounded-full bg-honey-200/35 blur-[100px] pointer-events-none animate-pulse-slow" />
         <div className="absolute -bottom-16 -left-16 w-[380px] h-[380px] rounded-full bg-pine-100/40 blur-[90px] pointer-events-none" />
 
@@ -100,31 +100,31 @@ export default function HomePage() {
           <PawPrint className="absolute bottom-14 right-1/4 w-7 h-7 text-pine-900/5 animate-float-reverse hidden md:block -rotate-12" />
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center relative z-10">
-          <div className="lg:col-span-7 space-y-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-14 items-center relative z-10">
+          <div className="lg:col-span-7 space-y-4 sm:space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pine-50 border border-pine-100 text-pine-900 text-xs font-semibold">
               <Gift className="w-3.5 h-3.5 text-pine-800" />
               <span>Hộp quà thú cưng cá nhân hóa định kỳ</span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-[52px] font-extrabold text-pine-950 font-display tracking-tight leading-[1.12]">
+            <h1 className="text-2xl sm:text-4xl lg:text-[50px] font-extrabold text-pine-950 font-display tracking-tight leading-tight sm:leading-[1.14]">
               Hộp quà bất ngờ mỗi tháng cho bé cưng của bạn.
             </h1>
 
-            <p className="text-base sm:text-lg text-bark-700 leading-relaxed max-w-xl">
+            <p className="text-sm sm:text-base lg:text-lg text-bark-700 leading-relaxed max-w-xl">
               Mystery Box gồm đồ ăn, đồ chơi và phụ kiện, được FPETS chọn riêng theo cân nặng, độ tuổi, dị ứng và sở thích của cún hoặc mèo nhà bạn. Mua thử 1 hộp hoặc đăng ký nhận hằng tháng.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3.5 pt-1">
               <Link
                 href="/quiz"
-                className="inline-flex items-center justify-center px-7 py-3.5 rounded-xl bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm hover:shadow transition-all text-center"
+                className="inline-flex items-center justify-center px-6 py-3 sm:px-7 sm:py-3.5 rounded-xl bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm hover:shadow transition-all text-center"
               >
                 Làm {QUIZ_NAME} tìm box cho bé
               </Link>
               <Link
                 href="/boxes"
-                className="inline-flex items-center justify-center px-7 py-3.5 rounded-xl bg-white hover:bg-surface-muted text-pine-950 border border-surface-border font-bold text-sm shadow-2xs hover:shadow-xs transition-all text-center"
+                className="inline-flex items-center justify-center px-6 py-3 sm:px-7 sm:py-3.5 rounded-xl bg-white hover:bg-surface-muted text-pine-950 border border-surface-border font-bold text-sm shadow-2xs hover:shadow-xs transition-all text-center"
               >
                 Xem các loại box
               </Link>
@@ -132,7 +132,7 @@ export default function HomePage() {
 
             {/* Số liệu lấy thật từ database; chỉ hiện khi đã có dữ liệu để tránh khoe số 0 */}
             {(stats.delivered >= MIN_DELIVERED_TO_SHOW || stats.reviewCount >= MIN_REVIEWS_TO_SHOW) && (
-              <div className="pt-4 border-t border-surface-border/70 flex flex-wrap items-center gap-4 sm:gap-6 text-xs text-bark-600">
+              <div className="pt-3 sm:pt-4 border-t border-surface-border/70 flex flex-wrap items-center gap-4 sm:gap-6 text-xs text-bark-600">
                 {stats.delivered >= MIN_DELIVERED_TO_SHOW && (
                   <div>
                     <span className="font-extrabold text-pine-950 block leading-tight">{stats.delivered.toLocaleString("vi-VN")}</span>
@@ -154,7 +154,7 @@ export default function HomePage() {
           </div>
 
           <div className="lg:col-span-5">
-            <div className="relative rounded-2xl overflow-hidden border border-surface-border/90 shadow-lg bg-white p-2 sm:p-2.5">
+            <div className="relative rounded-2xl overflow-hidden border border-surface-border/90 shadow-md bg-white p-2 sm:p-2.5">
               {/* Ảnh minh họa tạo bằng AI; thay bằng ảnh chụp hộp thật khi có */}
               <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-surface-muted">
                 <Image
@@ -167,19 +167,19 @@ export default function HomePage() {
                 />
               </div>
 
-              <div className="p-3.5 sm:p-4 bg-[#FAF9F6] rounded-xl border border-surface-border/80 mt-2 space-y-2">
+              <div className="p-3 sm:p-4 bg-[#FAF9F6] rounded-xl border border-surface-border/80 mt-2 space-y-1.5 sm:space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-pine-950 text-sm">{STANDARD_ITEMS} đồ ăn, đồ chơi, phụ kiện</span>
-                  <span className="px-2 py-0.5 rounded-full bg-grass-100 text-grass-800 text-[11px] font-bold shrink-0">
+                  <span className="font-bold text-pine-950 text-xs sm:text-sm">{STANDARD_ITEMS} đồ ăn, đồ chơi, phụ kiện</span>
+                  <span className="px-2 py-0.5 rounded-full bg-grass-100 text-grass-800 text-[10px] sm:text-[11px] font-bold shrink-0">
                     Trị giá từ {formatVND(standardMinValue)}
                   </span>
                 </div>
                 <div className="pt-2 flex items-center justify-between gap-2 text-[11px] text-bark-500 border-t border-surface-border/70">
                   {/* SPEC §10: chỉ đổi món khi lỗi của shop, KHÔNG đổi vì bé không thích */}
-                  <span className="text-grass-700 font-semibold flex items-center gap-1">
+                  <span className="text-grass-700 font-semibold flex items-center gap-1 text-[10px] sm:text-[11px]">
                     <Check className="w-3.5 h-3.5 stroke-[2.5]" /> {EXCHANGE_POLICY_SHORT}
                   </span>
-                  <span className="font-bold text-pine-950 shrink-0">Từ {formatVND(standardBoxPrice)}/hộp</span>
+                  <span className="font-bold text-pine-950 shrink-0 text-[11px] sm:text-xs">Từ {formatVND(standardBoxPrice)}/hộp</span>
                 </div>
               </div>
             </div>
@@ -189,8 +189,8 @@ export default function HomePage() {
 
       {/* 2. CÁCH HOẠT ĐỘNG: 3 bước trực quan (Hiểu ngay trong 5 giây) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
+        <div className="text-center max-w-2xl mx-auto mb-6 sm:mb-10 space-y-1.5">
+          <h2 className="text-xl sm:text-3xl font-extrabold text-pine-950 font-display">
             Cách Mystery Box hoạt động
           </h2>
           <p className="text-xs sm:text-sm text-bark-600">
@@ -198,32 +198,32 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-          <div className="p-6 rounded-container bg-surface-card border border-surface-border space-y-3 relative hover:border-pine-800 transition-colors">
-            <div className="w-10 h-10 rounded-box bg-pine-900 text-white flex items-center justify-center font-bold text-base font-display">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-6">
+          <div className="p-4 sm:p-6 rounded-container bg-surface-card border border-surface-border space-y-2 sm:space-y-3 relative hover:border-pine-800 transition-colors">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-box bg-pine-900 text-white flex items-center justify-center font-bold text-sm sm:text-base font-display">
               1
             </div>
-            <h3 className="text-base font-bold text-pine-950">Tạo hồ sơ thú cưng</h3>
+            <h3 className="text-sm sm:text-base font-bold text-pine-950">Tạo hồ sơ thú cưng</h3>
             <p className="text-xs sm:text-sm text-bark-600 leading-relaxed">
               Trả lời {QUIZ_NAME} ({QUIZ_LENGTH}): loài, cân nặng, độ tuổi, sở thích và thành phần bé bị dị ứng.
             </p>
           </div>
 
-          <div className="p-6 rounded-container bg-surface-card border border-surface-border space-y-3 relative hover:border-pine-800 transition-colors">
-            <div className="w-10 h-10 rounded-box bg-honey-600 text-white flex items-center justify-center font-bold text-base font-display">
+          <div className="p-4 sm:p-6 rounded-container bg-surface-card border border-surface-border space-y-2 sm:space-y-3 relative hover:border-pine-800 transition-colors">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-box bg-honey-600 text-white flex items-center justify-center font-bold text-sm sm:text-base font-display">
               2
             </div>
-            <h3 className="text-base font-bold text-pine-950">FPETS chọn món theo hồ sơ</h3>
+            <h3 className="text-sm sm:text-base font-bold text-pine-950">FPETS chọn món theo hồ sơ</h3>
             <p className="text-xs sm:text-sm text-bark-600 leading-relaxed">
               Sát ngày giao, FPETS chọn {STANDARD_ITEMS} (Box Premium {PREMIUM_ITEMS}), loại các món chứa thành phần bé bị dị ứng và không trùng món đã gửi.
             </p>
           </div>
 
-          <div className="p-6 rounded-container bg-surface-card border border-surface-border space-y-3 relative hover:border-pine-800 transition-colors">
-            <div className="w-10 h-10 rounded-box bg-pine-900 text-white flex items-center justify-center font-bold text-base font-display">
+          <div className="p-4 sm:p-6 rounded-container bg-surface-card border border-surface-border space-y-2 sm:space-y-3 relative hover:border-pine-800 transition-colors">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-box bg-pine-900 text-white flex items-center justify-center font-bold text-sm sm:text-base font-display">
               3
             </div>
-            <h3 className="text-base font-bold text-pine-950">Nhận hộp và chấm điểm món</h3>
+            <h3 className="text-sm sm:text-base font-bold text-pine-950">Nhận hộp và chấm điểm món</h3>
             <p className="text-xs sm:text-sm text-bark-600 leading-relaxed">
               Mở hộp cùng bé, chấm từng món &ldquo;thích / bình thường / không thích&rdquo; để hộp sau hợp khẩu vị hơn.
             </p>
@@ -232,18 +232,18 @@ export default function HomePage() {
       </section>
 
       {/* 3. BẢNG GIÁ: 2 loại box + tóm tắt gói định kỳ (chi tiết ở /subscription) */}
-      <section className="bg-pine-900 text-pine-100 py-16">
+      <section className="bg-pine-900 text-pine-100 py-10 sm:py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-display text-balance">
+          <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12 space-y-1.5">
+            <h2 className="text-xl sm:text-3xl font-extrabold text-white font-display text-balance">
               Hai loại Mystery Box
             </h2>
-            <p className="text-sm text-pine-200 text-balance">
+            <p className="text-xs sm:text-sm text-pine-200 text-balance">
               Mua thử 1 hộp để xem bé có thích không, hoặc đăng ký gói định kỳ để được giảm giá.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8 max-w-4xl mx-auto">
             {[
               {
                 name: "Box Tiêu chuẩn",
@@ -266,46 +266,41 @@ export default function HomePage() {
                 key={box.name}
                 className={
                   box.highlight
-                    ? // Premium: tông vàng champagne, viền phát sáng, nhô cao hơn thẻ Tiêu chuẩn
-                      "relative rounded-container p-6 sm:p-8 flex flex-col justify-between text-bark-900 bg-gradient-to-br from-[#FFFBF0] via-[#FCEFD2] to-[#F3DDA8] border-2 border-amber-400 shadow-[0_0_0_4px_rgba(232,176,70,0.18),0_24px_60px_-12px_rgba(232,176,70,0.55)] md:-translate-y-3"
-                    : "relative bg-surface-card text-bark-900 rounded-container p-6 sm:p-8 flex flex-col justify-between border-2 border-transparent"
+                    ? "relative rounded-container p-5 sm:p-7 flex flex-col justify-between text-bark-900 bg-gradient-to-br from-[#FFFBF0] via-[#FCEFD2] to-[#F3DDA8] border-2 border-amber-400 shadow-md ring-1 ring-amber-300 md:-translate-y-2"
+                    : "relative bg-surface-card text-bark-900 rounded-container p-5 sm:p-7 flex flex-col justify-between border border-surface-border shadow-xs"
                 }
               >
-                <div className="space-y-4">
+                <div className="space-y-3.5">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className={`text-xl font-bold ${box.highlight ? "text-[#5A3E0A] font-display" : "text-pine-950"}`}>{box.name}</h3>
+                    <h3 className={`text-lg sm:text-xl font-bold ${box.highlight ? "text-[#5A3E0A] font-display" : "text-pine-950"}`}>{box.name}</h3>
                     {box.highlight && (
-                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-tag bg-white/70 text-amber-800 border border-amber-300">Nhiều món hơn</span>
+                      <span className="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-tag bg-white/80 text-amber-900 border border-amber-300">Nhiều món hơn</span>
                     )}
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <span className={`text-3xl font-extrabold font-display ${box.highlight ? "bg-gradient-to-r from-[#8A5A00] to-[#C98A10] bg-clip-text text-transparent" : "text-pine-950"}`}>
+                    <span className={`text-2xl sm:text-3xl font-extrabold font-display ${box.highlight ? "bg-gradient-to-r from-[#8A5A00] to-[#C98A10] bg-clip-text text-transparent" : "text-pine-950"}`}>
                       {formatVND(box.price)}
                     </span>
                     <span className="text-xs text-bark-500">/ hộp</span>
                   </div>
                   <p className={`text-xs font-semibold ${box.highlight ? "text-amber-800" : "text-grass-700"}`}>Trị giá sản phẩm tối thiểu {formatVND(box.minValue)}</p>
-                  <ul className={`space-y-2.5 text-sm pt-2 border-t ${box.highlight ? "text-[#4A3A1A] border-amber-300/70" : "text-bark-700 border-surface-border"}`}>
+                  <ul className={`space-y-2 text-xs sm:text-sm pt-2 border-t ${box.highlight ? "text-[#4A3A1A] border-amber-300/70" : "text-bark-700 border-surface-border"}`}>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className={`w-4 h-4 shrink-0 ${box.highlight ? "text-amber-600" : "text-grass-600"}`} />
+                      <CheckCircle2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${box.highlight ? "text-amber-600" : "text-grass-600"}`} />
                       <span><strong>{box.items}</strong> chọn theo hồ sơ thú cưng</span>
                     </li>
                     {box.bullets.map((b) => (
                       <li key={b} className="flex items-center gap-2">
-                        <CheckCircle2 className={`w-4 h-4 shrink-0 ${box.highlight ? "text-amber-600" : "text-grass-600"}`} />
+                        <CheckCircle2 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${box.highlight ? "text-amber-600" : "text-grass-600"}`} />
                         <span>{b}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
-                <div className={`pt-6 mt-6 border-t ${box.highlight ? "border-amber-300/70" : "border-surface-border"}`}>
+                <div className={`pt-4 mt-5 sm:pt-6 sm:mt-6 border-t ${box.highlight ? "border-amber-300/70" : "border-surface-border"}`}>
                   <Link
                     href={box.highlight ? "/boxes?tier=premium" : "/boxes?tier=standard"}
-                    className={
-                      box.highlight
-                        ? "block w-full py-3 rounded-box text-center text-sm font-bold bg-pine-900 hover:bg-pine-800 text-white transition-colors"
-                        : "block w-full py-3 rounded-box text-center text-sm font-bold bg-pine-900 hover:bg-pine-800 text-white transition-colors"
-                    }
+                    className="block w-full py-2.5 sm:py-3 rounded-box text-center text-xs sm:text-sm font-bold bg-pine-900 hover:bg-pine-800 text-white transition-colors"
                   >
                     Xem {box.name}
                   </Link>
@@ -316,10 +311,10 @@ export default function HomePage() {
 
           {/* Tóm tắt gói định kỳ, áp dụng cho cả 2 loại box */}
           {plans.length > 0 && (
-            <div className="max-w-4xl mx-auto mt-8 p-5 rounded-container bg-pine-950/50 border border-pine-800 flex flex-col md:flex-row md:items-center gap-4 justify-between">
-              <div className="flex flex-wrap gap-2 text-xs">
+            <div className="max-w-4xl mx-auto mt-6 sm:mt-8 p-4 sm:p-5 rounded-container bg-pine-950/50 border border-pine-800 flex flex-col md:flex-row md:items-center gap-3.5 sm:gap-4 justify-between">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2 text-xs">
                 {plans.map((plan) => (
-                  <span key={plan.id} className="px-3 py-1.5 rounded-tag bg-pine-800 text-pine-100">
+                  <span key={plan.id} className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-tag bg-pine-800 text-pine-100 text-[11px] sm:text-xs">
                     <strong className="text-white">{plan.name}</strong>
                     {plan.discount_percentage > 0 ? ` · giảm ${plan.discount_percentage}%` : " · giá gốc"}
                     {plan.free_shipping ? " · freeship" : ""}
@@ -327,7 +322,7 @@ export default function HomePage() {
                   </span>
                 ))}
               </div>
-              <Link href="/subscription" className="shrink-0 text-center min-h-11 inline-flex items-center justify-center px-5 rounded-box bg-white hover:bg-pine-50 text-pine-950 text-xs font-bold">
+              <Link href="/subscription" className="shrink-0 text-center min-h-10 sm:min-h-11 inline-flex items-center justify-center px-4 sm:px-5 rounded-box bg-white hover:bg-pine-50 text-pine-950 text-xs font-bold transition-colors">
                 Xem gói định kỳ
               </Link>
             </div>
@@ -337,19 +332,19 @@ export default function HomePage() {
 
       {/* 4. DẢI CAM KẾT */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           {[
             { icon: Truck, title: "Giao toàn quốc", text: SHIPPING_POLICY },
             { icon: RefreshCw, title: EXCHANGE_POLICY_SHORT, text: "Dị ứng đã khai, hàng hỏng hoặc giao thiếu: báo trong 3 ngày kèm ảnh mở hộp." },
             { icon: CreditCard, title: "Thanh toán quen thuộc", text: "MoMo, VNPay hoặc COD cho đơn mua 1 lần. Không tự động trừ tiền." },
           ].map(({ icon: Icon, title, text }) => (
-            <div key={title} className="p-5 rounded-container bg-surface-card border border-surface-border flex gap-3">
-              <div className="w-10 h-10 rounded-box bg-pine-50 text-pine-900 flex items-center justify-center shrink-0">
-                <Icon className="w-5 h-5" />
+            <div key={title} className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border flex gap-3 items-start">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-box bg-pine-50 text-pine-900 flex items-center justify-center shrink-0">
+                <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-pine-950">{title}</h3>
-                <p className="text-xs text-bark-600 leading-relaxed">{text}</p>
+              <div className="space-y-0.5 sm:space-y-1">
+                <h3 className="text-xs sm:text-sm font-bold text-pine-950">{title}</h3>
+                <p className="text-[11px] sm:text-xs text-bark-600 leading-relaxed">{text}</p>
               </div>
             </div>
           ))}
@@ -358,23 +353,23 @@ export default function HomePage() {
 
       {/* 5. SẢN PHẨM NỔI BẬT TỪ SHOP */}
       {featured.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 sm:space-y-6">
           <div className="flex items-end justify-between gap-4">
-            <div className="space-y-1">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">Mua lẻ tại Shop</h2>
-              <p className="text-xs sm:text-sm text-bark-600">Đồ ăn, đồ chơi và phụ kiện bán lẻ, không cần tài khoản.</p>
+            <div className="space-y-0.5 sm:space-y-1">
+              <h2 className="text-xl sm:text-3xl font-extrabold text-pine-950 font-display">Mua lẻ tại Shop</h2>
+              <p className="text-xs sm:text-sm text-bark-600">Đồ ăn, đồ chơi và phụ kiện chọn lọc cho chó mèo.</p>
             </div>
-            <Link href="/shop" className="text-sm font-bold text-pine-900 hover:underline shrink-0">Xem tất cả</Link>
+            <Link href="/shop" className="text-xs sm:text-sm font-bold text-pine-900 hover:underline shrink-0">Xem tất cả</Link>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {featured.map((p) => (
               <Link key={p.id} href={`/shop/${p.slug}`} className="rounded-container bg-surface-card border border-surface-border overflow-hidden hover:border-pine-800 transition-colors group">
                 <div className="relative w-full aspect-square bg-surface-muted">
                   <ProductItemImage src={p.image} alt={p.name} category={p.category} placeholderColor={p.placeholderColor} sizes="(max-width: 768px) 50vw, 25vw" showNote={false} />
                 </div>
-                <div className="p-3 space-y-1">
+                <div className="p-2.5 sm:p-3 space-y-1">
                   <h3 className="text-xs sm:text-sm font-bold text-pine-950 line-clamp-2 leading-snug min-h-[2.5em]">{p.name}</h3>
-                  <div className="text-sm font-extrabold text-pine-950">{formatVND(p.price)}</div>
+                  <div className="text-xs sm:text-sm font-extrabold text-pine-950">{formatVND(p.price)}</div>
                 </div>
               </Link>
             ))}
@@ -384,36 +379,36 @@ export default function HomePage() {
 
       {/* 6. FEEDBACK KHÁCH HÀNG: chỉ hiển thị review thật đã xuất bản, ẩn cả mục nếu chưa có */}
       {topReviews.length >= 3 && (
-        <section className="bg-surface-muted border-y border-surface-border py-14">
+        <section className="bg-surface-muted border-y border-surface-border py-10 sm:py-14">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
+            <div className="text-center max-w-2xl mx-auto mb-6 sm:mb-10 space-y-1.5">
+              <h2 className="text-xl sm:text-3xl font-extrabold text-pine-950 font-display">
                 Niềm vui unbox của các bé
               </h2>
-              <p className="text-sm text-bark-600">
+              <p className="text-xs sm:text-sm text-bark-600">
                 Đánh giá từ khách hàng đã nhận hàng từ FPETS.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
               {topReviews.map((rev) => (
-                <div key={rev.id} className="p-5 rounded-container bg-surface-card border border-surface-border space-y-3">
+                <div key={rev.id} className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-2.5 sm:space-y-3">
                   <div className="flex items-center gap-1 text-honey-500">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={`w-4 h-4 ${i < rev.rating ? "fill-honey-500" : "fill-bark-200 text-bark-200"}`} />
+                      <Star key={i} className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${i < rev.rating ? "fill-honey-500" : "fill-bark-200 text-bark-200"}`} />
                     ))}
                   </div>
                   <p className="text-xs text-bark-700 leading-relaxed line-clamp-5">&ldquo;{rev.comment}&rdquo;</p>
                   <div className="pt-2 border-t border-surface-border flex items-center justify-between text-xs">
                     <span className="font-bold text-pine-950">{rev.profiles?.full_name || "Khách hàng FPETS"}</span>
-                    <span className="text-[11px] text-bark-500">{formatDate(rev.created_at)}</span>
+                    <span className="text-[10px] sm:text-[11px] text-bark-500">{formatDate(rev.created_at)}</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="text-center mt-8">
-              <Link href="/reviews" className="text-sm font-bold text-pine-900 hover:underline">
+            <div className="text-center mt-6 sm:mt-8">
+              <Link href="/reviews" className="text-xs sm:text-sm font-bold text-pine-900 hover:underline">
                 Xem tất cả đánh giá
               </Link>
             </div>
@@ -422,12 +417,12 @@ export default function HomePage() {
       )}
 
       {/* 7. FAQ NGẮN */}
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display text-center">Câu hỏi thường gặp</h2>
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 sm:space-y-5">
+        <h2 className="text-xl sm:text-3xl font-extrabold text-pine-950 font-display text-center">Câu hỏi thường gặp</h2>
         <div className="rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border">
           {HOME_FAQ.map((item) => (
-            <details key={item.q} className="group p-4 sm:p-5">
-              <summary className="flex items-center justify-between gap-3 cursor-pointer list-none text-sm font-bold text-pine-950">
+            <details key={item.q} className="group p-3.5 sm:p-5">
+              <summary className="flex items-center justify-between gap-3 cursor-pointer list-none text-xs sm:text-sm font-bold text-pine-950">
                 <span>{item.q}</span>
                 <ChevronDown className="w-4 h-4 text-bark-500 shrink-0 transition-transform group-open:rotate-180" />
               </summary>
@@ -436,45 +431,7 @@ export default function HomePage() {
           ))}
         </div>
         <div className="text-center">
-          <Link href="/faq" className="text-sm font-bold text-pine-900 hover:underline">Xem thêm câu hỏi</Link>
-        </div>
-      </section>
-
-      {/* 8. CTA CUỐI TRANG */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="rounded-container bg-pine-900 text-white overflow-hidden shadow-lg grid grid-cols-1 md:grid-cols-12 items-center">
-          <div className="p-8 sm:p-12 md:col-span-7 space-y-5 text-left">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display leading-tight">
-              Sẵn sàng tặng bé hộp quà đầu tiên?
-            </h2>
-            <p className="text-sm sm:text-base text-pine-200 leading-relaxed">
-              Trả lời {QUIZ_NAME} ({QUIZ_LENGTH}) để FPETS gợi ý loại box hợp với bé, loại các món bé bị dị ứng theo khai báo và chọn đồ chơi đúng cỡ.
-            </p>
-            <div className="pt-2 flex flex-col sm:flex-row gap-3">
-              <Link
-                href="/quiz"
-                className="inline-flex items-center justify-center px-6 py-3.5 rounded-box bg-white hover:bg-pine-50 text-pine-950 font-bold text-sm shadow-md transition-colors"
-              >
-                <span>Làm {QUIZ_NAME}</span>
-              </Link>
-              <Link
-                href="/shop"
-                className="inline-flex items-center justify-center px-6 py-3.5 rounded-box bg-pine-800 hover:bg-pine-750 text-pine-100 font-bold text-sm transition-colors border border-pine-700/60"
-              >
-                <span>Xem cửa hàng</span>
-              </Link>
-            </div>
-          </div>
-
-          <div className="md:col-span-5 h-64 md:h-full relative min-h-[280px]">
-            <Image
-              src="https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?w=800&q=80"
-              alt="Chú cún con đáng yêu"
-              fill
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover"
-            />
-          </div>
+          <Link href="/faq" className="text-xs sm:text-sm font-bold text-pine-900 hover:underline">Xem thêm câu hỏi</Link>
         </div>
       </section>
     </div>

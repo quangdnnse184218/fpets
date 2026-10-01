@@ -190,8 +190,8 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      <div className="p-4 rounded-container bg-surface-card border border-surface-border space-y-3">
-        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 items-stretch sm:items-center justify-between">
           <div className="relative w-full sm:w-80">
             <Search className="w-4 h-4 text-bark-400 absolute left-3 top-2.5" />
             <input
@@ -205,14 +205,74 @@ export default function AdminOrdersPage() {
           <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 no-scrollbar">
             <span className="text-xs font-bold text-bark-500 whitespace-nowrap">Trạng thái:</span>
             <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}
-              className="text-xs font-bold py-2 px-3 rounded-box border border-surface-border bg-white text-bark-800">
+              className="text-xs font-bold py-2 px-3 rounded-box border border-surface-border bg-white text-bark-800 flex-1 sm:flex-initial">
               {statuses.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
           </div>
         </div>
       </div>
 
-      <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      {/* Mobile Card List (< md) */}
+      <div className="md:hidden space-y-2.5">
+        {filteredOrders.length === 0 ? (
+          <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
+            Chưa có đơn hàng nào phù hợp.
+          </div>
+        ) : (
+          filteredOrders.map((order) => (
+            <div
+              key={order.id}
+              className="p-3.5 rounded-container bg-surface-card border border-surface-border space-y-2.5 shadow-2xs"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono font-bold text-pine-950 text-xs">
+                  {order.order_code}
+                </span>
+                <span className="px-2 py-0.5 rounded-tag bg-pine-100 text-pine-900 font-bold text-[10px]">
+                  {STATUS_LABEL[order.status]}
+                </span>
+              </div>
+
+              <div className="flex items-start justify-between gap-2 pt-0.5">
+                <div>
+                  <div className="font-bold text-pine-950 text-xs">{order.recipient_name}</div>
+                  <div className="text-[11px] text-bark-500">{order.recipient_phone}</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-extrabold text-pine-950 text-sm font-display">
+                    {order.total_amount === 0 ? "0₫ (Gói)" : formatVND(order.total_amount)}
+                  </div>
+                  <span className={`text-[10px] font-semibold ${order.payment_status === "paid" ? "text-grass-700" : "text-amber-700"}`}>
+                    {PAYMENT_STATUS_LABEL[order.payment_status] || order.payment_status} ({order.payment_method.toUpperCase()})
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-surface-border/70 text-[11px] text-bark-500">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="px-1.5 py-0.5 rounded bg-surface-muted font-medium text-[10px] text-bark-700">
+                    {ORDER_TYPE_LABEL[order.order_type] || "Mua lẻ"}
+                    {order.order_type === "subscription_cycle" && order.cycle_index ? ` (${order.cycle_index})` : ""}
+                  </span>
+                  <span>{formatDate(order.created_at)}</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => { setSelectedOrder(order); setTrackingInput(""); setActionError(null); }}
+                  className="px-2.5 py-1 rounded-box bg-pine-50 hover:bg-pine-100 text-pine-950 font-bold text-xs inline-flex items-center gap-1 transition-colors"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Chi tiết</span>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table (>= md) */}
+      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>

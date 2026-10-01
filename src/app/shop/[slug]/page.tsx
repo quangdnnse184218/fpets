@@ -25,7 +25,7 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params?.slug as string;
-  const { addToCart, pets } = useApp();
+  const { addToCart, pets, isLoggedIn } = useApp();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,6 +53,10 @@ export default function ProductDetailPage() {
 
   const handleAdd = () => {
     if (!product) return;
+    if (!isLoggedIn) {
+      router.push(`/login?redirect=${encodeURIComponent(`/shop/${slug}`)}`);
+      return;
+    }
     addToCart({
       type: "retail",
       productId: product.id,

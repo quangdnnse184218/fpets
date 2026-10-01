@@ -457,53 +457,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [voucherMessage, setVoucherMessage] = useState<string>("");
 
   const addToCart = async (item: Omit<CartItem, "id">) => {
-    if (isLoggedIn && user.id) {
-      const supabase = createClient();
-      const cartId = cartIdRef.current || (await getOrCreateCartId(user.id));
-      cartIdRef.current = cartId;
-
-      if (item.type === "retail" && item.productId) {
-        const maxQty = Math.min(10, item.product?.stock ?? 10);
-        const { data: existingRow } = await supabase
-          .from("cart_items")
-          .select("id, quantity")
-          .eq("cart_id", cartId)
-          .eq("product_id", item.productId)
-          .maybeSingle();
-        if (existingRow) {
-          await supabase.from("cart_items").update({ quantity: Math.min(maxQty, existingRow.quantity + item.quantity) }).eq("id", existingRow.id);
-        } else {
-          await supabase.from("cart_items").insert({ cart_id: cartId, product_id: item.productId, quantity: Math.min(maxQty, item.quantity) });
-        }
-      } else if (item.type === "box" && item.boxTypeId) {
-        // Mỗi đơn chỉ được chứa 1 Mystery Box (bảng box_curations ràng buộc
-        // UNIQUE theo order_id, và luồng đánh giá/feedback sau này cũng chỉ xử lý
-        // 1 box/đơn). Nếu khách đã có box khác trong giỏ, thay bằng box mới này
-        // thay vì cộng dồn thành nhiều dòng box - tránh vỡ khi tạo đơn.
-        const { data: otherBoxRows } = await supabase
-          .from("cart_items")
-          .select("id")
-          .eq("cart_id", cartId)
-          .not("box_type_id", "is", null);
-        if (otherBoxRows && otherBoxRows.length > 0) {
-          await supabase.from("cart_items").delete().in("id", otherBoxRows.map((r) => r.id));
-        }
-        await supabase.from("cart_items").insert({ cart_id: cartId, box_type_id: item.boxTypeId, pet_id: item.petId || null, quantity: 1 });
-      }
-      await loadServerCart(user.id);
-    } else {
-      if (item.type !== "retail" || !item.productId) return; // box bắt buộc đăng nhập, đã gate ở UI
-      const lines = readGuestCart();
-      const existingIdx = lines.findIndex((l) => l.productId === item.productId);
-      const maxQty = Math.min(10, item.product?.stock ?? 10);
-      if (existingIdx >= 0) {
-        lines[existingIdx].quantity = Math.min(maxQty, lines[existingIdx].quantity + item.quantity);
-      } else {
-        lines.push({ productId: item.productId, quantity: Math.min(maxQty, item.quantity) });
-      }
-      writeGuestCart(lines);
-      await loadGuestCart();
+    if (!isLoggedIn || !user.id) {
+      // Yêu cầu đăng nhập để mua sắm và thêm sản phẩm vào giỏ
+      return;
     }
+
+    const supabase = createClient();
+    const cartId = cartIdRef.current || (await getOrCreateCartId(user.id));
+    cartIdRef.current = cartId;
+
+    if (item.type === "retail" && item.productId) {
+      const maxQty = Math.min(10, item.product?.stock ?? 10);
+      const { data: existingRow } = await supabase
+        .from("cart_items")
+        .select("id, quantity")
+        .eq("cart_id", cartId)
+        .eq("product_id", item.productId)
+        .maybeSingle();
+      if (existingRow) {
+        await supabase.from("cart_items").update({ quantity: Math.min(maxQty, existingRow.quantity + item.quantity) }).eq("id", existingRow.id);
+      } else {
+        await supabase.from("cart_items").insert({ cart_id: cartId, product_id: item.productId, quantity: Math.min(maxQty, item.quantity) });
+      }
+    } else if (item.type === "box" && item.boxTypeId) {
+      // Mỗi đơn chỉ được chứa 1 Mystery Box (bảng box_curations ràng buộc
+      // UNIQUE theo order_id, và luồng đánh giá/feedback sau này cũng chỉ xử lý
+      // 1 box/đơn). Nếu khách đã có box khác trong giỏ, thay bằng box mới này
+      // thay vì cộng dồn thành nhiều dòng box - tránh vỡ khi tạo đơn.
+      const { data: otherBoxRows } = await supabase
+        .from("cart_items")
+        .select("id")
+        .eq("cart_id", cartId)
+        .not("box_type_id", "is", null);
+      if (otherBoxRows && otherBoxRows.length > 0) {
+        await supabase.from("cart_items").delete().in("id", otherBoxRows.map((r) => r.id));
+      }
+      await supabase.from("cart_items").insert({ cart_id: cartId, box_type_id: item.boxTypeId, pet_id: item.petId || null, quantity: 1 });
+    }
+    await loadServerCart(user.id);
   };
 
   const updateQuantity = async (id: string, delta: number) => {

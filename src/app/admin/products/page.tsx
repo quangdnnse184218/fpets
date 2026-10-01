@@ -194,7 +194,137 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      {/* Mobile Card List (< md) */}
+      <div className="md:hidden space-y-2.5">
+        {filtered.length === 0 ? (
+          <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
+            Không tìm thấy sản phẩm phù hợp.
+          </div>
+        ) : (
+          filtered.map((prod) => {
+            const isLowStock = prod.stock_quantity <= prod.low_stock_threshold;
+            return (
+              <div
+                key={prod.id}
+                className={`p-3.5 rounded-container bg-surface-card border border-surface-border space-y-3 shadow-2xs ${
+                  !prod.is_active ? "opacity-60" : ""
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-14 h-14 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
+                    <ProductItemImage
+                      src={resolveImageUrl(prod.images?.[0], "")}
+                      alt={prod.name}
+                      placeholderColor="#E1EDE8"
+                      sizes="56px"
+                      showNote={false}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-muted text-bark-700">
+                        {prod.categories?.name || "Chưa phân loại"}
+                      </span>
+                      <PetSpeciesIcon species={prod.species as "dog" | "cat" | "both"} variant="badge" size="xs" />
+                      {!prod.is_active && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">
+                          Đã ẩn
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-bold text-pine-950 text-xs sm:text-sm mt-1 leading-snug line-clamp-2">
+                      {prod.name}
+                    </h3>
+                    <div className="text-sm font-extrabold text-pine-950 font-display mt-0.5">
+                      {formatVND(prod.price)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tồn kho & Thao tác chuyển đổi */}
+                <div className="pt-2.5 border-t border-surface-border/70 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-bark-500 font-medium">Tồn kho:</span>
+                    <div className="flex items-center border border-surface-border rounded-box bg-white overflow-hidden shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => adjustStock(prod, -1)}
+                        className="px-2 py-1 text-bark-600 hover:bg-surface-muted font-bold text-xs"
+                      >
+                        −
+                      </button>
+                      <span
+                        className={`w-10 text-center font-bold text-xs py-1 ${
+                          isLowStock ? "text-amber-700 font-extrabold" : "text-bark-900"
+                        }`}
+                      >
+                        {prod.stock_quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => adjustStock(prod, 1)}
+                        className="px-2 py-1 text-bark-600 hover:bg-surface-muted font-bold text-xs"
+                      >
+                        +
+                      </button>
+                    </div>
+                    {isLowStock && (
+                      <span title="Tồn kho sắp hết">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => toggleRetail(prod)}
+                      className={`px-2 py-1 rounded-box text-[10px] font-bold transition-colors ${
+                        prod.is_retail ? "bg-grass-100 text-grass-800" : "bg-surface-muted text-bark-400"
+                      }`}
+                      title="Bật/Tắt bán lẻ"
+                    >
+                      Bán lẻ: {prod.is_retail ? "Bật" : "Tắt"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleBoxItem(prod)}
+                      className={`px-2 py-1 rounded-box text-[10px] font-bold transition-colors ${
+                        prod.is_box_item ? "bg-honey-100 text-honey-800" : "bg-surface-muted text-bark-400"
+                      }`}
+                      title="Bật/Tắt dùng cho Box"
+                    >
+                      Box: {prod.is_box_item ? "Bật" : "Tắt"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-surface-border/50">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(prod)}
+                    className="px-2.5 py-1 rounded-box bg-pine-50 hover:bg-pine-100 text-pine-900 font-semibold text-xs inline-flex items-center gap-1"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Sửa</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeletingProduct(prod)}
+                    className="px-2.5 py-1 rounded-box bg-bark-100 hover:bg-red-100 text-bark-700 hover:text-red-700 font-semibold text-xs inline-flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{prod.is_active ? "Ẩn" : "Hiện"}</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Table (>= md) */}
+      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>

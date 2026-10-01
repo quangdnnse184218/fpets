@@ -166,7 +166,90 @@ function ReviewsPanel() {
         </div>
       </div>
 
-      <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      {/* Mobile Card List */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
+            Chưa có đánh giá nào phù hợp.
+          </div>
+        ) : (
+          filtered.map((rev) => (
+            <div key={rev.id} className="p-3.5 rounded-container bg-surface-card border border-surface-border shadow-xs space-y-2.5 text-xs">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-bold text-pine-950 text-xs">{rev.profiles?.full_name || "Khách hàng"}</div>
+                  <div className="text-[10px] text-bark-400 mt-0.5">
+                    Đơn: {rev.orders?.order_code || "N/A"} · {formatDate(rev.created_at)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleVisibility(rev)}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-colors ${
+                    rev.status === "published" ? "bg-grass-100 text-grass-800" : "bg-bark-100 text-bark-600"
+                  }`}
+                >
+                  {rev.status === "published" ? (
+                    <>
+                      <Eye className="w-2.5 h-2.5" />
+                      <span>Hiển thị</span>
+                    </>
+                  ) : (
+                    <>
+                      <EyeOff className="w-2.5 h-2.5" />
+                      <span>Đang ẩn</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1 text-honey-500">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`w-3.5 h-3.5 ${i < rev.rating ? "fill-honey-500" : "fill-bark-200 text-bark-200"}`}
+                  />
+                ))}
+              </div>
+
+              {rev.comment && (
+                <p className="text-bark-800 text-xs leading-relaxed font-medium">{rev.comment}</p>
+              )}
+
+              {validImages(rev.images).length > 0 && (
+                <div className="flex gap-1.5 overflow-x-auto pt-1 pb-0.5">
+                  {validImages(rev.images).map((img, idx) => (
+                    <div key={idx} className="relative w-12 h-12 rounded border border-surface-border overflow-hidden shrink-0">
+                      <Image src={img} alt="Ảnh unbox" fill sizes="48px" className="object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {rev.admin_reply && (
+                <div className="p-2 rounded bg-pine-50 border border-pine-100 text-[11px] text-pine-900 space-y-0.5">
+                  <span className="font-bold block text-pine-950">Phản hồi của FPETS:</span>
+                  <p className="italic">&ldquo;{rev.admin_reply}&rdquo;</p>
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-surface-border flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => handleOpenReply(rev)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-pine-900 bg-pine-50 hover:bg-pine-100 rounded transition-colors"
+                >
+                  <MessageSquare className="w-3 h-3" />
+                  <span>{rev.admin_reply ? "Sửa trả lời" : "Phản hồi"}</span>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs min-w-[700px]">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>

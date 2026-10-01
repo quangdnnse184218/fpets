@@ -187,7 +187,77 @@ export default function AdminBoxTypesPage() {
         </div>
       </div>
 
-      <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      {/* Mobile Card List */}
+      <div className="md:hidden space-y-3">
+        {boxList.map((box) => {
+          const price3 = Math.round((box.baseprice * (100 - discount3)) / 100);
+          return (
+            <div key={box.id} className={`p-3.5 rounded-container bg-surface-card border border-surface-border shadow-xs space-y-3 text-xs ${!box.is_active ? "opacity-60" : ""}`}>
+              <div className="flex items-start gap-3">
+                <div className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 border border-surface-border bg-pine-50">
+                  <Image src={resolveImageUrl(box.images?.[0], "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400&q=80")} alt={box.name} fill sizes="56px" className="object-cover" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-pine-950 text-sm">{box.name}</span>
+                    {!box.is_active && <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">Đã ẩn</span>}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <PetSpeciesIcon species={box.species} variant="badge" size="xs" />
+                    {box.species === "dog" && (
+                      <span className="text-[10px] font-medium text-bark-500 bg-surface-muted px-1.5 py-0.5 rounded border border-surface-border">
+                        {box.size === "small" ? "Nhỏ (< 10kg)" : "Lớn (≥ 10kg)"}
+                      </span>
+                    )}
+                    <span className="text-[11px] text-bark-500 font-medium">· {box.item_count_min}–{box.item_count_max} món</span>
+                  </div>
+                </div>
+              </div>
+
+              {box.description && (
+                <p className="text-[11px] text-bark-600 line-clamp-2 leading-relaxed">{box.description}</p>
+              )}
+
+              <div className="grid grid-cols-3 gap-2 p-2.5 rounded-box bg-surface-muted border border-surface-border text-center text-[11px]">
+                <div>
+                  <span className="text-bark-500 block text-[10px]">Giá bán lẻ</span>
+                  <span className="font-bold text-pine-900">{formatVND(box.baseprice)}</span>
+                </div>
+                <div>
+                  <span className="text-bark-500 block text-[10px]">Gói 3 hộp (-{discount3}%)</span>
+                  <span className="font-bold text-grass-700">{formatVND(price3)}</span>
+                </div>
+                <div>
+                  <span className="text-bark-500 block text-[10px]">Giá trị tối thiểu</span>
+                  <span className="font-bold text-bark-800">{formatVND(box.min_retail_value)}</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-surface-border flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEdit(box)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-pine-900 bg-pine-50 hover:bg-pine-100 rounded-box transition-colors"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span>Sửa</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeletingBox(box)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-box transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Ẩn</span>
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>

@@ -14,11 +14,12 @@ import {
   Phone,
   RefreshCw,
   Search,
-  ShieldAlert,
+  ShieldCheck,
   ShoppingCart,
   Truck,
   User,
   X,
+  ChevronRight,
 } from "lucide-react";
 import BrandLogo from "@/components/common/BrandLogo";
 import NotificationBell from "@/components/common/NotificationBell";
@@ -249,52 +250,110 @@ export default function MainNavbar() {
           </Link>
 
           {isLoggedIn ? (
-            <div className="relative hidden md:block ml-1" ref={userMenuRef}>
-              <button
-                type="button"
-                onClick={() => setUserMenuOpen((v) => !v)}
-                aria-expanded={userMenuOpen}
-                aria-haspopup="true"
-                className={`flex items-center gap-2 h-10 pl-1 pr-2 rounded-box border border-surface-border hover:bg-surface-muted transition-colors ${userMenuOpen ? "bg-pine-50 border-pine-300" : ""}`}
-              >
-                <span className="w-8 h-8 rounded-full bg-pine-900 text-white text-xs font-bold flex items-center justify-center">
-                  {user.name ? user.name.charAt(0).toUpperCase() : "U"}
-                </span>
-                <span className="text-left hidden xl:block max-w-[120px]">
-                  <span className="block text-xs font-semibold text-bark-900 truncate">{user.name}</span>
-                  <span className="block text-[10px] text-bark-500 truncate">{ROLE_LABEL[user.role] || "Thành viên FPETS"}</span>
-                </span>
-                <ChevronDown className="w-3.5 h-3.5 text-bark-500" />
-              </button>
-
-              {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-surface-card rounded-container border border-surface-border shadow-xl py-2 z-50">
-                  <div className="px-4 py-3 border-b border-surface-border">
-                    <p className="text-sm font-bold text-bark-950 truncate">{user.name}</p>
-                    <p className="text-xs text-bark-600 truncate">{user.email}</p>
-                  </div>
-                  <div className="py-1">
-                    {ACCOUNT_LINKS.map(({ href, label, icon: Icon }) => (
-                      <Link key={href} href={href} className="flex items-center gap-2.5 px-4 min-h-10 text-xs font-medium text-bark-800 hover:bg-surface-muted hover:text-pine-900 transition-colors">
-                        <Icon className="w-4 h-4 text-pine-700" />
-                        <span>{label}</span>
-                      </Link>
-                    ))}
-                    {user.role === "admin" && (
-                      <Link href="/admin/dashboard" className="flex items-center gap-2.5 px-4 min-h-10 text-xs font-semibold text-pine-900 hover:bg-surface-muted border-t border-surface-border mt-1">
-                        <ShieldAlert className="w-4 h-4 text-pine-700" />
-                        <span>Trang quản trị</span>
-                      </Link>
-                    )}
-                  </div>
-                  <div className="pt-1 border-t border-surface-border">
-                    <button type="button" onClick={handleLogout} className="w-full flex items-center gap-2.5 px-4 min-h-10 text-xs font-medium text-red-700 hover:bg-red-50 transition-colors text-left">
-                      <LogOut className="w-4 h-4" />
-                      <span>Đăng xuất</span>
-                    </button>
-                  </div>
-                </div>
+            <div className="flex items-center gap-1.5 ml-1">
+              {/* Nút tắt vào Admin Portal nhanh khi tài khoản là Admin */}
+              {user.role === "admin" && (
+                <Link
+                  href="/admin/dashboard"
+                  className="hidden lg:inline-flex items-center gap-1.5 h-10 px-3 rounded-box bg-pine-900 hover:bg-pine-850 text-white text-xs font-bold transition-colors shadow-xs"
+                  title="Vào bảng quản trị Admin"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-honey-400" />
+                  <span>Trang quản trị</span>
+                </Link>
               )}
+
+              <div className="relative hidden md:block" ref={userMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  aria-expanded={userMenuOpen}
+                  aria-haspopup="true"
+                  className={`flex items-center gap-2 h-10 pl-1 pr-2 rounded-box border border-surface-border hover:bg-surface-muted transition-colors ${userMenuOpen ? "bg-pine-50 border-pine-300" : ""}`}
+                >
+                  <span className="w-8 h-8 rounded-full bg-pine-900 text-white text-xs font-bold flex items-center justify-center">
+                    {user.name ? user.name.charAt(0).toUpperCase() : "U"}
+                  </span>
+                  <span className="text-left hidden xl:block max-w-[120px]">
+                    <span className="block text-xs font-semibold text-bark-900 truncate">{user.name}</span>
+                    <span className="block text-[10px] text-bark-500 truncate">{ROLE_LABEL[user.role] || "Thành viên FPETS"}</span>
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-bark-500" />
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-72 bg-surface-card rounded-container border border-surface-border shadow-xl py-2 z-50">
+                    <div className="px-4 py-3 border-b border-surface-border">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-bold text-pine-950 truncate">{user.name}</p>
+                        {user.role === "admin" ? (
+                          <span className="px-2 py-0.5 rounded-full bg-pine-900 text-white text-[10px] font-bold shrink-0">
+                            Quản trị viên
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full bg-surface-muted text-bark-600 text-[10px] font-medium shrink-0">
+                            Thành viên
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-bark-500 truncate mt-0.5">{user.email}</p>
+                    </div>
+
+                    {/* Đối với Admin: Khối lối tắt Cổng Quản Trị đặt nổi bật ngay trên đầu */}
+                    {user.role === "admin" && (
+                      <div className="p-2 border-b border-surface-border bg-pine-50/70">
+                        <Link
+                          href="/admin/dashboard"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center justify-between p-2.5 rounded-box bg-pine-900 hover:bg-pine-850 text-white shadow-xs transition-all group"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                              <ShieldCheck className="w-4 h-4 text-honey-400" />
+                            </div>
+                            <div className="text-left">
+                              <span className="block text-xs font-bold leading-tight">Cổng Quản Trị Hệ Thống</span>
+                              <span className="block text-[10px] text-pine-200">Quản lý đơn hàng, kho &amp; box</span>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-pine-300 group-hover:translate-x-0.5 transition-transform" />
+                        </Link>
+                      </div>
+                    )}
+
+                    {/* Khu vực thông tin cá nhân của người dùng */}
+                    <div className="py-1">
+                      <div className="px-4 py-1">
+                        <span className="text-[10px] font-semibold text-bark-400 uppercase tracking-wider">
+                          Tài khoản cá nhân
+                        </span>
+                      </div>
+                      {ACCOUNT_LINKS.map(({ href, label, icon: Icon }) => (
+                        <Link
+                          key={href}
+                          href={href}
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 min-h-9 text-xs font-medium text-bark-800 hover:bg-surface-muted hover:text-pine-900 transition-colors"
+                        >
+                          <Icon className="w-4 h-4 text-pine-700" />
+                          <span>{label}</span>
+                        </Link>
+                      ))}
+                    </div>
+
+                    <div className="pt-1 border-t border-surface-border">
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-2.5 px-4 min-h-9 text-xs font-medium text-red-700 hover:bg-red-50 transition-colors text-left"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Đăng xuất</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="hidden md:flex items-center gap-2 pl-2 ml-1 border-l border-surface-border">
@@ -347,16 +406,48 @@ export default function MainNavbar() {
         <div className="lg:hidden border-t border-surface-border bg-surface-card max-h-[calc(100vh-6rem)] overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 space-y-3">
             {isLoggedIn ? (
-              <div className="p-3 rounded-box bg-pine-50 border border-pine-200">
-                <p className="text-sm font-bold text-pine-950">{user.name}</p>
-                <p className="text-xs text-pine-700">{user.email}</p>
-                <div className="mt-2 pt-2 border-t border-pine-200/60 grid grid-cols-2 gap-x-3">
-                  {ACCOUNT_LINKS.map(({ href, label }) => (
-                    <Link key={href} href={href} className="flex items-center min-h-10 text-xs font-medium text-pine-900">{label}</Link>
-                  ))}
-                  {user.role === "admin" && (
-                    <Link href="/admin/dashboard" className="flex items-center min-h-10 text-xs font-bold text-pine-900">Trang quản trị</Link>
+              <div className="p-3.5 rounded-box bg-pine-50 border border-pine-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-pine-950">{user.name}</p>
+                    <p className="text-xs text-pine-700">{user.email}</p>
+                  </div>
+                  {user.role === "admin" ? (
+                    <span className="px-2 py-0.5 rounded-full bg-pine-900 text-white text-[10px] font-bold">
+                      Quản trị viên
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full bg-surface-muted text-bark-600 text-[10px] font-medium">
+                      Thành viên
+                    </span>
                   )}
+                </div>
+
+                {user.role === "admin" && (
+                  <Link
+                    href="/admin/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-between p-2.5 rounded-box bg-pine-900 text-white font-bold text-xs shadow-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-honey-400" />
+                      <span>Vào Cổng Quản Trị Hệ Thống</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-pine-300" />
+                  </Link>
+                )}
+
+                <div className="pt-2 border-t border-pine-200/60 grid grid-cols-2 gap-x-3 gap-y-1">
+                  {ACCOUNT_LINKS.map(({ href, label }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center min-h-9 text-xs font-medium text-pine-900 hover:underline"
+                    >
+                      {label}
+                    </Link>
+                  ))}
                 </div>
               </div>
             ) : (

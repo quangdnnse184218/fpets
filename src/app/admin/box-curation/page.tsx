@@ -146,7 +146,7 @@ export default function AdminBoxCurationPage() {
 
           <div className="lg:col-span-8 space-y-5">
             {active && (
-              <div className="p-6 rounded-container bg-surface-card border border-surface-border space-y-5 shadow-xs">
+              <div className="p-4 sm:p-6 rounded-container bg-surface-card border border-surface-border space-y-5 shadow-xs">
                 <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-surface-border">
                   <div>
                     <span className="inline-block text-xs font-semibold text-pine-900 bg-pine-50 px-2.5 py-0.5 rounded-tag border border-pine-200">
@@ -259,7 +259,7 @@ export default function AdminBoxCurationPage() {
                     </div>
                   </div>
                   <button type="button" onClick={handleApprove} disabled={approving || !isValueValid || hasAllergyViolation}
-                    className="px-6 py-3 rounded-box text-xs font-bold transition-colors flex items-center justify-center gap-2 bg-pine-900 hover:bg-pine-800 text-white shadow-sm disabled:bg-surface-muted disabled:text-bark-400">
+                    className="w-full sm:w-auto px-6 py-3 rounded-box text-xs font-bold transition-colors flex items-center justify-center gap-2 bg-pine-900 hover:bg-pine-800 text-white shadow-sm disabled:bg-surface-muted disabled:text-bark-400">
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{approving ? "Đang xử lý..." : "Xác nhận duyệt tuyển chọn hộp"}</span>
                   </button>
