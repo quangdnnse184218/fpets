@@ -13,7 +13,7 @@ import { BoxType, SubscriptionPlan } from "@/types/models";
 import AddressFields, { AddressValue, SavedAddressRow, emptyAddress, formatAddress, isAddressValid, rowToAddress } from "@/components/common/AddressFields";
 import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, nextDeliveryWindow } from "@/lib/deliverySchedule";
 import { formatDate } from "@/lib/formatters";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { planUnitPrice } from "@/lib/pricing";
 
 function CheckoutFormContent() {
@@ -24,7 +24,7 @@ function CheckoutFormContent() {
   const petId = searchParams.get("pet");
   const planId = searchParams.get("plan");
 
-  const { cart, user, subtotal, voucherCode, voucherDiscount, voucherFreeShip, clearCart, pets, isLoggedIn, isLoadingAuth } = useApp();
+  const { cart, isCartReady, user, subtotal, voucherCode, voucherDiscount, voucherFreeShip, clearCart, pets, isLoggedIn, isLoadingAuth } = useApp();
 
   const [addr, setAddr] = useState<AddressValue>(emptyAddress());
   const [savedAddresses, setSavedAddresses] = useState<SavedAddressRow[]>([]);
@@ -35,6 +35,8 @@ function CheckoutFormContent() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [showAddrErrors, setShowAddrErrors] = useState(false);
+  // Đặt xong thì giỏ được xóa trước khi chuyển trang: không hiện "giỏ hàng trống" trong khoảnh khắc đó
+  const [placed, setPlaced] = useState(false);
 
   const [deliverySchedule, setDeliverySchedule] = useState<DeliverySchedule>(searchParams.get("schedule") === "giua_thang" ? "giua_thang" : "dau_thang");
   const [paymentMethod, setPaymentMethod] = useState<'momo' | 'vnpay' | 'cod'>('momo');
@@ -101,11 +103,10 @@ function CheckoutFormContent() {
     // Mọi đơn đều cần đăng nhập: giỏ hàng lưu theo tài khoản, hộp và gói gắn với hồ sơ thú cưng.
     // Chờ xác định xong phiên đăng nhập, tránh đá khách đã đăng nhập về trang login khi tải lại trang.
     if (isLoadingAuth) return;
-    const cartHasBox = cart.some((c) => c.type === "box");
-    if (!isLoggedIn && (isSubscription || cartHasBox)) {
-      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+    if (!isLoggedIn) {
+      router.replace(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
     }
-  }, [isLoadingAuth, isLoggedIn, isSubscription, cart, router]);
+  }, [isLoadingAuth, isLoggedIn, router]);
 
   // Số tiền hiển thị mô phỏng đúng công thức server (checkout_create_order / subscribe_to_box)
   const unitPrice = subBox && selectedPlan ? planUnitPrice(subBox.basePrice, selectedPlan.discountPercent) : 0;
@@ -180,6 +181,7 @@ function CheckoutFormContent() {
       if (error) throw error;
       await persistAddress();
       const result = data as { order_id: string; order_code: string; status: string; total_amount: number };
+      setPlaced(true);
       await clearCart();
 
       if (paymentMethod === "cod") {
@@ -213,6 +215,23 @@ function CheckoutFormContent() {
     if (message.includes("ERR_BOX_NOT_FOUND")) return "Loại box này hiện không còn bán.";
     if (message.includes("ERR_COD_NOT_ALLOWED_FOR_SUBSCRIPTION")) return "Gói định kỳ chỉ hỗ trợ thanh toán online (MoMo / VNPay).";
     return message;
+  }
+
+  if (isLoadingAuth || !isLoggedIn || !isCartReady) {
+    return <div className="max-w-4xl mx-auto px-4 py-16 text-center text-sm text-bark-500" aria-busy="true">Đang tải trang thanh toán…</div>;
+  }
+
+  if (!isSubscription && cart.length === 0 && !placed) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-16 text-center space-y-4">
+        <h1 className="text-xl font-bold text-pine-950">Giỏ hàng đang trống</h1>
+        <p className="text-sm text-bark-600">Chọn hộp hoặc sản phẩm trước khi thanh toán.</p>
+        <div className="flex flex-col sm:flex-row gap-2 justify-center">
+          <ButtonLink href="/boxes">Xem Mystery Box</ButtonLink>
+          <ButtonLink href="/shop" variant="secondary">Vào cửa hàng</ButtonLink>
+        </div>
+      </div>
+    );
   }
 
   return (

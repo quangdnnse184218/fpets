@@ -52,6 +52,8 @@ interface AppContextType {
 
   // Cart (Supabase khi đăng nhập, localStorage khi là khách vãng lai)
   cart: CartItem[];
+  // false cho tới khi giỏ hàng được tải xong lần đầu: tránh hiện "giỏ trống" khi dữ liệu chưa về
+  isCartReady: boolean;
   addToCart: (item: Omit<CartItem, "id">) => Promise<void>;
   updateQuantity: (id: string, delta: number) => Promise<void>;
   updatePetForBox: (cartItemId: string, petId: string, petName: string) => Promise<void>;
@@ -307,6 +309,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // ---------------------------------------------------------------------------
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartLoading, setCartLoading] = useState(false);
+  const [isCartReady, setIsCartReady] = useState(false);
 
   // Mỗi tài khoản 1 giỏ (unique index carts_user_id_unique). Hai tab cùng tạo giỏ thì tab chậm hơn
   // gặp lỗi trùng khóa (23505) và đọc lại giỏ vừa được tạo.
@@ -445,6 +448,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } finally {
         setCartLoading(false);
+        setIsCartReady(true);
         prevLoggedIn.current = isLoggedIn;
       }
     })();
@@ -649,6 +653,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updatePet,
         deletePet,
         cart,
+        isCartReady,
         addToCart,
         updateQuantity,
         updatePetForBox,
