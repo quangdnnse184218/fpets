@@ -20,9 +20,9 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          # Bỏ khoảng trắng / xuống dòng thừa khi dán secret và dấu "/" cuối URL
-          url=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
-          url=${url%/}
+          # Bỏ khoảng trắng / xuống dòng thừa khi dán secret; chỉ giữ https://xxxx.supabase.co
+          # (bỏ "/", "/rest/v1"... phía sau nếu lỡ dán cả đường dẫn)
+          url=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]' | sed -E 's#^(https://[^/]+).*#\1#')
           key=$(printf '%s' "$SUPABASE_ANON_KEY" | tr -d '[:space:]')
 
           if [ -z "$url" ]; then echo "::error::Chưa khai báo secret SUPABASE_URL"; exit 1; fi
