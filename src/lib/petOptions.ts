@@ -35,48 +35,53 @@ export function normalizeText(text: string): string {
   return text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d");
 }
 
-// Từ khóa nhận diện từng nhóm dị ứng trong tên + thành phần sản phẩm (so khớp nguyên từ)
+// Từ khóa nhận diện từng nhóm dị ứng trong tên + thành phần sản phẩm.
+// Giữ nguyên dấu tiếng Việt và so khớp nguyên từ: bỏ dấu thì "lon" (lon pate) trùng "lợn",
+// "cà rốt" trùng "cá", "bơ" trùng "bò" và khách bị cảnh báo sai.
 const ALLERGEN_KEYWORDS: Record<string, string[]> = {
-  "thit ga": ["ga", "chicken"],
-  "thit bo": ["bo", "beef"],
-  "thit heo": ["heo", "lon", "pork"],
-  "ca / hai san": ["ca", "hai san", "tom", "cua", "fish", "salmon", "tuna"],
-  "trung": ["trung", "egg"],
-  "sua": ["sua", "milk"],
-  "ngu coc / lua mi": ["ngu coc", "lua mi", "bot mi", "yen mach", "wheat"],
-  "bap / ngo": ["bap", "ngo", "corn"],
-  "dau nanh": ["dau nanh", "soy"],
+  "thit ga": ["gà", "chicken"],
+  "thit bo": ["bò", "beef"],
+  "thit heo": ["heo", "lợn", "pork"],
+  "ca / hai san": ["cá", "hải sản", "tôm", "cua", "mực", "fish", "salmon", "tuna"],
+  "trung": ["trứng", "egg"],
+  "sua": ["sữa", "phô mai", "milk", "cheese"],
+  "ngu coc / lua mi": ["ngũ cốc", "lúa mì", "bột mì", "yến mạch", "wheat"],
+  "bap / ngo": ["bắp", "ngô", "corn"],
+  "dau nanh": ["đậu nành", "soy"],
 };
+
+const lowerNfc = (text: string) => text.normalize("NFC").toLowerCase();
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Nguyên từ theo chữ cái Unicode (có dấu), không dùng \b vì \b chỉ hiểu chữ không dấu
+const wholeWord = (word: string) => new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(word)}(?![\\p{L}\\p{N}])`, "u");
 
 function keywordsFor(allergy: string): string[] {
   const key = normalizeText(allergy).trim();
   if (ALLERGEN_KEYWORDS[key]) return ALLERGEN_KEYWORDS[key];
   // Nhãn cũ từ Quiz ("Gà", "Hải sản", "Sữa bò"...) hoặc tự nhập: chọn nhóm có từ khóa khớp dài nhất
-  // ("sua bo" là dị ứng sữa chứ không phải thịt bò)
+  // ("sữa bò" là dị ứng sữa chứ không phải thịt bò)
+  const label = lowerNfc(allergy);
   let best: { words: string[]; len: number } | null = null;
-  for (const [group, words] of Object.entries(ALLERGEN_KEYWORDS)) {
-    for (const w of [group.replace(/^thit\s+/, ""), ...words]) {
-      if (new RegExp(`(^|[^a-z0-9])${w}([^a-z0-9]|$)`).test(key) && (!best || w.length > best.len)) {
-        best = { words, len: w.length };
-      }
+  for (const words of Object.values(ALLERGEN_KEYWORDS)) {
+    for (const w of words) {
+      if (wholeWord(w).test(label) && (!best || w.length > best.len)) best = { words, len: w.length };
     }
   }
-  return best ? best.words : [key.replace(/^thit\s+/, "")];
+  // Dị ứng tự nhập không thuộc nhóm nào ("Thịt vịt"): dò đúng từ đó, bỏ chữ "thịt" ở đầu
+  return best ? best.words : [label.trim().replace(/^thịt\s+/, "")];
 }
 
 /**
- * Các cặp (bé, dị ứng) khớp với sản phẩm. Chỉ để cảnh báo khách, vẫn cho mua.
+ * Sản phẩm có chứa nhóm dị ứng này không (so theo tên + thành phần, nguyên từ, có dấu).
+ * Dùng chung cho cảnh báo khách khi mua và cho màn hình tuyển chọn hộp của admin.
  * Dựa trên tên + thành phần sản phẩm vì DB chưa có cột allergens chuẩn hóa.
  */
-/**
- * Sản phẩm có chứa nhóm dị ứng này không (so theo tên + thành phần, nguyên từ, không dấu).
- * Dùng chung cho cảnh báo khách khi mua và cho màn hình tuyển chọn hộp của admin.
- */
 export function productHasAllergen(product: { name: string; ingredients: string[] | null }, allergy: string): boolean {
-  const haystack = ` ${normalizeText([product.name, ...(product.ingredients || [])].join(" "))} `;
-  return keywordsFor(allergy).some((w) => new RegExp(`[^a-z0-9]${w}[^a-z0-9]`).test(haystack));
+  const haystack = lowerNfc([product.name, ...(product.ingredients || [])].join(" | "));
+  return keywordsFor(allergy).some((w) => w !== "" && wholeWord(w).test(haystack));
 }
 
+/** Các cặp (bé, dị ứng) khớp với sản phẩm. Chỉ để cảnh báo khách, vẫn cho mua. */
 export function findAllergyConflicts(product: Pick<Product, "name" | "ingredients" | "species">, pets: Pet[]) {
   const conflicts: { petName: string; allergy: string }[] = [];
   for (const pet of pets) {

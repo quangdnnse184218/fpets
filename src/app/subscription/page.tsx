@@ -1,407 +1,296 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  Calendar,
-  Gift,
-  CheckCircle2,
-  PauseCircle,
-  XCircle,
-  RefreshCw,
-  ArrowRight,
-  HelpCircle,
-} from "lucide-react";
-import { formatVND } from "@/lib/formatters";
-import { fetchBoxTypes, fetchSubscriptionPlans } from "@/lib/catalog";
-import { QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
+import { ArrowRight, Check, Minus } from "lucide-react";
+import { formatDate, formatVND } from "@/lib/formatters";
+import { fetchBoxTypes, fetchPlanOptions } from "@/lib/catalog";
+import { QUIZ_NAME } from "@/lib/copy";
+import { planUnitPrice } from "@/lib/pricing";
 import { SHIPPING_CONFIG } from "@/lib/shipping";
+import { DeliverySchedule, SCHEDULE_LABEL, cutoffOf, deliveryWindowLabel, nextDeliveryWindow } from "@/lib/deliverySchedule";
 import { useApp } from "@/context/AppContext";
+import { buttonClass } from "@/components/ui/Button";
+import { SubscriptionPlan } from "@/types/models";
 
-// Lịch giao minh họa cho gói 3 hộp, đợt đầu tháng (SPEC §5: chốt hộp 7 ngày trước đợt giao)
-const SAMPLE_SCHEDULE = [
-  { month: "Tháng 1", cutoff: "Chốt ngày 25 tháng trước", box: "Hộp 1/3" },
-  { month: "Tháng 2", cutoff: "Chốt ngày 25/1", box: "Hộp 2/3" },
-  { month: "Tháng 3", cutoff: "Chốt ngày 25/2", box: "Hộp 3/3 · nhắc gia hạn" },
+// Luồng thật của gói định kỳ (SPEC §5): hồ sơ bé → chọn hộp, gói, đợt giao → trả trước → nhận hộp mỗi tháng → gia hạn
+const STEPS = [
+  { title: "Tạo hồ sơ cho bé", text: `Làm ${QUIZ_NAME} hoặc nhập nhanh: loài, cân nặng, độ tuổi, dị ứng và sở thích.` },
+  { title: "Chọn hộp, gói và đợt giao", text: "Box Tiêu chuẩn hoặc Premium; gói 1, 3 hoặc 6 hộp; giao đầu tháng hoặc giữa tháng." },
+  { title: "Thanh toán một lần", text: "Trả trước toàn bộ gói qua MoMo hoặc VNPay. FPETS không lưu thẻ và không tự trừ tiền." },
+  { title: "Nhận hộp mỗi tháng", text: "7 ngày trước đợt giao, FPETS chốt hồ sơ của bé và chọn món cho kỳ đó, không trùng món kỳ trước." },
+  { title: "Chấm món, gia hạn khi hết gói", text: "Chấm từng món thích hay không để hộp sau hợp hơn. Còn hộp cuối, FPETS nhắc bạn gia hạn." },
 ];
+
+// Các thao tác khách tự làm trong Tài khoản → Gói định kỳ, đúng với quy tắc đang chạy trên hệ thống
+const MANAGE = [
+  {
+    title: "Tạm dừng",
+    when: "Trước ngày chốt của kỳ sắp giao",
+    result: "Bỏ qua 1 hoặc 2 kỳ. Lịch giao lùi lại tương ứng, số hộp đã trả giữ nguyên. Hết thời gian tạm dừng gói tự chạy lại, hoặc bạn bấm Tiếp tục để nhận sớm hơn.",
+  },
+  {
+    title: "Đổi đợt giao, địa chỉ",
+    when: "Bất kỳ lúc nào",
+    result: "Lưu trước ngày chốt thì áp dụng ngay cho hộp sắp giao; sau ngày chốt thì áp dụng từ kỳ sau.",
+  },
+  {
+    title: "Gia hạn",
+    when: "Khi còn hộp cuối, hoặc trong 5 ngày sau khi hết gói",
+    result: "FPETS nhắc trước 7, 3 và 1 ngày. Chọn lại gói, thanh toán là gói nối tiếp lịch cũ. Không gia hạn thì gói tự kết thúc, không phát sinh phí.",
+  },
+  {
+    title: "Hủy gói",
+    when: "Bất kỳ lúc nào",
+    result: "Gói dừng nhắc gia hạn. Các hộp đã trả trước vẫn được giao đủ theo lịch; FPETS không hoàn tiền phần đã trả.",
+  },
+];
+
+const FAQ = [
+  {
+    q: "Ngày chốt là gì?",
+    a: "Là mốc 7 ngày trước đợt giao. Trước mốc này bạn tạm dừng gói, đổi địa chỉ hoặc cập nhật dị ứng, sở thích của bé; sau mốc này thay đổi áp dụng từ kỳ sau vì hộp đã được chuẩn bị.",
+  },
+  {
+    q: "Gói định kỳ thanh toán bằng gì?",
+    a: "MoMo hoặc VNPay, trả trước một lần cho cả gói. Mua thử 1 hộp lẻ thì có thể trả tiền khi nhận hàng (COD).",
+  },
+  {
+    q: "Tôi đăng ký gói cho nhiều bé được không?",
+    a: "Được. Mỗi bé có hồ sơ và gói riêng, để hộp đúng loài, cân nặng và dị ứng của từng bé.",
+  },
+];
+
+const addMonths = (d: Date, n: number) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, d.getUTCDate()));
 
 export default function SubscriptionIntroPage() {
   // Khách đã có hồ sơ bé thì chọn hộp luôn; chưa có thì làm Pet Quiz để tạo hồ sơ trước
   const { pets } = useApp();
   const planHref = (cycles: number) => (pets.length > 0 ? `/boxes?plan=${cycles}` : `/quiz?plan=${cycles}`);
-  const [selectedBoxLevel, setSelectedBoxLevel] = useState<'standard' | 'premium'>('standard');
-  const [standardPrice, setStandardPrice] = useState(299000);
-  const [premiumPrice, setPremiumPrice] = useState(499000);
-  const [plans, setPlans] = useState<{ id: string; name: string; cycle_count: number; discount_percentage: number; free_shipping: boolean; birthday_gift: boolean; badge: string | null; description: string | null }[]>([]);
+  const [tier, setTier] = useState<"standard" | "premium">("standard");
+  const [prices, setPrices] = useState<{ standard: number; premium: number } | null>(null);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [schedule, setSchedule] = useState<DeliverySchedule>("dau_thang");
 
   useEffect(() => {
     fetchBoxTypes().then((boxes) => {
-      const standard = boxes.find((b) => b.slug.includes("tieu-chuan")) || boxes[0];
-      const premium = boxes.find((b) => b.slug.includes("premium")) || boxes[boxes.length - 1];
-      if (standard) setStandardPrice(standard.basePrice);
-      if (premium) setPremiumPrice(premium.basePrice);
+      const min = (premium: boolean) => Math.min(...boxes.filter((b) => b.slug.includes("premium") === premium).map((b) => b.basePrice));
+      if (boxes.length > 0) setPrices({ standard: min(false), premium: min(true) });
     });
-    fetchSubscriptionPlans().then(setPlans);
+    fetchPlanOptions().then(setPlans);
   }, []);
 
-  const baseBoxPrice = selectedBoxLevel === 'standard' ? standardPrice : premiumPrice;
+  const basePrice = prices ? prices[tier] : null;
+  const first = nextDeliveryWindow(schedule);
+  const sampleBoxes = [0, 1, 2].map((i) => addMonths(first.start, i));
 
   return (
-    <div className="min-h-screen bg-surface-muted py-8 sm:py-14 space-y-12 sm:space-y-20">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 sm:space-y-20">
-        {/* HERO SECTION */}
-        <section className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-tag bg-pine-100 text-pine-900 text-xs font-bold">
-            <Calendar className="w-3.5 h-3.5 text-pine-800" />
-            <span>Gói định kỳ Mystery Box</span>
+    <div className="pb-12 sm:pb-16">
+      {/* Phần đầu trang: chữ và ảnh nằm cạnh nhau từ màn hình vừa trở lên */}
+      <section className="bg-surface-card border-b border-surface-border">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-14 items-center">
+          <div className="space-y-5">
+            <h1 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-pine-950 font-display tracking-tight leading-[1.15]">
+              Mỗi tháng một hộp quà chọn riêng cho bé.
+            </h1>
+            <p className="text-base text-bark-700 leading-relaxed">
+              Trả trước 1, 3 hoặc 6 hộp, mỗi tháng bé nhận 1 hộp vào đợt bạn chọn. Gói 3 và 6 hộp giảm 10–15% và miễn phí vận chuyển.
+            </p>
+            <ul className="space-y-2 text-sm text-bark-700">
+              {["Không tự động trừ tiền, không lưu thẻ", "Tạm dừng 1–2 kỳ khi bé còn nhiều đồ", "Hủy bất kỳ lúc nào, hộp đã trả vẫn giao đủ"].map((t) => (
+                <li key={t} className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-grass-700 shrink-0" />
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap gap-3 pt-1">
+              <a href="#chon-goi" className={buttonClass("primary", "lg")}>
+                Xem các gói <ArrowRight className="w-4 h-4" />
+              </a>
+              <Link href="/boxes" className={buttonClass("secondary", "lg")}>Xem các loại hộp</Link>
+            </div>
           </div>
-
-          <h1 className="text-3xl sm:text-5xl font-extrabold text-pine-950 font-display tracking-tight leading-tight">
-            Mỗi tháng một niềm vui bất ngờ gõ cửa nhà bạn.
-          </h1>
-
-          <p className="text-base sm:text-lg text-bark-700 leading-relaxed">
-            Trả trước cho 1, 3 hoặc 6 hộp, nhận mỗi tháng 1 hộp chọn riêng cho bé. Gói 3 và 6 hộp giảm 10–15% và freeship. Không tự động trừ tiền; tạm dừng hoặc hủy ngay trong tài khoản.
-          </p>
-
-          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/quiz"
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors"
-            >
-              <span>Làm {QUIZ_NAME}</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/boxes"
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-box bg-surface-card hover:bg-white text-pine-950 border border-surface-border font-bold text-sm transition-colors"
-            >
-              <span>Xem các loại box</span>
-            </Link>
-          </div>
-
-          {/* Ảnh minh họa tạo bằng AI; thay bằng ảnh chụp hộp thật khi có */}
-          <div className="relative mx-auto mt-6 max-w-2xl aspect-[4/3] rounded-container overflow-hidden border border-surface-border shadow-md">
+          {/* Ảnh hộp tạm; thay bằng ảnh chụp hộp thật khi có */}
+          <div className="relative aspect-[4/3] rounded-container overflow-hidden border border-surface-border bg-surface-muted">
             <Image
               src="/images/hero/fpets-box-open.jpg"
               alt="Hộp FPETS đang mở với gói snack, bóng cao su, dây thừng và thiệp gửi bé"
               fill
-              sizes="(max-width: 768px) 100vw, 672px"
+              sizes="(max-width: 768px) 100vw, 50vw"
               className="object-cover"
               priority
             />
-            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/45 text-white text-[10px]">Ảnh minh họa</span>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* BẢNG SO SÁNH 3 GÓI 1/3/6 HỘP */}
-        <section className="space-y-6">
-          <div className="text-center space-y-2 max-w-xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
-              Chọn gói định kỳ
-            </h2>
-            <p className="text-xs sm:text-sm text-bark-600">
-              Thanh toán trả trước một lần. Không tự động gia hạn, không trừ tiền thẻ.
-            </p>
-          </div>
-
-          {/* Toggle chọn loại box để tính tiền minh họa */}
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <div className="bg-surface-card border border-surface-border p-1 rounded-box flex items-center gap-1 text-xs">
-              <button
-                type="button"
-                onClick={() => setSelectedBoxLevel('standard')}
-                className={`px-3 py-1.5 rounded font-bold transition-colors ${
-                  selectedBoxLevel === 'standard' ? 'bg-pine-900 text-white' : 'text-bark-600 hover:text-pine-950'
-                }`}
-              >
-                Box Tiêu chuẩn ({formatVND(standardPrice)}/hộp)
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedBoxLevel('premium')}
-                className={`px-3 py-1.5 rounded font-bold transition-colors ${
-                  selectedBoxLevel === 'premium' ? 'bg-pine-900 text-white' : 'text-bark-600 hover:text-pine-950'
-                }`}
-              >
-                Box Premium ({formatVND(premiumPrice)}/hộp)
-              </button>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 space-y-12 sm:space-y-16">
+        {/* BẢNG GÓI */}
+        <section id="chon-goi" className="space-y-6 scroll-mt-20">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">Chọn gói</h2>
+            <div role="group" aria-label="Loại hộp để tính giá" className="inline-flex p-1 rounded-box bg-surface-card border border-surface-border text-sm self-start">
+              {(["standard", "premium"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  aria-pressed={tier === t}
+                  onClick={() => setTier(t)}
+                  className={`min-h-10 px-4 rounded-[10px] font-bold transition-colors ${tier === t ? "bg-pine-900 text-white" : "text-bark-600 hover:text-pine-950"}`}
+                >
+                  {t === "standard" ? "Box Tiêu chuẩn" : "Box Premium"}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* 3 Thẻ so sánh gói */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 items-stretch">
+            {plans.length === 0 && [0, 1, 2].map((i) => <div key={i} className="h-80 rounded-container bg-surface-muted animate-pulse" />)}
             {plans.map((plan) => {
-              const isPopular = plan.cycle_count === 3;
-              const isBest = plan.cycle_count === 6;
-              const originalTotal = baseBoxPrice * plan.cycle_count;
-              const discountAmount = (originalTotal * plan.discount_percentage) / 100;
-              const finalTotal = originalTotal - discountAmount;
-              const perBoxPrice = Math.round(finalTotal / plan.cycle_count);
-
+              const recommended = plan.cycles === 3;
+              const unit = basePrice !== null ? planUnitPrice(basePrice, plan.discountPercent) : null;
+              const perks: [boolean, string][] = [
+                [true, plan.cycles === 1 ? "Nhận 1 hộp" : `Mỗi tháng 1 hộp, trong ${plan.cycles} tháng`],
+                [plan.freeShipping, plan.freeShipping ? "Miễn phí vận chuyển mọi hộp" : `Phí ship ${formatVND(SHIPPING_CONFIG.hcmFee)} – ${formatVND(SHIPPING_CONFIG.otherFee)}`],
+                [true, "Tạm dừng hoặc đổi đợt giao trước ngày chốt"],
+                [plan.birthdayGift, plan.birthdayGift ? "Quà sinh nhật cho bé" : "Không kèm quà sinh nhật"],
+              ];
               return (
                 <div
                   key={plan.id}
-                  className={`rounded-container p-6 sm:p-7 bg-surface-card border flex flex-col justify-between transition-shadow relative ${
-                    isPopular
-                      ? "border-pine-800 shadow-md ring-2 ring-pine-900/10"
-                      : isBest
-                      ? "border-honey-500 shadow-md ring-2 ring-honey-500/20"
-                      : "border-surface-border shadow-xs"
-                  }`}
+                  className={`relative rounded-container p-5 sm:p-6 bg-surface-card border flex flex-col ${recommended ? "border-pine-900 shadow-md" : "border-surface-border"}`}
                 >
-                  {/* Badge nổi */}
-                  {plan.badge && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className={`px-3 py-0.5 rounded-full text-[11px] font-extrabold shadow-xs ${
-                        isPopular ? "bg-pine-900 text-white" : "bg-honey-600 text-white"
-                      }`}>
-                        {plan.badge}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-xl font-extrabold text-pine-950 font-display">
-                        {plan.name}
-                      </h3>
-                      <p className="text-xs text-bark-600 mt-1 leading-relaxed">
-                        {plan.description}
-                      </p>
-                    </div>
-
-                    {/* Khối giá */}
-                    <div className="pt-2 border-t border-surface-border">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-3xl font-extrabold text-pine-950 font-display">
-                          {formatVND(perBoxPrice)}
-                        </span>
-                        <span className="text-xs text-bark-500">/ hộp</span>
-                      </div>
-
-                      {plan.discount_percentage > 0 && (
-                        <div className="text-xs text-bark-500 mt-1 flex items-center gap-1.5">
-                          <span className="line-through">{formatVND(baseBoxPrice)}</span>
-                          <span className="font-bold text-grass-700 bg-grass-100 px-1.5 py-0.5 rounded">
-                            Giảm {plan.discount_percentage}%
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="text-[11px] text-bark-500 mt-2">
-                        Tổng trả trước: <strong className="text-pine-950 font-bold">{formatVND(finalTotal)}</strong>{plan.cycle_count > 1 ? ` cho ${plan.cycle_count} hộp` : ""}
-                      </div>
-                    </div>
-
-                    {/* Quyền lợi danh sách */}
-                    <div className="space-y-2.5 pt-3 border-t border-surface-border text-xs text-bark-700">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-grass-700 shrink-0" />
-                        <span>{plan.cycle_count === 1 ? "Nhận 1 hộp, không cam kết" : `Mỗi tháng 1 hộp, trong ${plan.cycle_count} tháng`}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-grass-700 shrink-0" />
-                        <span>Tuyển chọn riêng theo sở thích & dị ứng</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {plan.free_shipping ? (
-                          <CheckCircle2 className="w-4 h-4 shrink-0 text-grass-700" />
-                        ) : (
-                          <XCircle className="w-4 h-4 shrink-0 text-bark-300" />
-                        )}
-                        <span className={plan.free_shipping ? 'font-bold text-grass-800' : 'text-bark-400'}>
-                          {plan.free_shipping ? 'Miễn phí vận chuyển mọi hộp' : `Phí ship ${formatVND(SHIPPING_CONFIG.hcmFee)} / ${formatVND(SHIPPING_CONFIG.otherFee)}`}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {plan.birthday_gift ? (
-                          <CheckCircle2 className="w-4 h-4 shrink-0 text-honey-600" />
-                        ) : (
-                          <XCircle className="w-4 h-4 shrink-0 text-bark-300" />
-                        )}
-                        <span className={plan.birthday_gift ? 'font-bold text-honey-800' : 'text-bark-400'}>
-                          {plan.birthday_gift ? 'Quà sinh nhật cho bé' : 'Không kèm quà sinh nhật'}
-                        </span>
-                      </div>
-                      {plan.cycle_count > 1 && (
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-grass-700 shrink-0" />
-                          <span>Tạm dừng 1–2 kỳ trước ngày chốt</span>
-                        </div>
-                      )}
-                    </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-lg font-extrabold text-pine-950 font-display">{plan.name}</h3>
+                    {recommended && <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-pine-900">Chọn nhiều nhất</span>}
                   </div>
-
-                  <div className="pt-6 mt-4">
-                    <Link
-                      href={planHref(plan.cycle_count)}
-                      className={`w-full py-3 rounded-box text-center font-bold text-xs flex items-center justify-center gap-1.5 transition-colors ${
-                        isPopular
-                          ? "bg-pine-900 hover:bg-pine-800 text-white shadow-xs"
-                          : "bg-white hover:bg-pine-50 text-pine-900 border border-pine-800/40"
-                      }`}
-                    >
-                      <span>Đăng ký {plan.name}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                  <div className="mt-4">
+                    <span className="text-3xl font-extrabold text-pine-950 font-display">{unit !== null ? formatVND(unit) : "—"}</span>
+                    <span className="text-sm text-bark-500"> / hộp</span>
                   </div>
+                  <p className="mt-1 text-xs text-bark-600 min-h-[1.25rem]">
+                    {plan.discountPercent > 0 && basePrice !== null ? (
+                      <>
+                        <span className="line-through">{formatVND(basePrice)}</span>
+                        <span className="ml-1.5 font-bold text-grass-700">Giảm {plan.discountPercent}%</span>
+                      </>
+                    ) : (
+                      "Giá gốc"
+                    )}
+                  </p>
+                  <p className="mt-3 pt-3 border-t border-surface-border text-sm text-bark-700">
+                    Trả trước <strong className="text-pine-950">{unit !== null ? formatVND(unit * plan.cycles) : "—"}</strong>
+                    {plan.cycles > 1 ? ` cho ${plan.cycles} hộp` : ""}
+                  </p>
+                  <ul className="mt-4 space-y-2 text-sm flex-1">
+                    {perks.map(([on, text]) => (
+                      <li key={text} className={`flex items-start gap-2 ${on ? "text-bark-800" : "text-bark-400"}`}>
+                        {on ? <Check className="w-4 h-4 text-grass-700 shrink-0 mt-0.5" /> : <Minus className="w-4 h-4 shrink-0 mt-0.5" />}
+                        <span>{text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href={planHref(plan.cycles)} className={`${buttonClass(recommended ? "primary" : "secondary", "md")} mt-6 w-full`}>
+                    Chọn {plan.name}
+                  </Link>
                 </div>
               );
             })}
           </div>
+          <p className="text-xs text-bark-500">
+            Giá tính cho {tier === "standard" ? "Box Tiêu chuẩn" : "Box Premium"}. Chưa chắc bé có hợp không?{" "}
+            <Link href="/boxes" className="font-bold text-pine-900 underline underline-offset-2">Mua thử 1 hộp</Link>, trả tiền khi nhận hàng.
+          </p>
         </section>
 
-        {/* 4 BƯỚC HOẠT ĐỘNG */}
-        <section className="rounded-container bg-surface-card border border-surface-border p-6 sm:p-10 space-y-8 shadow-xs">
-          <div className="text-center space-y-2 max-w-xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
-              Cách gói định kỳ hoạt động
-            </h2>
-            <p className="text-xs sm:text-sm text-bark-600">
-              4 bước để bé nhận hộp đều đặn mỗi tháng
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="space-y-2.5 text-center sm:text-left">
-              <div className="w-10 h-10 rounded-full bg-pine-900 text-white font-extrabold flex items-center justify-center text-sm font-display mx-auto sm:mx-0">
-                1
-              </div>
-              <h3 className="font-bold text-sm text-pine-950">Tạo hồ sơ thú cưng</h3>
-              <p className="text-xs text-bark-600 leading-relaxed">
-                Trả lời {QUIZ_NAME} ({QUIZ_LENGTH}): loài, cân nặng, độ tuổi, sở thích và thành phần bé bị dị ứng.
-              </p>
-            </div>
-
-            <div className="space-y-2.5 text-center sm:text-left">
-              <div className="w-10 h-10 rounded-full bg-pine-900 text-white font-extrabold flex items-center justify-center text-sm font-display mx-auto sm:mx-0">
-                2
-              </div>
-              <h3 className="font-bold text-sm text-pine-950">Chọn gói và đợt giao</h3>
-              <p className="text-xs text-bark-600 leading-relaxed">
-                Chọn gói 1, 3 hoặc 6 hộp và đợt giao thuận tiện: Đầu tháng (ngày 1–5) hoặc Giữa tháng (ngày 15–20).
-              </p>
-            </div>
-
-            <div className="space-y-2.5 text-center sm:text-left">
-              <div className="w-10 h-10 rounded-full bg-pine-900 text-white font-extrabold flex items-center justify-center text-sm font-display mx-auto sm:mx-0">
-                3
-              </div>
-              <h3 className="font-bold text-sm text-pine-950">FPETS chọn món theo hồ sơ</h3>
-              <p className="text-xs text-bark-600 leading-relaxed">
-                Đến ngày chốt (7 ngày trước đợt giao), FPETS chọn món cho kỳ đó, không trùng món đã gửi các kỳ trước.
-              </p>
-            </div>
-
-            <div className="space-y-2.5 text-center sm:text-left">
-              <div className="w-10 h-10 rounded-full bg-pine-900 text-white font-extrabold flex items-center justify-center text-sm font-display mx-auto sm:mx-0">
-                4
-              </div>
-              <h3 className="font-bold text-sm text-pine-950">Nhận hộp và chấm điểm món</h3>
-              <p className="text-xs text-bark-600 leading-relaxed">
-                Mở hộp cùng bé, chấm từng món &ldquo;thích / bình thường / không thích&rdquo; để hộp sau hợp khẩu vị hơn.
-              </p>
-            </div>
-          </div>
-
-          {/* Lịch giao minh họa */}
-          <div className="pt-6 border-t border-surface-border space-y-3">
-            <div className="text-xs font-bold text-pine-950">Ví dụ lịch giao gói 3 hộp, đợt đầu tháng</div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {SAMPLE_SCHEDULE.map((item, i) => (
-                <div key={item.month} className="relative p-4 rounded-box bg-surface-muted border border-surface-border flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-box bg-honey-100 text-honey-800 flex items-center justify-center shrink-0">
-                    <Gift className="w-5 h-5" />
-                  </div>
-                  <div className="text-xs">
-                    <div className="font-bold text-pine-950">{item.month} · giao ngày 1–5</div>
-                    <div className="text-bark-600">{item.box}</div>
-                    <div className="text-[11px] text-bark-400">{item.cutoff}</div>
-                  </div>
-                  {i < SAMPLE_SCHEDULE.length - 1 && (
-                    <ArrowRight className="hidden sm:block absolute -right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-bark-300 z-10" />
-                  )}
+        {/* CÁCH HOẠT ĐỘNG */}
+        <section aria-labelledby="how-heading" className="space-y-6">
+          <h2 id="how-heading" className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">Cách gói định kỳ hoạt động</h2>
+          <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-x-5 gap-y-6">
+            {STEPS.map((s, i) => (
+              <li key={s.title} className="relative">
+                <div className="flex items-center gap-3 lg:block">
+                  <span className="w-9 h-9 rounded-full bg-pine-900 text-white text-sm font-extrabold font-display flex items-center justify-center shrink-0 relative z-10">
+                    {i + 1}
+                  </span>
+                  {/* Đường nối giữa các bước trên desktop */}
+                  {i < STEPS.length - 1 && <span aria-hidden="true" className="hidden lg:block absolute top-[18px] left-9 right-[-20px] h-px bg-pine-800/30" />}
+                  <h3 className="text-sm font-bold text-pine-950 lg:mt-3">{s.title}</h3>
                 </div>
-              ))}
+                <p className="mt-1.5 text-sm text-bark-600 leading-relaxed pl-12 lg:pl-0">{s.text}</p>
+              </li>
+            ))}
+          </ol>
+
+          {/* Lịch giao tính theo ngày thật nếu đăng ký hôm nay */}
+          <div className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h3 className="text-sm font-bold text-pine-950">Nếu đăng ký gói 3 hộp hôm nay</h3>
+              <div role="group" aria-label="Đợt giao" className="inline-flex p-1 rounded-box bg-surface-muted text-xs self-start">
+                {(Object.keys(SCHEDULE_LABEL) as DeliverySchedule[]).map((sc) => (
+                  <button
+                    key={sc}
+                    type="button"
+                    aria-pressed={schedule === sc}
+                    onClick={() => setSchedule(sc)}
+                    className={`min-h-9 px-3 rounded-lg font-bold transition-colors ${schedule === sc ? "bg-white text-pine-950 shadow-xs" : "text-bark-600"}`}
+                  >
+                    {SCHEDULE_LABEL[sc]}
+                  </button>
+                ))}
+              </div>
             </div>
+            <ol className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {sampleBoxes.map((start, i) => (
+                <li key={i} className="p-3.5 rounded-box bg-surface-muted/70 border border-surface-border text-sm">
+                  <p className="text-xs font-bold text-bark-500 uppercase tracking-wide">Hộp {i + 1}/3</p>
+                  <p className="font-bold text-pine-950 mt-1">Giao {deliveryWindowLabel(start, schedule)}</p>
+                  <p className="text-xs text-bark-600 mt-0.5">Chốt hồ sơ ngày {formatDate(cutoffOf(start))}</p>
+                  {i === 2 && <p className="text-xs text-pine-900 font-semibold mt-1">FPETS nhắc gia hạn trước ngày chốt</p>}
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
 
-        {/* CHÍNH SÁCH QUẢN LÝ GÓI LINH HOẠT */}
-        <section className="space-y-6">
-          <div className="text-center space-y-2 max-w-xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
-              Tạm dừng, gia hạn hoặc hủy dễ dàng
-            </h2>
-            <p className="text-xs sm:text-sm text-bark-600">
-              Mọi thao tác làm ngay trong mục Gói định kỳ của tài khoản.
+        {/* QUẢN LÝ GÓI */}
+        <section aria-labelledby="manage-heading" className="space-y-5">
+          <div className="space-y-1.5">
+            <h2 id="manage-heading" className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">Tạm dừng, gia hạn hoặc hủy</h2>
+            <p className="text-sm text-bark-600">
+              Bạn tự làm trong <Link href="/my-account/subscriptions" className="font-bold text-pine-900 underline underline-offset-2">Tài khoản → Gói định kỳ</Link>, không cần gọi điện.
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="p-6 rounded-container bg-surface-card border border-surface-border shadow-2xs space-y-3">
-              <div className="w-10 h-10 rounded-box bg-pine-100 text-pine-900 flex items-center justify-center">
-                <PauseCircle className="w-5 h-5" />
+          <div className="rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border">
+            {MANAGE.map((m) => (
+              <div key={m.title} className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-1 sm:gap-6">
+                <div>
+                  <h3 className="text-sm font-bold text-pine-950">{m.title}</h3>
+                  <p className="text-xs text-bark-500 mt-0.5">{m.when}</p>
+                </div>
+                <p className="text-sm text-bark-700 leading-relaxed">{m.result}</p>
               </div>
-              <h3 className="font-bold text-base text-pine-950">Tạm dừng khi bận</h3>
-              <p className="text-xs text-bark-600 leading-relaxed">
-                Đi du lịch hoặc bé còn nhiều đồ chưa dùng hết? Tạm dừng 1 hoặc 2 kỳ trước ngày chốt, lịch giao tự lùi lại, hộp đã trả trước vẫn giữ nguyên.
-              </p>
-            </div>
-
-            <div className="space-y-3 p-6 rounded-container bg-surface-card border border-surface-border shadow-2xs">
-              <div className="w-10 h-10 rounded-box bg-honey-100 text-honey-800 flex items-center justify-center">
-                <RefreshCw className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-base text-pine-950">Gia hạn khi hết gói</h3>
-              <p className="text-xs text-bark-600 leading-relaxed">
-                Khi còn hộp cuối, FPETS nhắc bạn trên web trước 7, 3 và 1 ngày. Bấm Gia hạn, chọn lại gói và thanh toán là gói nối tiếp. Không gia hạn thì gói tự kết thúc sau 5 ngày, không trừ tiền.
-              </p>
-            </div>
-
-            <div className="space-y-3 p-6 rounded-container bg-surface-card border border-surface-border shadow-2xs">
-              <div className="w-10 h-10 rounded-box bg-grass-100 text-grass-800 flex items-center justify-center">
-                <XCircle className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-base text-pine-950">Hủy gói bất kỳ lúc nào</h3>
-              <p className="text-xs text-bark-600 leading-relaxed">
-                Bấm Hủy bất cứ lúc nào. Các hộp đã trả trước vẫn được giao đủ; FPETS không hoàn tiền phần đã trả.
-              </p>
-            </div>
+            ))}
           </div>
         </section>
 
-        {/* FAQ MINI CHO GÓI ĐỊNH KỲ */}
-        <section className="rounded-container bg-surface-card border border-surface-border p-6 sm:p-8 space-y-4 shadow-xs">
-          <h2 className="text-lg font-bold text-pine-950 font-display flex items-center gap-2">
-            <HelpCircle className="w-5 h-5 text-pine-800" />
-            <span>Câu hỏi nhanh về Gói định kỳ</span>
-          </h2>
-
-          <div className="divide-y divide-surface-border text-xs sm:text-sm space-y-3 pt-1">
-            <div className="pt-3 space-y-1">
-              <div className="font-bold text-pine-950">Ngày chốt kỳ là gì?</div>
-              <p className="text-bark-600 leading-relaxed">
-                Là mốc 7 ngày trước đợt giao. Trước mốc này, bạn có thể tạm dừng gói hoặc cập nhật sở thích, dị ứng trong hồ sơ thú cưng; sau mốc này thay đổi áp dụng từ kỳ sau.
-              </p>
-            </div>
-
-            <div className="pt-3 space-y-1">
-              <div className="font-bold text-pine-950">Tôi có thể đổi địa chỉ nhận hàng giữa các kỳ không?</div>
-              <p className="text-bark-600 leading-relaxed">
-                Có. Bạn liên hệ FPETS qua hotline hoặc trang Liên hệ trước ngày chốt kỳ, chúng tôi sẽ cập nhật địa chỉ cho kỳ giao tiếp theo.
-              </p>
-            </div>
-
-            <div className="pt-3 space-y-1">
-              <div className="font-bold text-pine-950">Tôi có thể đăng ký gói cho nhiều bé cùng lúc được không?</div>
-              <p className="text-bark-600 leading-relaxed">
-                Được. Mỗi bé có hồ sơ thú cưng riêng và gói riêng, để hộp đúng loài, cân nặng và dị ứng của từng bé.
-              </p>
-            </div>
+        {/* HỎI NHANH */}
+        <section aria-labelledby="sub-faq-heading" className="space-y-4 max-w-3xl">
+          <h2 id="sub-faq-heading" className="text-xl sm:text-2xl font-extrabold text-pine-950 font-display">Câu hỏi về gói định kỳ</h2>
+          <div className="rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border">
+            {FAQ.map((item) => (
+              <details key={item.q} className="group p-4 sm:p-5">
+                <summary className="flex items-center justify-between gap-3 cursor-pointer list-none text-sm font-bold text-pine-950">
+                  {item.q}
+                  <span aria-hidden="true" className="text-bark-500 text-lg leading-none transition-transform group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-2 text-sm text-bark-600 leading-relaxed">{item.a}</p>
+              </details>
+            ))}
           </div>
+          <Link href="/faq" className="inline-block text-sm font-bold text-pine-900 underline underline-offset-2">Xem tất cả câu hỏi</Link>
         </section>
       </div>
     </div>

@@ -23,7 +23,7 @@ import {
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = safeRedirect(searchParams.get("redirect"), "/my-account/pets");
+  const redirectUrl = safeRedirect(searchParams.get("redirect"), "/my-account");
   const { refreshUser } = useApp();
 
   // Form states

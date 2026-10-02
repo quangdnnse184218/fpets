@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Check, Copy, Heart, MapPin, Minus, Star, ThumbsDown, Truck } from "lucide-react";
+import { ArrowLeft, Copy, Heart, MapPin, Minus, Star, ThumbsDown, Truck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatVND, formatDateTime } from "@/lib/formatters";
 import {
@@ -21,6 +21,7 @@ import {
 } from "@/lib/orderDisplay";
 import { fetchMyOrder, MyOrder, orderLines } from "@/lib/myOrders";
 import { EXCHANGE_POLICY } from "@/lib/copy";
+import OrderStepper from "@/components/common/OrderStepper";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -97,22 +98,16 @@ export default function OrderDetailPage() {
             Đơn đã hủy{order.cancelled_at ? ` lúc ${formatDateTime(order.cancelled_at)}` : ""}.{order.cancellation_reason ? ` Lý do: ${order.cancellation_reason}` : ""}
           </div>
         ) : (
-          <ol className="grid grid-cols-5 gap-1">
-            {ORDER_TIMELINE.map((step, i) => {
-              const done = i <= stepIdx;
-              // Mốc "Xác nhận" = lúc thanh toán online; đơn COD trả tiền khi nhận nên không dùng paid_at ở bước này
-              const time = i === 0 ? order.created_at : i === 1 && order.payment_method !== "cod" ? order.paid_at : null;
-              return (
-                <li key={step.key} className="flex flex-col items-center text-center gap-1">
-                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${done ? "bg-pine-900 text-white" : "bg-surface-muted text-bark-400 border border-surface-border"}`}>
-                    {done ? <Check className="w-3.5 h-3.5" /> : i + 1}
-                  </span>
-                  <span className={`text-[11px] font-semibold ${done ? "text-pine-950" : "text-bark-400"}`}>{step.label}</span>
-                  {done && time && <span className="text-[10px] text-bark-500 leading-tight">{formatDateTime(time)}</span>}
-                </li>
-              );
-            })}
-          </ol>
+          <div className="py-2">
+            <OrderStepper
+              currentIndex={stepIdx}
+              steps={ORDER_TIMELINE.map((step, i) => {
+                // Mốc thời gian đang lưu: lúc đặt, lúc xác nhận (thanh toán online; đơn COD được xác nhận ngay khi đặt) và lúc giao xong
+                const time = i === 0 ? order.created_at : i === 1 ? (order.payment_method === "cod" ? order.created_at : order.paid_at) : i === 4 ? order.delivered_at : null;
+                return { label: step.label, time: i <= stepIdx && time ? formatDateTime(time) : null };
+              })}
+            />
+          </div>
         )}
         {order.status === "doi_tra" && (
           <div className="p-3 rounded-box bg-honey-50 border border-honey-200 text-xs text-honey-900">

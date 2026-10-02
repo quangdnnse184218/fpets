@@ -64,7 +64,7 @@ Mỗi hộp gắn với một Pet Profile; món cụ thể do admin chọn sát 
 | Loại | Dành cho | Số món | Giá trị hàng tối thiểu | Giá bán |
 | --- | --- | --- | --- | --- |
 | Box Tiêu chuẩn | Chó nhỏ, chó lớn, mèo (3 phiên bản) | 4–5 | 380.000₫ | 299.000₫ |
-| Box Premium | Chó nhỏ, chó lớn, mèo (3 phiên bản) | 6–7 | 650.000₫ | 499.000₫ |
+| Box Premium | Chó nhỏ, chó lớn, mèo (3 phiên bản) | 7–8 | 650.000₫ | 499.000₫ |
 
 Mỗi hộp có ít nhất 1 món ăn (pate/snack/hạt gói nhỏ), 1 đồ chơi và 1 phụ kiện hoặc đồ vệ sinh. Giai đoạn đầu chỉ phục vụ chó và mèo.
 
@@ -76,7 +76,7 @@ Mỗi hộp có ít nhất 1 món ăn (pate/snack/hạt gói nhỏ), 1 đồ ch�
 
 **Pet Quiz cho khách mới**
 
-1. Khách trả lời 5 câu ở trang Quiz, không cần đăng nhập.
+1. Khách trả lời 7 câu ở trang Quiz (loài, tên và giới tính, cân nặng, độ tuổi, dị ứng, sở thích, loại hộp và cách nhận), không cần đăng nhập. Mọi câu đều bắt buộc.
 2. Hệ thống gợi ý loại box phù hợp và hiện giá.
 3. Khi bấm mua, khách đăng nhập hoặc đăng ký nhanh (SĐT/email hoặc Google); câu trả lời quiz tự lưu thành Pet Profile.
 
@@ -103,7 +103,7 @@ flowchart LR
   H --> J[Giao hàng] --> K[Review]
 ```
 
-Sản phẩm lẻ cho phép mua không cần tài khoản; giỏ có box thì bắt buộc đăng nhập để gắn Pet Profile.
+Mọi đơn đều cần đăng nhập: giỏ hàng lưu theo tài khoản; giỏ có box thì gắn với Pet Profile của khách.
 
 **Cart: mỗi dòng sản phẩm**
 
@@ -139,9 +139,9 @@ Khách trả trước một lần cho 1, 3 hoặc 6 hộp, nhận 1 hộp mỗi 
 | --- | --- | --- | --- | --- | --- |
 | Gói 1 | 1 | 0% | 299.000₫ | 299.000₫ | — |
 | Gói 3 | 3 | 10% | 807.000₫ | 269.000₫ | Freeship cả gói |
-| Gói 6 | 6 | 15% | 1.525.000₫ | 254.000₫ | Freeship + quà sinh nhật bé |
+| Gói 6 | 6 | 15% | 1.524.000₫ | 254.000₫ | Freeship + quà sinh nhật bé |
 
-Box Premium áp dụng cùng tỉ lệ giảm. Gói định kỳ chỉ thanh toán online (MoMo/VNPay), không COD.
+Giá mỗi hộp sau giảm được làm tròn đến 1.000₫, giá trả trước = giá mỗi hộp × số hộp. Box Premium áp dụng cùng tỉ lệ giảm. Gói định kỳ chỉ thanh toán online (MoMo/VNPay), không COD.
 
 **Luồng đăng ký**
 

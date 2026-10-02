@@ -30,15 +30,15 @@ export function resolveImageUrl(raw: string | undefined, fallback: string): stri
   return fallback;
 }
 
-// Món "tiêu biểu" chỉ là gợi ý minh họa trên trang danh sách box (marketing copy),
+// Món "tiêu biểu" là ví dụ lấy từ danh mục món dùng cho hộp, hiển thị ở trang chi tiết box;
 // món thật trong từng hộp cụ thể do nhân viên kho tuyển chọn ở admin/box-curation.
 const BOX_TYPICAL_ITEMS: Record<string, string[]> = {
-  "box-tieu-chuan-cho-nho": ["Snack thịt sấy giòn", "Bánh quy sạch răng", "Bóng phát tiếng kêu nhỏ", "Khăn lau tai mắt dịu nhẹ"],
-  "box-tieu-chuan-cho-lon": ["Gặm xương sạch răng size L", "Dây thừng kéo co siêu bền", "Thịt sấy giàu đạm", "Xịt khử mùi chân lông"],
+  "box-tieu-chuan-cho-nho": ["Hạt thịt cừu & gạo lứt", "Xương gặm sạch răng", "Bóng cao su phát tiếng", "Khăn lau tai mắt"],
+  "box-tieu-chuan-cho-lon": ["Hạt cá hồi & khoai lang", "Xương gặm sạch răng cỡ lớn", "Dây thừng kéo co", "Xịt khử mùi tinh dầu bưởi"],
   "box-tieu-chuan-meo": ["Pate cá hồi & bí đỏ", "Cá nhồi catnip", "Súp thưởng cá ngừ", "Cần câu lông vũ"],
-  "box-premium-cho": ["Thịt bò Úc sấy lạnh", "Đồ chơi giấu thức ăn", "Bóng cao su phát tiếng", "Khăn yếm cho cún", "Snack ức gà sấy lạnh"],
-  "box-premium-cho-lon": ["Thịt bò Úc sấy lạnh", "Dây thừng kéo co cỡ lớn", "Đồ chơi giấu thức ăn", "Xịt khử mùi tinh dầu bưởi", "Bánh quy canxi vị bò"],
-  "box-premium-meo": ["Pate cá hồi & bí đỏ", "Cá ngừ sấy lạnh", "Lược chải lông nút bấm", "Chuột đồ chơi chạy pin", "Súp thưởng cá ngừ"],
+  "box-premium-cho": ["Thịt bò Úc sấy lạnh", "Đồ chơi giấu thức ăn", "Yếm dắt đi dạo", "Dầu tắm hương phấn", "Snack ức gà sấy lạnh"],
+  "box-premium-cho-lon": ["Thịt bò Úc sấy lạnh", "Đồ chơi giấu thức ăn cỡ lớn", "Dây dắt phản quang", "Xịt khử mùi tinh dầu bưởi", "Bánh quy canxi vị bò"],
+  "box-premium-meo": ["Cá ngừ sấy lạnh", "Đường hầm vải", "Lược chải lông nút bấm", "Bát ăn chống gù", "Súp thưởng cá ngừ"],
 };
 
 export type ProductWithCategory = Tables<"products"> & {

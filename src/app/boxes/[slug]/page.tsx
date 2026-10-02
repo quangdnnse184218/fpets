@@ -9,6 +9,7 @@ import { formatVND, formatDate } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
 import { Check, CheckCircle2, ShieldCheck, PlusCircle, PawPrint, Truck, ChevronDown, Gift } from "lucide-react";
 import { EXCHANGE_POLICY, QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
+import { planUnitPrice } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
 import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, nextDeliveryWindow } from "@/lib/deliverySchedule";
@@ -98,7 +99,7 @@ export default function BoxDetailPage() {
   const selectedPlan = plans.find((p) => p.id === selectedPlanId);
 
   // Giá hiển thị để khách tham khảo; số tiền thật do server (subscribe_to_box) tính lại
-  const unitDiscountedPrice = box && selectedPlan ? Math.round(box.basePrice * (1 - selectedPlan.discountPercent / 100)) : 0;
+  const unitDiscountedPrice = box && selectedPlan ? planUnitPrice(box.basePrice, selectedPlan.discountPercent) : 0;
   const planTotalPrice = selectedPlan ? unitDiscountedPrice * selectedPlan.cycles : 0;
   const maxDiscount = plans.reduce((m, p) => Math.max(m, p.discountPercent), 0);
 
@@ -261,7 +262,7 @@ export default function BoxDetailPage() {
                         <span className="text-sm font-bold text-pine-950">{pet.name}</span>
                       </div>
                       <div className="text-[11px] text-bark-500 mt-1 truncate">
-                        {pet.breed} · {pet.weight}kg
+                        {[pet.breed, pet.weight ? `${pet.weight} kg` : ""].filter(Boolean).join(" · ")}
                       </div>
                       {pet.allergies.length > 0 && (
                         <div className="text-[10px] text-red-700 mt-1 truncate font-medium">
@@ -329,7 +330,7 @@ export default function BoxDetailPage() {
                 </span>
                 <div className="text-xs font-bold text-pine-950">{purchaseMode === 'subscription' ? "✓ " : ""}Đăng ký định kỳ</div>
                 <div className="text-base font-extrabold text-pine-950 font-display mt-0.5">
-                  Từ {formatVND(Math.round(box.basePrice * (1 - maxDiscount / 100)))}/hộp
+                  Từ {formatVND(planUnitPrice(box.basePrice, maxDiscount))}/hộp
                 </div>
                 <div className="text-[11px] text-grass-700 font-medium mt-1">Gói 1, 3, 6 hộp · freeship gói 3, 6</div>
               </button>
@@ -346,7 +347,7 @@ export default function BoxDetailPage() {
               <div className="grid grid-cols-3 gap-2">
                 {plans.map((plan) => {
                   const isPlanSelected = plan.id === selectedPlanId;
-                  const discountedPerBox = Math.round(box.basePrice * (1 - plan.discountPercent / 100));
+                  const discountedPerBox = planUnitPrice(box.basePrice, plan.discountPercent);
 
                   return (
                     <button
@@ -433,7 +434,7 @@ export default function BoxDetailPage() {
           </div>
           {!isLoggedIn && (
             <p className="text-[11px] text-bark-500 text-center">
-              Mystery Box cần tài khoản để gắn với hồ sơ của bé. Sản phẩm lẻ ở Shop mua được không cần đăng nhập.
+              Mystery Box cần tài khoản để gắn với hồ sơ của bé.
             </p>
           )}
         </div>

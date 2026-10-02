@@ -24,5 +24,5 @@ export async function GET(request: NextRequest) {
 
   // Không có trang đích: admin vào dashboard, khách vào hồ sơ thú cưng (giống đăng nhập bằng mật khẩu)
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
-  return NextResponse.redirect(new URL(profile?.role === "admin" ? "/admin/dashboard" : "/my-account/pets", origin));
+  return NextResponse.redirect(new URL(profile?.role === "admin" ? "/admin/dashboard" : "/my-account", origin));
 }

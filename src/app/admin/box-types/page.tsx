@@ -8,6 +8,7 @@ import { Tables } from "@/types/database";
 import { resolveImageUrl } from "@/lib/adapters";
 import { Plus, Edit2, Trash2, Check, Settings, X, AlertTriangle, CheckCircle2 } from "lucide-react";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
+import { planUnitPrice } from "@/lib/pricing";
 
 type BoxTypeRow = Tables<"box_types">;
 type PlanRow = Tables<"subscription_plans">;
@@ -190,7 +191,7 @@ export default function AdminBoxTypesPage() {
       {/* Mobile Card List */}
       <div className="md:hidden space-y-3">
         {boxList.map((box) => {
-          const price3 = Math.round((box.baseprice * (100 - discount3)) / 100);
+          const price3 = planUnitPrice(box.baseprice, discount3);
           return (
             <div key={box.id} className={`p-3.5 rounded-container bg-surface-card border border-surface-border shadow-xs space-y-3 text-xs ${!box.is_active ? "opacity-60" : ""}`}>
               <div className="flex items-start gap-3">
@@ -272,7 +273,7 @@ export default function AdminBoxTypesPage() {
           </thead>
           <tbody className="divide-y divide-surface-border text-bark-700">
             {boxList.map((box) => {
-              const price3 = Math.round((box.baseprice * (100 - discount3)) / 100);
+              const price3 = planUnitPrice(box.baseprice, discount3);
               return (
                 <tr key={box.id} className={`hover:bg-surface-muted/50 transition-colors ${!box.is_active ? "opacity-50" : ""}`}>
                   <td className="p-3.5">

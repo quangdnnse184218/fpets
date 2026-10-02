@@ -3,13 +3,13 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Gift, CheckCircle2, Star, PawPrint, Check, Truck, RefreshCw, CreditCard, ChevronDown } from "lucide-react";
+import { Gift, CheckCircle2, Star, PawPrint, Truck, RefreshCw, CreditCard, ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchBoxTypes, fetchProducts, fetchSubscriptionPlans } from "@/lib/catalog";
 import { formatVND, formatDate } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/client";
 import ProductItemImage from "@/components/common/ProductItemImage";
-import { EXCHANGE_POLICY, EXCHANGE_POLICY_SHORT, PREMIUM_ITEMS, QUIZ_LENGTH, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
+import { EXCHANGE_POLICY, PREMIUM_ITEMS, QUIZ_LENGTH, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
 import { Product } from "@/types/models";
 import { SHIPPING_POLICY } from "@/lib/shipping";
 
@@ -28,7 +28,7 @@ const HOME_FAQ = [
   },
   {
     q: "Có cần tài khoản để mua không?",
-    a: "Mua sản phẩm lẻ không cần tài khoản. Mystery Box cần đăng nhập để gắn với hồ sơ của bé, giúp FPETS chọn đúng món.",
+    a: "Có. Bạn đăng nhập để thêm hàng vào giỏ và theo dõi đơn. Mystery Box còn cần hồ sơ thú cưng để FPETS chọn đúng món cho bé.",
   },
 ];
 
@@ -102,11 +102,6 @@ export default function HomePage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-14 items-center relative z-10">
           <div className="lg:col-span-7 space-y-4 sm:space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pine-50 border border-pine-100 text-pine-900 text-xs font-semibold">
-              <Gift className="w-3.5 h-3.5 text-pine-800" />
-              <span>Hộp quà thú cưng cá nhân hóa định kỳ</span>
-            </div>
-
             <h1 className="text-2xl sm:text-4xl lg:text-[50px] font-extrabold text-pine-950 font-display tracking-tight leading-tight sm:leading-[1.14]">
               Hộp quà bất ngờ mỗi tháng cho bé cưng của bạn.
             </h1>
@@ -155,7 +150,7 @@ export default function HomePage() {
 
           <div className="lg:col-span-5">
             <div className="relative rounded-2xl overflow-hidden border border-surface-border/90 shadow-md bg-white p-2 sm:p-2.5">
-              {/* Ảnh minh họa tạo bằng AI; thay bằng ảnh chụp hộp thật khi có */}
+              {/* Ảnh hộp tạm; thay bằng ảnh chụp hộp thật khi có */}
               <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-surface-muted">
                 <Image
                   src="/images/hero/fpets-box-open.jpg"
@@ -175,10 +170,7 @@ export default function HomePage() {
                   </span>
                 </div>
                 <div className="pt-2 flex items-center justify-between gap-2 text-[11px] text-bark-500 border-t border-surface-border/70">
-                  {/* SPEC §10: chỉ đổi món khi lỗi của shop, KHÔNG đổi vì bé không thích */}
-                  <span className="text-grass-700 font-semibold flex items-center gap-1 text-[10px] sm:text-[11px]">
-                    <Check className="w-3.5 h-3.5 stroke-[2.5]" /> {EXCHANGE_POLICY_SHORT}
-                  </span>
+                  <span className="text-[10px] sm:text-[11px]">Chọn theo hồ sơ của bé</span>
                   <span className="font-bold text-pine-950 shrink-0 text-[11px] sm:text-xs">Từ {formatVND(standardBoxPrice)}/hộp</span>
                 </div>
               </div>
@@ -335,7 +327,7 @@ export default function HomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           {[
             { icon: Truck, title: "Giao toàn quốc", text: SHIPPING_POLICY },
-            { icon: RefreshCw, title: EXCHANGE_POLICY_SHORT, text: "Dị ứng đã khai, hàng hỏng hoặc giao thiếu: báo trong 3 ngày kèm ảnh mở hộp." },
+            { icon: RefreshCw, title: "Chính sách đổi trả rõ ràng", text: "Món chứa thành phần dị ứng đã khai, hàng hỏng hoặc giao thiếu: báo trong 3 ngày sau khi nhận để được đổi." },
             { icon: CreditCard, title: "Thanh toán quen thuộc", text: "MoMo, VNPay hoặc COD cho đơn mua 1 lần. Không tự động trừ tiền." },
           ].map(({ icon: Icon, title, text }) => (
             <div key={title} className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border flex gap-3 items-start">

@@ -1,27 +1,23 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { fetchBoxTypes } from "@/lib/catalog";
+import { ArrowRight, SlidersHorizontal, X } from "lucide-react";
+import { fetchBoxTypes, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
-import { EXCHANGE_POLICY_SHORT, PREMIUM_ITEMS, QUIZ_LENGTH, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
-import { BoxType } from "@/types/models";
-import {
-  CheckCircle2,
-  Filter,
-  Dog,
-  Cat,
-  ShieldCheck,
-  RefreshCw,
-  Gift,
-  ArrowRight,
-  Star,
-  PackageOpen,
-  Check,
-  HeartHandshake,
-} from "lucide-react";
+import { PREMIUM_ITEMS, QUIZ_LENGTH, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
+import { planUnitPrice } from "@/lib/pricing";
+import { useApp } from "@/context/AppContext";
+import { BoxType, SubscriptionPlan } from "@/types/models";
+
+type Species = "all" | "dog" | "cat";
+type Tier = "all" | "standard" | "premium";
+type DogSize = "all" | "small" | "large";
+type Sort = "default" | "price_asc" | "price_desc";
+
+const isPremium = (box: BoxType) => box.slug.includes("premium");
 
 export default function BoxesPage() {
   return (
@@ -32,430 +28,362 @@ export default function BoxesPage() {
 }
 
 function BoxesContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const [speciesFilter, setSpeciesFilter] = useState<'all' | 'dog' | 'cat'>('all');
-  const [tierFilter, setTierFilter] = useState<'all' | 'standard' | 'premium'>('all');
+  const { pets } = useApp();
   const [boxes, setBoxes] = useState<BoxType[]>([]);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [species, setSpecies] = useState<Species>("all");
+  const [tier, setTier] = useState<Tier>("all");
+  const [dogSize, setDogSize] = useState<DogSize>("all");
+  const [petId, setPetId] = useState("");
+  const [sort, setSort] = useState<Sort>("default");
+  const [filterOpen, setFilterOpen] = useState(false);
   // Đến từ trang Gói định kỳ (?plan=3): giữ gói đã chọn khi sang trang chi tiết hộp
   const [planParam, setPlanParam] = useState("");
 
   // Lọc sẵn theo link: /boxes?tier=premium, /boxes?species=cat (menu, trang chủ, hồ sơ thú cưng)
   useEffect(() => {
-    const tier = searchParams.get("tier");
-    const species = searchParams.get("species");
-    setTierFilter(tier === "premium" || tier === "standard" ? tier : "all");
-    setSpeciesFilter(species === "dog" || species === "cat" ? species : "all");
+    const t = searchParams.get("tier");
+    const s = searchParams.get("species");
+    setTier(t === "premium" || t === "standard" ? t : "all");
+    setSpecies(s === "dog" || s === "cat" ? s : "all");
     const plan = searchParams.get("plan");
     setPlanParam(plan && /^[0-9]+$/.test(plan) ? plan : "");
   }, [searchParams]);
 
   useEffect(() => {
-    fetchBoxTypes().then((data) => {
-      setBoxes(data);
+    Promise.all([fetchBoxTypes(), fetchPlanOptions()]).then(([boxData, planData]) => {
+      setBoxes(boxData);
+      setPlans(planData);
       setLoading(false);
     });
   }, []);
 
-  // Giá thấp nhất của từng phân hạng lấy từ dữ liệu thật để hiển thị trên bộ lọc / bảng so sánh
-  const minPriceOf = (tier: 'tieu-chuan' | 'premium') => {
-    const prices = boxes.filter((b) => b.slug.includes(tier)).map((b) => b.basePrice);
-    return prices.length > 0 ? Math.min(...prices) : null;
-  };
-  const standardPrice = minPriceOf('tieu-chuan');
-  const premiumPrice = minPriceOf('premium');
+  const selectedPet = pets.find((p) => p.id === petId);
+  const selectedPlan = plans.find((p) => String(p.cycles) === planParam);
 
-  const filteredBoxes = boxes.filter((box) => {
-    // Lọc theo loài
-    if (speciesFilter !== 'all' && box.species !== speciesFilter) {
-      return false;
-    }
-    // Lọc theo phân hạng (Tiêu chuẩn / Premium dựa trên slug hoặc giá)
-    if (tierFilter === 'standard' && !box.slug.includes('tieu-chuan')) {
-      return false;
-    }
-    if (tierFilter === 'premium' && !box.slug.includes('premium')) {
-      return false;
-    }
+  // Chọn "Hợp với bé X" thì lọc theo loài và size của bé, thay cho 2 bộ lọc tay
+  const fits = (box: BoxType) => {
+    if (selectedPet) return box.species === selectedPet.species && (box.species !== "dog" || box.size === selectedPet.size);
+    if (species !== "all" && box.species !== species) return false;
+    if (dogSize !== "all" && (box.species !== "dog" || box.size !== dogSize)) return false;
     return true;
-  });
+  };
+
+  const filtered = useMemo(() => {
+    const list = boxes.filter((box) => fits(box) && (tier === "all" || (tier === "premium") === isPremium(box)));
+    if (sort === "price_asc") return [...list].sort((a, b) => a.basePrice - b.basePrice);
+    if (sort === "price_desc") return [...list].sort((a, b) => b.basePrice - a.basePrice);
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boxes, species, tier, dogSize, petId, sort, pets]);
+
+  const activeCount = (species !== "all" ? 1 : 0) + (tier !== "all" ? 1 : 0) + (dogSize !== "all" ? 1 : 0) + (petId ? 1 : 0);
+  const reset = () => {
+    setSpecies("all");
+    setTier("all");
+    setDogSize("all");
+    setPetId("");
+    router.replace(planParam ? `/boxes?plan=${planParam}` : "/boxes");
+  };
+
+  const minPrice = (premium: boolean) => {
+    const prices = boxes.filter((b) => isPremium(b) === premium).map((b) => b.basePrice);
+    return prices.length ? Math.min(...prices) : null;
+  };
+  const minValue = (premium: boolean) => {
+    const values = boxes.filter((b) => isPremium(b) === premium).map((b) => b.minRetailValue);
+    return values.length ? Math.min(...values) : null;
+  };
+
+  const filterPanel = (
+    <div className="space-y-5">
+      {pets.length > 0 && (
+        <FilterGroup label="Hợp với bé của bạn">
+          <FilterOption checked={!petId} onSelect={() => setPetId("")} label="Tất cả hộp" name="box-pet" />
+          {pets.map((pet) => (
+            <FilterOption
+              key={pet.id}
+              name="box-pet"
+              checked={petId === pet.id}
+              onSelect={() => setPetId(pet.id)}
+              label={`Bé ${pet.name}`}
+              hint={pet.species === "cat" ? "Mèo" : pet.size === "small" ? "Chó dưới 10 kg" : "Chó từ 10 kg"}
+            />
+          ))}
+        </FilterGroup>
+      )}
+
+      {!selectedPet && (
+        <>
+          <FilterGroup label="Dành cho">
+            {([["all", "Tất cả"], ["dog", "Chó"], ["cat", "Mèo"]] as const).map(([value, label]) => (
+              <FilterOption
+                key={value}
+                name="box-species"
+                checked={species === value}
+                onSelect={() => {
+                  setSpecies(value);
+                  if (value === "cat") setDogSize("all");
+                }}
+                label={label}
+                count={loading ? undefined : boxes.filter((b) => value === "all" || b.species === value).length}
+              />
+            ))}
+          </FilterGroup>
+
+          {species !== "cat" && (
+            <FilterGroup label="Cân nặng của chó">
+              {([["all", "Mọi cân nặng"], ["small", "Dưới 10 kg"], ["large", "Từ 10 kg"]] as const).map(([value, label]) => (
+                <FilterOption key={value} name="box-size" checked={dogSize === value} onSelect={() => setDogSize(value)} label={label} />
+              ))}
+            </FilterGroup>
+          )}
+        </>
+      )}
+
+      <FilterGroup label="Loại hộp">
+        {([["all", "Tất cả"], ["standard", "Tiêu chuẩn"], ["premium", "Premium"]] as const).map(([value, label]) => (
+          <FilterOption
+            key={value}
+            name="box-tier"
+            checked={tier === value}
+            onSelect={() => setTier(value)}
+            label={label}
+            hint={value === "standard" ? STANDARD_ITEMS : value === "premium" ? PREMIUM_ITEMS : undefined}
+          />
+        ))}
+      </FilterGroup>
+
+      {activeCount > 0 && (
+        <button type="button" onClick={reset} className="inline-flex items-center gap-1 min-h-9 text-xs font-bold text-pine-900 hover:underline">
+          <X className="w-3.5 h-3.5" /> Xóa bộ lọc
+        </button>
+      )}
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#FAF9F5] text-bark-900 pb-8 sm:pb-12">
-      {/* 1. HERO BANNER: THIẾT KẾ EDITORIAL ẤM ÁP, SANG TRỌNG */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#F6F4EE] via-[#FAF9F6] to-[#FAF8F5] border-b border-surface-border/80 pt-10 pb-12 sm:pt-14 sm:pb-16">
-        {/* Quầng sáng mờ tạo chiều sâu */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full bg-honey-200/30 blur-[90px] pointer-events-none" />
-        <div className="absolute -bottom-10 left-10 w-80 h-80 rounded-full bg-pine-100/40 blur-[80px] pointer-events-none" />
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6 sm:space-y-8">
+      <header className="space-y-1.5 max-w-2xl">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">Mystery Box</h1>
+        <p className="text-sm text-bark-600 leading-relaxed">
+          Mỗi hộp gồm đồ ăn, đồ chơi và món chăm sóc, chọn theo loài, cân nặng, độ tuổi và dị ứng của bé. Chọn hộp đúng với bé, mua thử 1 hộp hoặc đăng ký nhận hằng tháng.
+        </p>
+      </header>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-7 space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pine-50 border border-pine-200/80 text-pine-900 text-xs font-semibold">
-            <Gift className="w-3.5 h-3.5 text-pine-800" />
-            <span>Bộ sưu tập Mystery Box tuyển chọn riêng</span>
+      {selectedPlan && (
+        <div className="p-2.5 sm:p-3.5 rounded-box bg-pine-50 border border-pine-200 text-sm text-pine-950 flex flex-wrap items-center justify-between gap-2">
+          <span>
+            Bạn đang chọn <strong>{selectedPlan.name}</strong>
+            {selectedPlan.discountPercent > 0 ? ` (giảm ${selectedPlan.discountPercent}% mỗi hộp)` : ""}. Chọn loại hộp cho bé để tiếp tục.
+          </span>
+          <Link href="/subscription" className="text-xs font-bold text-pine-900 underline underline-offset-2">Đổi gói</Link>
+        </div>
+      )}
+
+      <div className="lg:grid lg:grid-cols-[232px_1fr] lg:gap-8 lg:items-start">
+        {/* Bộ lọc: cột trái trên desktop, khối thu gọn trên mobile */}
+        <aside className="lg:sticky lg:top-20">
+          <button
+            type="button"
+            onClick={() => setFilterOpen((v) => !v)}
+            aria-expanded={filterOpen}
+            className="lg:hidden w-full min-h-11 px-3.5 rounded-box border border-surface-border bg-surface-card flex items-center justify-between text-sm font-bold text-pine-950"
+          >
+            <span className="flex items-center gap-2">
+              <SlidersHorizontal className="w-4 h-4" /> Bộ lọc{activeCount > 0 ? ` (${activeCount})` : ""}
+            </span>
+            <span className="text-xs font-medium text-bark-500">{filterOpen ? "Thu gọn" : "Mở"}</span>
+          </button>
+          <div className={`${filterOpen ? "block" : "hidden"} lg:block mt-3 lg:mt-0 p-4 rounded-container bg-surface-card border border-surface-border`}>
+            <h2 className="hidden lg:block text-sm font-bold text-pine-950 pb-3 mb-4 border-b border-surface-border">Bộ lọc</h2>
+            {filterPanel}
           </div>
+        </aside>
 
-          <div className="max-w-3xl space-y-3">
-            <h1 className="text-3xl sm:text-5xl font-extrabold text-pine-950 font-display tracking-tight leading-[1.12]">
-              Hộp quà bất ngờ chọn riêng theo hồ sơ của từng bé.
-            </h1>
-            <p className="text-base sm:text-lg text-bark-700 leading-relaxed font-normal">
-              Không đóng sẵn hàng loạt. Mỗi hộp gồm đồ ăn, đồ chơi và một món chăm sóc hoặc phụ kiện, chọn theo loài, cân nặng, độ tuổi và dị ứng của bé.
+        <div className="mt-4 lg:mt-0 space-y-4 min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-bark-600" aria-live="polite">
+              {loading ? "Đang tải…" : `${filtered.length} loại hộp${selectedPet ? ` hợp với bé ${selectedPet.name}` : ""}`}
             </p>
-          </div>
-          </div>
-
-          {/* Ảnh minh họa tạo bằng AI; thay bằng ảnh chụp hộp thật khi có */}
-          <div className="lg:col-span-5 relative aspect-[4/3] rounded-2xl overflow-hidden border border-surface-border shadow-md">
-            <Image
-              src="/images/hero/fpets-box-open.jpg"
-              alt="Hộp FPETS đang mở với gói snack, bóng cao su, dây thừng và thiệp gửi bé"
-              fill
-              sizes="(max-width: 1024px) 100vw, 40vw"
-              className="object-cover"
-              priority
-            />
-            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/45 text-white text-[10px]">Ảnh minh họa</span>
-          </div>
+            <label className="flex items-center gap-2 text-xs text-bark-600">
+              <span className="hidden sm:inline">Sắp xếp</span>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as Sort)}
+                className="min-h-9 px-2.5 rounded-box border border-surface-border bg-white text-xs font-medium text-pine-950"
+              >
+                <option value="default">Mặc định</option>
+                <option value="price_asc">Giá thấp đến cao</option>
+                <option value="price_desc">Giá cao đến thấp</option>
+              </select>
+            </label>
           </div>
 
-          {/* Dải 4 cam kết chất lượng dạng thẻ nhãn tinh tế */}
-          <div className="pt-2 grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
-            <div className="flex items-center gap-2 p-2.5 sm:px-3 sm:py-2 rounded-xl bg-white border border-surface-border/80 shadow-2xs">
-              <ShieldCheck className="w-4 h-4 text-grass-600 shrink-0" />
-              <span className="font-semibold text-bark-800 text-[11px] sm:text-xs">Loại món dị ứng theo khai báo</span>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-72 rounded-container bg-surface-muted animate-pulse" />
+              ))}
             </div>
-            <div className="flex items-center gap-2 p-2.5 sm:px-3 sm:py-2 rounded-xl bg-white border border-surface-border/80 shadow-2xs">
-              <RefreshCw className="w-4 h-4 text-pine-700 shrink-0" />
-              <span className="font-semibold text-bark-800 text-[11px] sm:text-xs">{EXCHANGE_POLICY_SHORT}</span>
+          ) : filtered.length === 0 ? (
+            <div className="p-10 text-center rounded-container bg-surface-card border border-surface-border space-y-3">
+              <p className="text-sm text-bark-600">Chưa có loại hộp nào phù hợp bộ lọc này.</p>
+              <button type="button" onClick={reset} className="text-sm font-bold text-pine-900 underline underline-offset-2">Xóa bộ lọc</button>
             </div>
-            <div className="flex items-center gap-2 p-2.5 sm:px-3 sm:py-2 rounded-xl bg-white border border-surface-border/80 shadow-2xs">
-              <PackageOpen className="w-4 h-4 text-honey-600 shrink-0" />
-              <span className="font-semibold text-bark-800 text-[11px] sm:text-xs">Không trùng món đã gửi</span>
-            </div>
-            <div className="flex items-center gap-2 p-2.5 sm:px-3 sm:py-2 rounded-xl bg-white border border-surface-border/80 shadow-2xs">
-              <HeartHandshake className="w-4 h-4 text-pine-800 shrink-0" />
-              <span className="font-semibold text-bark-800 text-[11px] sm:text-xs">Đồ chơi đúng cỡ miệng</span>
-            </div>
-          </div>
+          ) : (
+            <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filtered.map((box) => {
+                const premium = isPremium(box);
+                const href = `/boxes/${box.slug}${planParam ? `?plan=${planParam}` : ""}`;
+                const planPrice = selectedPlan ? planUnitPrice(box.basePrice, selectedPlan.discountPercent) : null;
+                return (
+                  <li key={box.id}>
+                    <Link
+                      href={href}
+                      className="group h-full flex sm:flex-col rounded-container bg-surface-card border border-surface-border overflow-hidden hover:border-pine-800 hover:shadow-md transition-all"
+                    >
+                      {/* Mobile: ảnh vuông nhỏ bên trái để thẻ gọn; từ sm trở lên ảnh nằm trên */}
+                      <div className="relative w-28 shrink-0 sm:w-auto sm:aspect-[16/9] bg-surface-muted overflow-hidden">
+                        <Image
+                          src={box.imageUrl}
+                          alt=""
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1280px) 40vw, 300px"
+                          className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
+                        />
+                      </div>
+                      <div className="p-2.5 sm:p-3.5 sm:p-4 flex flex-col flex-1 gap-2 sm:gap-2.5 min-w-0">
+                        <div className="space-y-1">
+                          {/* Nhãn phân hạng dạng chữ: không icon, không huy hiệu nổi trên ảnh */}
+                          <p className={`text-[11px] font-bold uppercase tracking-[0.08em] ${premium ? "text-amber-800" : "text-bark-500"}`}>
+                            {premium ? "Premium" : "Tiêu chuẩn"}
+                            <span className="font-medium normal-case tracking-normal text-bark-500"> · {box.sizeLabel}</span>
+                          </p>
+                          <h3 className="text-base font-bold text-pine-950 leading-snug group-hover:text-pine-800">{box.name}</h3>
+                        </div>
+                        <p className="text-xs text-bark-600">
+                          {box.itemCount} · trị giá từ {formatVND(box.minRetailValue)}
+                        </p>
+                        <div className="mt-auto pt-2.5 sm:pt-3 border-t border-surface-border flex items-end justify-between gap-2">
+                          <div>
+                            <span className="text-lg font-extrabold text-pine-950 font-display">{formatVND(planPrice ?? box.basePrice)}</span>
+                            <span className="text-xs text-bark-500"> / hộp</span>
+                            {planPrice !== null && planPrice < box.basePrice && (
+                              <span className="block text-[11px] text-bark-500 line-through">{formatVND(box.basePrice)}</span>
+                            )}
+                          </div>
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-pine-900">
+                            Xem hộp <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* So sánh 2 loại hộp */}
+      <section aria-labelledby="compare-heading" className="space-y-3">
+        <h2 id="compare-heading" className="text-lg sm:text-xl font-extrabold text-pine-950 font-display">Tiêu chuẩn hay Premium?</h2>
+        <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto">
+          <table className="w-full text-xs sm:text-sm text-left">
+            <thead>
+              <tr className="border-b border-surface-border text-pine-950">
+                <th scope="col" className="p-2.5 sm:p-3.5 w-[30%] text-xs font-bold text-bark-500 uppercase tracking-wide">So sánh</th>
+                <th scope="col" className="p-2.5 sm:p-3.5 font-bold">Box Tiêu chuẩn</th>
+                <th scope="col" className="p-2.5 sm:p-3.5 font-bold">Box Premium</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-border text-bark-700">
+              <tr>
+                <th scope="row" className="p-2.5 sm:p-3.5 font-medium text-bark-600">Giá 1 hộp</th>
+                <td className="p-2.5 sm:p-3.5 font-bold text-pine-950">{minPrice(false) ? formatVND(minPrice(false)!) : "—"}</td>
+                <td className="p-2.5 sm:p-3.5 font-bold text-pine-950">{minPrice(true) ? formatVND(minPrice(true)!) : "—"}</td>
+              </tr>
+              <tr>
+                <th scope="row" className="p-2.5 sm:p-3.5 font-medium text-bark-600">Số món</th>
+                <td className="p-2.5 sm:p-3.5">{STANDARD_ITEMS}</td>
+                <td className="p-2.5 sm:p-3.5">{PREMIUM_ITEMS}</td>
+              </tr>
+              <tr>
+                <th scope="row" className="p-2.5 sm:p-3.5 font-medium text-bark-600">Trị giá sản phẩm tối thiểu</th>
+                <td className="p-2.5 sm:p-3.5">{minValue(false) ? formatVND(minValue(false)!) : "—"}</td>
+                <td className="p-2.5 sm:p-3.5">{minValue(true) ? formatVND(minValue(true)!) : "—"}</td>
+              </tr>
+              <tr>
+                <th scope="row" className="p-2.5 sm:p-3.5 font-medium text-bark-600">Trong hộp có</th>
+                <td className="p-2.5 sm:p-3.5">Đồ ăn hoặc bánh thưởng, đồ chơi, 1 món chăm sóc hoặc phụ kiện</td>
+                <td className="p-2.5 sm:p-3.5">Như Tiêu chuẩn, thêm đồ chơi giấu thức ăn và món chăm sóc dùng hằng ngày</td>
+              </tr>
+              <tr>
+                <th scope="row" className="p-2.5 sm:p-3.5 font-medium text-bark-600">Hợp khi</th>
+                <td className="p-2.5 sm:p-3.5">Muốn thử trước, hoặc bổ sung bánh thưởng và đồ chơi đều đặn</td>
+                <td className="p-2.5 sm:p-3.5">Muốn nhiều món hơn trong một lần nhận</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
-      {/* 2. KHU VỰC BỘ LỌC & DANH SÁCH HỘP */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10 space-y-8">
-        {/* THANH ĐIỀU HƯỚNG BỘ LỌC HIỆN ĐẠI */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-surface-border">
-          {/* Lọc theo loài */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-bark-500 mr-1 flex items-center gap-1">
-              <Filter className="w-3.5 h-3.5" /> Dành cho:
-            </span>
-            <button
-              onClick={() => setSpeciesFilter('all')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                speciesFilter === 'all'
-                  ? 'bg-pine-900 text-white shadow-xs'
-                  : 'bg-white hover:bg-surface-muted text-bark-700 border border-surface-border'
-              }`}
-            >
-              Tất cả{!loading && ` (${boxes.length})`}
-            </button>
-            <button
-              onClick={() => setSpeciesFilter('dog')}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                speciesFilter === 'dog'
-                  ? 'bg-pine-900 text-white shadow-xs'
-                  : 'bg-white hover:bg-surface-muted text-bark-700 border border-surface-border'
-              }`}
-            >
-              <Dog className="w-3.5 h-3.5" />
-              <span>Chó{!loading && ` (${boxes.filter(b => b.species === 'dog').length})`}</span>
-            </button>
-            <button
-              onClick={() => setSpeciesFilter('cat')}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                speciesFilter === 'cat'
-                  ? 'bg-pine-900 text-white shadow-xs'
-                  : 'bg-white hover:bg-surface-muted text-bark-700 border border-surface-border'
-              }`}
-            >
-              <Cat className="w-3.5 h-3.5" />
-              <span>Mèo{!loading && ` (${boxes.filter(b => b.species === 'cat').length})`}</span>
-            </button>
-          </div>
-
-          {/* Lọc theo phân hạng Tiêu chuẩn vs Premium */}
-          <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-surface-border self-start sm:self-auto overflow-x-auto max-w-full">
-            <button
-              onClick={() => setTierFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                tierFilter === 'all'
-                  ? 'bg-pine-100 text-pine-950 font-extrabold'
-                  : 'text-bark-600 hover:text-pine-900'
-              }`}
-            >
-              Tất cả loại
-            </button>
-            <button
-              onClick={() => setTierFilter('standard')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                tierFilter === 'standard'
-                  ? 'bg-pine-900 text-white shadow-xs'
-                  : 'text-bark-600 hover:text-pine-900'
-              }`}
-            >
-              Box Tiêu chuẩn
-            </button>
-            <button
-              onClick={() => setTierFilter('premium')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                tierFilter === 'premium'
-                  ? 'bg-pine-900 text-white shadow-xs'
-                  : 'text-bark-600 hover:text-pine-900'
-              }`}
-            >
-              Box Premium
-            </button>
-          </div>
+      <div className="p-5 sm:p-6 rounded-container bg-pine-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-base sm:text-lg font-bold font-display">Chưa biết chọn hộp nào cho bé?</h2>
+          <p className="text-xs sm:text-sm text-pine-200">
+            Trả lời {QUIZ_NAME} ({QUIZ_LENGTH}), FPETS gợi ý hộp và gói phù hợp.
+          </p>
         </div>
-
-        {/* LƯỚI THẺ SẢN PHẨM MYSTERY BOX NÂNG CẤP */}
-        {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-[520px] rounded-2xl bg-surface-muted animate-pulse" />
-            ))}
-          </div>
-        )}
-        {!loading && filteredBoxes.length === 0 && (
-          <div className="p-10 text-center rounded-2xl bg-white border border-surface-border text-sm text-bark-600">
-            Chưa có loại box nào phù hợp bộ lọc này.
-          </div>
-        )}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {filteredBoxes.map((box) => {
-            const isPremium = box.slug.includes('premium');
-
-            return (
-              <div
-                key={box.id}
-                className={`rounded-2xl bg-white border transition-all duration-300 flex flex-col justify-between overflow-hidden group hover:-translate-y-1 hover:shadow-lg ${
-                  isPremium
-                    ? 'border-amber-200/90 ring-1 ring-amber-400/20 shadow-xs'
-                    : 'border-surface-border shadow-xs hover:border-pine-800'
-                }`}
-              >
-                {/* PHẦN TRÊN: ẢNH VÀ THÔNG TIN CHI TIẾT */}
-                <div>
-                  {/* Khung ảnh đại diện */}
-                  <div className="relative w-full aspect-[16/10] overflow-hidden bg-surface-muted">
-                    <Image
-                      src={box.imageUrl}
-                      alt={box.name}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-                    />
-
-                    {/* Gradient phủ nhẹ để nổi bật chữ */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20 pointer-events-none" />
-
-                    {/* Huy hiệu phân hạng góc trên bên trái */}
-                    <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
-                      {isPremium ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500 text-white text-[11px] font-extrabold shadow-sm tracking-wide">
-                          <Star className="w-3 h-3 fill-white" />
-                          <span>Box Premium</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-pine-900/95 text-white text-[11px] font-bold shadow-sm">
-                          <PackageOpen className="w-3 h-3 text-pine-200" />
-                          <span>Box Tiêu chuẩn</span>
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Số lượng món góc trên bên phải */}
-                    <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-xs text-pine-950 text-[11px] font-bold shadow-xs z-10">
-                      {box.itemCount}
-                    </span>
-
-                    {/* Khung kích cỡ & cân nặng góc dưới ảnh */}
-                    <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded-md bg-black/60 backdrop-blur-xs text-white text-[11px] font-medium">
-                        {box.sizeLabel}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Chi tiết nội dung Box */}
-                  <div className="p-5 sm:p-6 space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-semibold text-pine-800 flex items-center gap-1">
-                          {box.species === 'dog' ? <Dog className="w-3.5 h-3.5" /> : <Cat className="w-3.5 h-3.5" />}
-                          {box.species === 'dog' ? 'Dành cho Chó' : 'Dành cho Mèo'}
-                        </span>
-                      </div>
-                      <h3 className="text-lg sm:text-xl font-extrabold text-pine-950 font-display group-hover:text-pine-800 transition-colors">
-                        {box.name}
-                      </h3>
-                    </div>
-
-                    <p className="text-xs sm:text-sm text-bark-600 line-clamp-2 leading-relaxed">
-                      {box.description}
-                    </p>
-
-                    {/* Danh sách các món tiêu biểu kỳ này */}
-                    <div className="pt-3 border-t border-surface-border/80 space-y-2">
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-bark-500">
-                        Ví dụ món có thể có:
-                      </div>
-                      <ul className="space-y-1.5 text-xs text-bark-700">
-                        {box.typicalItems.slice(0, 3).map((item, idx) => (
-                          <li key={idx} className="flex items-center gap-2">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-grass-600 shrink-0" />
-                            <span className="truncate">{item}</span>
-                          </li>
-                        ))}
-                        {box.typicalItems.length > 3 && (
-                          <li className="text-[11px] text-bark-500 italic pl-5.5">
-                            và các món khác theo hồ sơ của bé
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-
-                {/* PHẦN DƯỚI: KHỐI GIÁ & NÚT HÀNH ĐỘNG */}
-                <div className="p-5 sm:p-6 pt-4 bg-[#FAF9F6] border-t border-surface-border/90 space-y-3.5">
-                  <div className="flex items-end justify-between">
-                    <div>
-                      <span className="text-[11px] text-bark-500 block">Giá 1 hộp:</span>
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-2xl font-black text-pine-950 font-display">
-                          {formatVND(box.basePrice)}
-                        </span>
-                        <span className="text-xs text-bark-500 font-normal">/ hộp</span>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="text-[10px] text-bark-500 block">Trị giá sản phẩm từ</span>
-                      <span className="text-xs font-bold text-grass-700">{formatVND(box.minRetailValue)}</span>
-                    </div>
-                  </div>
-
-                  <Link
-                    href={`/boxes/${box.slug}${planParam ? `?plan=${planParam}` : ""}`}
-                    className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl text-center text-xs font-bold shadow-xs transition-all ${
-                      'bg-pine-900 hover:bg-pine-800 text-white'
-                    }`}
-                  >
-                    <span>Xem chi tiết & đặt box</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-
-                  <div className="text-center">
-                    <span className="text-[11px] text-bark-500 flex items-center justify-center gap-1">
-                      <Check className="w-3 h-3 text-grass-600 stroke-[2.5]" />
-                      {EXCHANGE_POLICY_SHORT}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* 3. BẢNG SO SÁNH NHANH TIÊU CHUẨN VS PREMIUM */}
-        <section className="pt-10">
-          <div className="bg-white rounded-2xl border border-surface-border/90 p-6 sm:p-8 shadow-sm space-y-6">
-            <div className="text-center max-w-xl mx-auto space-y-2">
-              <h2 className="text-xl sm:text-2xl font-extrabold text-pine-950 font-display">
-                Nên chọn Box Tiêu chuẩn hay Box Premium?
-              </h2>
-              <p className="text-xs sm:text-sm text-bark-600">
-                Cả hai đều chọn theo hồ sơ của bé; Box Premium có nhiều món hơn và thêm đồ ăn nhập khẩu, đồ chơi trí tuệ.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-              {/* Tiêu chuẩn */}
-              <div className="p-5 rounded-xl bg-surface-muted/60 border border-surface-border space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-extrabold text-pine-950 text-base">Box Tiêu chuẩn</h3>
-                  {standardPrice && <span className="text-xs font-bold text-pine-900">{formatVND(standardPrice)} / hộp</span>}
-                </div>
-                <p className="text-xs text-bark-600">
-                  Hợp để bé làm quen, hoặc khi bạn muốn bổ sung bánh thưởng và đồ chơi đều đặn với chi phí vừa phải.
-                </p>
-                <ul className="space-y-2 text-xs text-bark-700">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-grass-600 stroke-[2.5]" />
-                    <span><strong>{STANDARD_ITEMS}</strong> mỗi hộp</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-grass-600 stroke-[2.5]" />
-                    <span>Ví dụ: snack thịt sấy, bánh quy sạch răng, đồ chơi dai bền</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-grass-600 stroke-[2.5]" />
-                    <span>{EXCHANGE_POLICY_SHORT}</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Premium */}
-              <div className="p-5 rounded-xl bg-amber-50/50 border border-amber-200/70 space-y-4 relative">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-extrabold text-pine-950 text-base">Box Premium</h3>
-                  </div>
-                  {premiumPrice && <span className="text-xs font-bold text-amber-900">{formatVND(premiumPrice)} / hộp</span>}
-                </div>
-                <p className="text-xs text-bark-600">
-                  Hợp khi bạn muốn nhiều món hơn: đồ ăn nhập khẩu, đồ chơi trí tuệ và phụ kiện dùng hằng ngày.
-                </p>
-                <ul className="space-y-2 text-xs text-bark-700">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-amber-700 stroke-[2.5]" />
-                    <span><strong>{PREMIUM_ITEMS}</strong> mỗi hộp</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-amber-700 stroke-[2.5]" />
-                    <span>Ví dụ: thịt bò Úc sấy lạnh, đồ chơi giấu thức ăn, lược chải lông</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-amber-700 stroke-[2.5]" />
-                    <span>Tặng quà sinh nhật khi đăng ký gói 6 hộp</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 4. BANNER TRỢ GIÚP PET QUIZ GỌN GÀNG */}
-        <div className="p-6 sm:p-8 rounded-2xl bg-pine-900 text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-md">
-          <div className="space-y-2 text-center sm:text-left">
-            <h3 className="text-lg sm:text-xl font-bold font-display">
-              Chưa biết chọn box nào cho bé?
-            </h3>
-            <p className="text-xs sm:text-sm text-pine-200 max-w-xl">
-              Trả lời {QUIZ_NAME} ({QUIZ_LENGTH}) về loài, cân nặng, độ tuổi và sở thích của bé, FPETS sẽ gợi ý box phù hợp.
-            </p>
-          </div>
-          <Link
-            href="/quiz"
-            className="px-6 py-3 rounded-xl bg-white hover:bg-pine-50 text-pine-950 font-bold text-xs shrink-0 transition-all shadow-sm"
-          >
-            Làm {QUIZ_NAME}
-          </Link>
-        </div>
+        <Link href="/quiz" className="shrink-0 inline-flex items-center justify-center min-h-11 px-5 rounded-box bg-white hover:bg-pine-50 text-pine-950 font-bold text-sm transition-colors">
+          Làm {QUIZ_NAME}
+        </Link>
       </div>
     </div>
+  );
+}
+
+function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="space-y-1">
+      <legend className="text-xs font-bold text-bark-800 mb-1.5">{label}</legend>
+      {children}
+    </fieldset>
+  );
+}
+
+function FilterOption({
+  name,
+  label,
+  hint,
+  count,
+  checked,
+  onSelect,
+}: {
+  name: string;
+  label: string;
+  hint?: string;
+  count?: number;
+  checked: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <label
+      className={`flex items-center gap-2.5 min-h-10 px-2.5 rounded-box cursor-pointer text-sm transition-colors ${
+        checked ? "bg-pine-50 text-pine-950 font-semibold" : "text-bark-700 hover:bg-surface-muted"
+      }`}
+    >
+      <input type="radio" name={name} checked={checked} onChange={onSelect} className="w-4 h-4 accent-pine-900 shrink-0" />
+      <span className="flex-1 min-w-0">
+        {label}
+        {hint && <span className="block text-[11px] font-normal text-bark-500">{hint}</span>}
+      </span>
+      {count !== undefined && <span className="text-[11px] text-bark-500">{count}</span>}
+    </label>
   );
 }

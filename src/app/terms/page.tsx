@@ -19,7 +19,7 @@ export default function TermsPage() {
         {
           title: "Tài khoản",
           items: [
-            "Mua sản phẩm lẻ không cần tài khoản. Mystery Box và gói định kỳ cần tài khoản để gắn với hồ sơ thú cưng.",
+            "Bạn cần tài khoản để đặt hàng. Mystery Box và gói định kỳ gắn với hồ sơ thú cưng trong tài khoản.",
             "Bạn chịu trách nhiệm về thông tin khai trong hồ sơ thú cưng (loài, cân nặng, độ tuổi, dị ứng). FPETS chọn món dựa trên thông tin này.",
           ],
         },

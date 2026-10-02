@@ -60,10 +60,10 @@ export default function Footer() {
             <h4 className="text-xs font-semibold uppercase tracking-wider text-pine-400">Hỗ trợ</h4>
             <nav className="flex flex-col space-y-1.5 text-xs text-pine-200">
               <Link href="/faq" className="hover:text-white transition-colors">Câu hỏi thường gặp</Link>
-              <Link href="/faq#doi-tra" className="hover:text-white transition-colors">Chính sách đổi trả</Link>
+              <Link href="/return-policy" className="hover:text-white transition-colors">Chính sách đổi trả</Link>
               <Link href="/terms" className="hover:text-white transition-colors">Điều khoản dịch vụ</Link>
               <Link href="/privacy" className="hover:text-white transition-colors">Chính sách bảo mật</Link>
-              <Link href="/about" className="hover:text-white transition-colors">Về chúng tôi</Link>
+              <Link href="/about" className="hover:text-white transition-colors">Về FPETS</Link>
             </nav>
           </div>
 

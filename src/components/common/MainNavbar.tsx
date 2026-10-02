@@ -16,7 +16,6 @@ import {
   Search,
   ShieldCheck,
   ShoppingCart,
-  Truck,
   User,
   X,
   ChevronRight,
@@ -25,8 +24,6 @@ import BrandLogo from "@/components/common/BrandLogo";
 import NotificationBell from "@/components/common/NotificationBell";
 import { buttonClass } from "@/components/ui/Button";
 import { CONTACT_INFO } from "@/lib/contactInfo";
-import { SHIPPING_CONFIG } from "@/lib/shipping";
-import { formatVND } from "@/lib/formatters";
 
 type SubLink = { href: string; label: string; desc?: string };
 type NavItem = { label: string; href: string; children?: SubLink[] };
@@ -62,7 +59,7 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { href: "/faq", label: "Câu hỏi thường gặp" },
       { href: "/order-tracking", label: "Tra cứu đơn hàng" },
-      { href: "/faq#doi-tra", label: "Chính sách đổi trả" },
+      { href: "/return-policy", label: "Chính sách đổi trả" },
       { href: "/contact", label: "Liên hệ" },
       { href: "/about", label: "Về FPETS" },
     ],
@@ -70,11 +67,11 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const ACCOUNT_LINKS = [
-  { href: "/my-account/pets", label: "Thú cưng của tôi", icon: Dog },
-  { href: "/my-account/orders", label: "Đơn hàng & Vận chuyển", icon: Package },
+  { href: "/my-account", label: "Tổng quan tài khoản", icon: User },
+  { href: "/my-account/orders", label: "Đơn hàng", icon: Package },
   { href: "/my-account/subscriptions", label: "Gói định kỳ", icon: RefreshCw },
+  { href: "/my-account/pets", label: "Thú cưng", icon: Dog },
   { href: "/my-account/notifications", label: "Thông báo", icon: Bell },
-  { href: "/my-account/profile", label: "Thông tin & Địa chỉ", icon: User },
 ];
 
 const ROLE_LABEL: Record<string, string> = {
@@ -157,28 +154,6 @@ export default function MainNavbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-surface-card border-b border-surface-border">
-      {/* Thanh thông tin: chính sách giao hàng và kênh hỗ trợ */}
-      <div className="bg-pine-950 text-pine-100 text-[11px] sm:text-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-8 flex items-center justify-center md:justify-between gap-4">
-          <p className="flex items-center gap-1.5 truncate">
-            <Truck className="w-3.5 h-3.5 text-grass-400 shrink-0" />
-            <span className="truncate">
-              Miễn phí giao hàng đơn từ {formatVND(SHIPPING_CONFIG.freeShippingThreshold)}
-              <span className="hidden sm:inline"> · Đổi món miễn phí nếu bé dị ứng</span>
-            </span>
-          </p>
-          <div className="hidden md:flex items-center gap-4 shrink-0">
-            <Link href={isLoggedIn ? "/my-account/orders" : "/order-tracking"} className="hover:text-white transition-colors">
-              {isLoggedIn ? "Đơn hàng của tôi" : "Tra cứu đơn hàng"}
-            </Link>
-            <span className="w-px h-3 bg-pine-700" aria-hidden="true" />
-            <a href={`tel:${CONTACT_INFO.hotlineTel}`} className="flex items-center gap-1 hover:text-white transition-colors">
-              <Phone className="w-3 h-3" /> Hotline <strong className="text-white">{CONTACT_INFO.hotline}</strong>
-            </a>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 xl:gap-8 min-w-0">
           <BrandLogo href="/" size="md" />
@@ -403,7 +378,7 @@ export default function MainNavbar() {
 
       {/* Menu trên mobile / tablet */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-surface-border bg-surface-card max-h-[calc(100vh-6rem)] overflow-y-auto">
+        <div className="lg:hidden border-t border-surface-border bg-surface-card max-h-[calc(100vh-4rem)] overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 space-y-3">
             {isLoggedIn ? (
               <div className="p-3.5 rounded-box bg-pine-50 border border-pine-200 space-y-2.5">

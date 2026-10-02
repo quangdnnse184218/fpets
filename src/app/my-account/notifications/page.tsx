@@ -56,8 +56,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-bold text-pine-950">Thông báo</h2>
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" onClick={() => setOnlyUnread((v) => !v)} aria-pressed={onlyUnread}>
             {onlyUnread ? "Hiện tất cả" : `Chưa đọc (${unreadIds.length})`}

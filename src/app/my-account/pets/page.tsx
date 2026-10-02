@@ -125,11 +125,8 @@ export default function MyPetsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-bold text-pine-950">Hồ sơ thú cưng</h2>
-          <p className="text-xs text-bark-500">Thông tin của bé giúp FPETS chọn đúng món và tránh thành phần bé bị dị ứng.</p>
-        </div>
+      {/* Tiêu đề trang do khung Tài khoản hiển thị; ở đây chỉ còn nút thêm hồ sơ */}
+      <div className="flex justify-end">
         <div className="relative">
           <Button onClick={() => setAddChooserOpen((v) => !v)} disabled={!ready} aria-expanded={addChooserOpen}>
             <Plus className="w-4 h-4" />
@@ -156,7 +153,7 @@ export default function MyPetsPage() {
                 <ClipboardList className="w-4 h-4 mt-0.5 text-pine-800 shrink-0" />
                 <span>
                   <span className="block font-bold text-pine-950">Làm Pet Quiz</span>
-                  <span className="block text-xs text-bark-500">5 câu hỏi, kèm gợi ý hộp phù hợp</span>
+                  <span className="block text-xs text-bark-500">7 câu hỏi, kèm gợi ý hộp phù hợp</span>
                 </span>
               </Link>
             </div>

@@ -25,7 +25,6 @@ import {
   Menu,
   X,
   ChevronDown,
-  ShieldCheck,
 } from "lucide-react";
 import BrandLogo from "@/components/common/BrandLogo";
 

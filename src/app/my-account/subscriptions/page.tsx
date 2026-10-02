@@ -10,10 +10,11 @@ import { fetchPlanOptions } from "@/lib/catalog";
 import { SubscriptionPlan } from "@/types/models";
 import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel } from "@/lib/deliverySchedule";
 import { ORDER_STATUS_LABEL, OrderStatus } from "@/lib/orderDisplay";
-import AddressFields, { AddressValue, emptyAddress, formatAddress } from "@/components/common/AddressFields";
+import AddressFields, { AddressValue, emptyAddress, formatAddress, isAddressValid } from "@/components/common/AddressFields";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { planUnitPrice } from "@/lib/pricing";
 
 type SubStatus = "cho_thanh_toan" | "dang_hoat_dong" | "tam_dung" | "qua_han" | "het_han" | "da_huy";
 
@@ -175,11 +176,6 @@ export default function MySubscriptionsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-lg font-bold text-pine-950">Gói định kỳ</h2>
-        <p className="text-xs text-bark-500">Theo dõi lịch giao, tạm dừng, đổi địa chỉ hoặc gia hạn gói.</p>
-      </div>
-
       {subs.map((sub) => {
         const subOrders = orders.filter((o) => o.subscription_id === sub.id);
         const pending = subOrders.find(
@@ -463,14 +459,20 @@ function DeliveryModal({ sub, onClose, onDone }: { sub: SubscriptionRow; onClose
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [showAddrErrors, setShowAddrErrors] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    if (!isAddressValid(addr)) {
+      setShowAddrErrors(true);
+      return;
+    }
     setSaving(true);
     const { data, error: err } = await createClient().rpc("update_my_subscription_delivery", {
       p_subscription_id: sub.id,
       p_delivery_schedule: schedule,
-      p_address: { recipient_name: addr.recipientName, phone: addr.phone, province_city: addr.province, ward: addr.ward, address: addr.street },
+      p_address: { recipient_name: addr.recipientName.trim(), phone: addr.phone.trim(), province_city: addr.province, ward: addr.ward, address: addr.street.trim() },
     });
     setSaving(false);
     if (err) return setError(err.message.includes("ERR_ADDRESS_INCOMPLETE") ? "Vui lòng điền đủ địa chỉ." : "Không lưu được thay đổi, vui lòng thử lại.");
@@ -505,7 +507,7 @@ function DeliveryModal({ sub, onClose, onDone }: { sub: SubscriptionRow; onClose
         </div>
         <div className="space-y-2">
           <span className="text-xs font-bold text-bark-800 block">Địa chỉ nhận các kỳ sau</span>
-          <AddressFields value={addr} onChange={setAddr} idPrefix="sub-addr" />
+          <AddressFields value={addr} onChange={setAddr} idPrefix="sub-addr" showErrors={showAddrErrors} />
         </div>
         <p className="text-[11px] text-bark-500">
           {new Date(`${sub.cutoff_date}T23:59:59+07:00`) >= new Date()
@@ -560,7 +562,7 @@ function RenewModal({
       <div className="space-y-3">
         <p className="text-sm text-bark-600">Chọn gói tiếp theo cho bé {sub.pets?.name}. Hộp mới nối tiếp ngay sau hộp hiện tại.</p>
         {plans.map((plan) => {
-          const unit = Math.round((sub.box_types?.baseprice || 0) * (1 - plan.discountPercent / 100));
+          const unit = planUnitPrice(sub.box_types?.baseprice || 0, plan.discountPercent);
           const selected = plan.id === planId;
           return (
             <button key={plan.id} type="button" onClick={() => setPlanId(plan.id)} aria-pressed={selected}

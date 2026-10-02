@@ -18,7 +18,6 @@ import {
   Cat,
   X,
   RotateCcw,
-  ShieldCheck,
   Search,
 } from "lucide-react";
 import { CATEGORY_LABEL } from "@/lib/adapters";
@@ -131,7 +130,7 @@ function ShopContent() {
           Cửa hàng FPETS
         </h1>
         <p className="text-xs sm:text-sm text-bark-600 max-w-2xl leading-relaxed">
-          Đồ ăn, đồ chơi và phụ kiện cho chó mèo. Đăng nhập để mua sắm và nhận nhiều ưu đãi thành viên.
+          Đồ ăn, đồ chơi và phụ kiện cho chó mèo, mua lẻ từng món.
         </p>
       </div>
 
@@ -186,7 +185,7 @@ function ShopContent() {
       {/* BỐ CỤC CHÍNH 2 CỘT: Cột trái Sidebar cố định (sticky) + Cột phải lưới sản phẩm */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* ==================== CỘT TRÁI: SIDEBAR BỘ LỌC CỐ ĐỊNH ==================== */}
-        <aside className="hidden lg:block lg:col-span-3 sticky top-28 space-y-6 self-start">
+        <aside className="hidden lg:block lg:col-span-3 sticky top-20 space-y-6 self-start">
           <div className="p-5 rounded-container bg-surface-card border border-surface-border space-y-6 shadow-xs">
             {/* Header Sidebar & Nút Reset */}
             <div className="flex items-center justify-between pb-3 border-b border-surface-border">
@@ -285,17 +284,6 @@ function ShopContent() {
               </div>
             </div>
           </div>
-
-          {/* Khối cam kết an toàn ở sidebar */}
-          <div className="p-4 rounded-container bg-surface-muted border border-surface-border text-xs space-y-1.5">
-            <div className="font-bold text-pine-950 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-grass-700 shrink-0" />
-              <span>Tiêu chuẩn tuyển chọn</span>
-            </div>
-            <p className="text-[11px] text-bark-600 leading-relaxed">
-              Chọn sản phẩm có nguồn gốc rõ ràng, còn hạn dài; đồ chơi có kích cỡ theo loài và cân nặng.
-            </p>
-          </div>
         </aside>
 
         {/* ==================== CỘT PHẢI: LƯỚI SẢN PHẨM ==================== */}
@@ -329,7 +317,7 @@ function ShopContent() {
 
           {/* Lưới sản phẩm */}
           {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="aspect-square rounded-container bg-surface-muted animate-pulse" />
               ))}
@@ -350,7 +338,7 @@ function ShopContent() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               {filteredProducts.map((product) => {
                 const isJustAdded = addedId === product.id;
                 const outOfStock = product.stock <= 0;
@@ -359,7 +347,7 @@ function ShopContent() {
                     key={product.id}
                     className="rounded-container bg-surface-card border border-surface-border overflow-hidden flex flex-col justify-between hover:border-pine-800 transition-colors shadow-xs group"
                   >
-                    <div className="p-3.5 sm:p-4 space-y-2.5">
+                    <div className="p-3 space-y-2">
                       {/* Ảnh thật sản phẩm với ProductItemImage */}
                       <Link href={`/shop/${product.slug}`} className="block">
                         <div className="w-full aspect-square rounded-box overflow-hidden relative border border-surface-border/60 bg-surface-muted group-hover:opacity-95 transition-opacity">
@@ -368,7 +356,7 @@ function ShopContent() {
                             alt={`Ảnh sản phẩm ${product.name}`}
                             category={product.category}
                             placeholderColor={product.placeholderColor}
-                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                            sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 220px"
                           />
                           {outOfStock ? (
                             <span className="absolute top-2 left-2 px-2 py-0.5 rounded-badge bg-bark-700 text-white text-[10px] font-bold shadow-xs z-10">
@@ -395,7 +383,7 @@ function ShopContent() {
                     </div>
 
                     {/* Giá & Nút thêm giỏ */}
-                    <div className="p-3.5 sm:p-4 pt-2 border-t border-surface-border flex items-center justify-between gap-2">
+                    <div className="p-3 pt-2 border-t border-surface-border flex items-center justify-between gap-2">
                       <div className="min-h-[2.5rem] flex flex-col justify-center">
                         <div className="text-sm sm:text-base font-extrabold text-pine-950 font-display">
                           {formatVND(product.price)}

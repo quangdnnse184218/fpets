@@ -10,10 +10,11 @@ import { calcShippingFee, formatShippingFee, DELIVERY_DAYS } from "@/lib/shippin
 import { fetchBoxTypeById, fetchPlanOptions } from "@/lib/catalog";
 import { CreditCard, Truck, ArrowLeft, Lock, Banknote, Smartphone } from "lucide-react";
 import { BoxType, SubscriptionPlan } from "@/types/models";
-import AddressFields, { AddressValue, SavedAddressRow, emptyAddress, formatAddress, rowToAddress } from "@/components/common/AddressFields";
+import AddressFields, { AddressValue, SavedAddressRow, emptyAddress, formatAddress, isAddressValid, rowToAddress } from "@/components/common/AddressFields";
 import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, nextDeliveryWindow } from "@/lib/deliverySchedule";
 import { formatDate } from "@/lib/formatters";
 import { Button } from "@/components/ui/Button";
+import { planUnitPrice } from "@/lib/pricing";
 
 function CheckoutFormContent() {
   const router = useRouter();
@@ -33,6 +34,7 @@ function CheckoutFormContent() {
   const province = addr.province;
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showAddrErrors, setShowAddrErrors] = useState(false);
 
   const [deliverySchedule, setDeliverySchedule] = useState<DeliverySchedule>(searchParams.get("schedule") === "giua_thang" ? "giua_thang" : "dau_thang");
   const [paymentMethod, setPaymentMethod] = useState<'momo' | 'vnpay' | 'cod'>('momo');
@@ -74,13 +76,13 @@ function CheckoutFormContent() {
     if (saveAsDefault) await supabase.from("addresses").update({ is_default: false }).eq("user_id", user.id);
     await supabase.from("addresses").insert({
       user_id: user.id,
-      recipient_name: addr.recipientName,
-      phone: addr.phone,
+      recipient_name: addr.recipientName.trim(),
+      phone: addr.phone.trim(),
       province_city: addr.province,
       // Địa giới mới không còn quận/huyện; cột district vẫn NOT NULL nên lưu chuỗi rỗng
       district: "",
       ward: addr.ward,
-      street_address: addr.street,
+      street_address: addr.street.trim(),
       is_default: saveAsDefault || savedAddresses.length === 0,
     });
   };
@@ -96,7 +98,7 @@ function CheckoutFormContent() {
   }, [isSubscription, boxId]);
 
   useEffect(() => {
-    // Gói định kỳ và Mystery Box luôn cần đăng nhập (SPEC §4, §5); hàng lẻ cho phép mua không cần tài khoản.
+    // Mọi đơn đều cần đăng nhập: giỏ hàng lưu theo tài khoản, hộp và gói gắn với hồ sơ thú cưng.
     // Chờ xác định xong phiên đăng nhập, tránh đá khách đã đăng nhập về trang login khi tải lại trang.
     if (isLoadingAuth) return;
     const cartHasBox = cart.some((c) => c.type === "box");
@@ -106,7 +108,7 @@ function CheckoutFormContent() {
   }, [isLoadingAuth, isLoggedIn, isSubscription, cart, router]);
 
   // Số tiền hiển thị mô phỏng đúng công thức server (checkout_create_order / subscribe_to_box)
-  const unitPrice = subBox && selectedPlan ? Math.round(subBox.basePrice * (1 - selectedPlan.discountPercent / 100)) : 0;
+  const unitPrice = subBox && selectedPlan ? planUnitPrice(subBox.basePrice, selectedPlan.discountPercent) : 0;
   const itemsAmount = isSubscription ? unitPrice * (selectedPlan?.cycles || 0) : subtotal;
   const shippingFee = isSubscription
     ? calcShippingFee(province, itemsAmount, selectedPlan?.freeShipping)
@@ -117,6 +119,14 @@ function CheckoutFormContent() {
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+    // Thiếu thông tin nhận hàng thì không gửi đơn. Địa chỉ đã lưu bị thiếu: mở form để khách bổ sung.
+    if (!isAddressValid(addr)) {
+      if (selectedAddressId !== "new") setSelectedAddressId("new");
+      setShowAddrErrors(true);
+      setErrorMsg("Vui lòng điền đủ thông tin nhận hàng ở các ô được đánh dấu.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     setSubmitting(true);
     const supabase = createClient();
 
@@ -131,12 +141,12 @@ function CheckoutFormContent() {
           p_pet_id: subPet.id,
           p_plan_id: selectedPlan.id,
           p_delivery_schedule: deliverySchedule,
-          p_recipient_name: addr.recipientName,
-          p_recipient_phone: addr.phone,
+          p_recipient_name: addr.recipientName.trim(),
+          p_recipient_phone: addr.phone.trim(),
           p_province_city: addr.province,
           p_district: "",
           p_ward: addr.ward,
-          p_shipping_address: addr.street,
+          p_shipping_address: addr.street.trim(),
           p_payment_method: paymentMethod,
         });
         if (error) throw error;
@@ -156,14 +166,14 @@ function CheckoutFormContent() {
 
       const { data, error } = await supabase.rpc("checkout_create_order", {
         p_items: items,
-        p_recipient_name: addr.recipientName,
-        p_recipient_phone: addr.phone,
+        p_recipient_name: addr.recipientName.trim(),
+        p_recipient_phone: addr.phone.trim(),
         p_province_city: addr.province,
         p_district: "",
         p_ward: addr.ward,
-        p_shipping_address: addr.street,
+        p_shipping_address: addr.street.trim(),
         p_payment_method: paymentMethod,
-        p_customer_notes: notes || undefined,
+        p_customer_notes: notes.trim() || undefined,
         p_voucher_code: voucherCode || undefined,
       });
 
@@ -186,6 +196,8 @@ function CheckoutFormContent() {
   };
 
   function friendlyCheckoutError(message: string): string {
+    if (message.includes("ERR_ADDRESS_INCOMPLETE")) return "Thông tin nhận hàng chưa đủ. Vui lòng kiểm tra họ tên, tỉnh/thành, phường/xã và địa chỉ.";
+    if (message.includes("ERR_PHONE_INVALID")) return "Số điện thoại nhận hàng gồm 10 số, bắt đầu bằng 0.";
     if (message.includes("ERR_OUT_OF_STOCK")) return "Một sản phẩm trong giỏ đã hết hàng: " + message.split(":")[1];
     if (message.includes("ERR_EMPTY_CART")) return "Giỏ hàng của bạn đang trống.";
     if (message.includes("ERR_COD_LIMIT_EXCEEDED")) return "Đơn trên 2.000.000₫ không hỗ trợ thanh toán khi nhận hàng (COD).";
@@ -218,12 +230,12 @@ function CheckoutFormContent() {
       </div>
 
       {errorMsg && (
-        <div className="p-3 rounded-box bg-red-50 border border-red-200 text-xs text-red-700 font-semibold">
+        <div role="alert" className="p-3 rounded-box bg-red-50 border border-red-200 text-sm text-red-700 font-semibold">
           {errorMsg}
         </div>
       )}
 
-      <form onSubmit={handleSubmitOrder} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <form onSubmit={handleSubmitOrder} noValidate className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-7 rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border shadow-xs overflow-hidden">
           <div className="p-5 sm:p-6 space-y-4">
             <h2 className="text-sm font-bold text-pine-950 flex items-center gap-2">
@@ -252,7 +264,7 @@ function CheckoutFormContent() {
 
             {selectedAddressId === "new" && (
               <div className="space-y-3">
-                <AddressFields value={addr} onChange={setAddr} idPrefix="checkout" />
+                <AddressFields value={addr} onChange={setAddr} idPrefix="checkout" showErrors={showAddrErrors} />
                 {user.id && savedAddresses.length > 0 && (
                   <label className="flex items-center gap-2 min-h-11 text-xs text-bark-700 cursor-pointer">
                     <input type="checkbox" checked={saveAsDefault} onChange={(e) => setSaveAsDefault(e.target.checked)} className="w-4 h-4 accent-pine-900" />
@@ -356,7 +368,7 @@ function CheckoutFormContent() {
           </div>
         </div>
 
-        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-28">
+        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-20">
           <div className="p-5 sm:p-6 rounded-container bg-surface-muted/50 border border-surface-border/80 space-y-4">
             <h2 className="text-sm font-bold text-pine-950 pb-3 border-b border-surface-border flex items-center justify-between">
               <span>Đơn hàng của bạn</span>
@@ -426,7 +438,7 @@ function CheckoutFormContent() {
 function PolicyNote() {
   return (
     <p className="text-[11px] text-bark-500 text-center leading-relaxed">
-      Bấm đặt hàng nghĩa là bạn đồng ý với <Link href="/faq#doi-tra" className="underline">chính sách đổi trả</Link> và{" "}
+      Bấm đặt hàng nghĩa là bạn đồng ý với <Link href="/return-policy" className="underline">chính sách đổi trả</Link> và{" "}
       <Link href="/terms" className="underline">điều khoản dịch vụ</Link> của FPETS.
     </p>
   );

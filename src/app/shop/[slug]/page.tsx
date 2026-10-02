@@ -240,7 +240,7 @@ export default function ProductDetailPage() {
             </div>
             <div className="flex items-start gap-2">
               <RotateCcw className="w-4 h-4 text-pine-800 shrink-0" />
-              <span>Đổi trả trong 7 ngày nếu còn nguyên seal (khách chịu phí ship). Mua không cần tài khoản.</span>
+              <span>Đổi trả trong 7 ngày nếu còn nguyên seal (khách chịu phí ship).</span>
             </div>
           </div>
         </div>

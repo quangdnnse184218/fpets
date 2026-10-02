@@ -127,7 +127,7 @@ function LoginForm() {
           } else if (profile?.role === "admin") {
             router.push("/admin/dashboard");
           } else {
-            router.push("/my-account/pets");
+            router.push("/my-account");
           }
         }, 600);
       }

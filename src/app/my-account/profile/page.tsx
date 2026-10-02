@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { LogOut, MapPin, Plus, Star } from "lucide-react";
+import { MapPin, Plus, Star } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { createClient } from "@/lib/supabase/client";
-import AddressFields, { AddressValue, SavedAddressRow, emptyAddress, formatAddress, rowToAddress } from "@/components/common/AddressFields";
+import AddressFields, { AddressValue, SavedAddressRow, emptyAddress, formatAddress, isAddressValid, rowToAddress } from "@/components/common/AddressFields";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -13,7 +13,7 @@ const input = "w-full min-h-11 px-3 rounded-box border border-surface-border bg-
 const label = "text-xs font-bold text-bark-800 block mb-1";
 
 export default function ProfilePage() {
-  const { user, logout, refreshUser } = useApp();
+  const { user, refreshUser } = useApp();
   const { show } = useToast();
 
   const [fullName, setFullName] = useState(user.name);
@@ -23,12 +23,12 @@ export default function ProfilePage() {
   const [addresses, setAddresses] = useState<SavedAddressRow[]>([]);
   const [editing, setEditing] = useState<{ id: string | null; value: AddressValue; isDefault: boolean } | null>(null);
   const [savingAddr, setSavingAddr] = useState(false);
+  const [showAddrErrors, setShowAddrErrors] = useState(false);
   const [deletingAddr, setDeletingAddr] = useState<SavedAddressRow | null>(null);
 
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [savingPw, setSavingPw] = useState(false);
-  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     setFullName(user.name);
@@ -64,17 +64,21 @@ export default function ProfilePage() {
   const saveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing || !user.id) return;
+    if (!isAddressValid(editing.value)) {
+      setShowAddrErrors(true);
+      return;
+    }
     setSavingAddr(true);
     const supabase = createClient();
     const makeDefault = editing.isDefault || addresses.length === 0;
     if (makeDefault) await supabase.from("addresses").update({ is_default: false }).eq("user_id", user.id);
     const row = {
-      recipient_name: editing.value.recipientName,
-      phone: editing.value.phone,
+      recipient_name: editing.value.recipientName.trim(),
+      phone: editing.value.phone.trim(),
       province_city: editing.value.province,
       district: "",
       ward: editing.value.ward,
-      street_address: editing.value.street,
+      street_address: editing.value.street.trim(),
       is_default: makeDefault,
     };
     const { error } = editing.id
@@ -122,11 +126,6 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-bold text-pine-950">Thông tin & Địa chỉ</h2>
-        <p className="text-xs text-bark-500">Địa chỉ mặc định được điền sẵn khi đặt hàng và đăng ký gói định kỳ.</p>
-      </div>
-
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
         <div className="space-y-5">
           <form onSubmit={saveInfo} className="p-5 rounded-container bg-surface-card border border-surface-border space-y-4">
@@ -164,12 +163,12 @@ export default function ProfilePage() {
         <section className="p-5 rounded-container bg-surface-card border border-surface-border space-y-3">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-bold text-pine-950">Sổ địa chỉ</h3>
-            <Button variant="secondary" size="sm" onClick={() => setEditing({ id: null, value: { ...emptyAddress(), recipientName: user.name, phone: user.phone }, isDefault: addresses.length === 0 })}>
+            <Button variant="secondary" size="sm" onClick={() => { setShowAddrErrors(false); setEditing({ id: null, value: { ...emptyAddress(), recipientName: user.name, phone: user.phone }, isDefault: addresses.length === 0 }); }}>
               <Plus className="w-3.5 h-3.5" /> Thêm địa chỉ
             </Button>
           </div>
           {addresses.length === 0 ? (
-            <p className="text-sm text-bark-500 py-6 text-center">Chưa có địa chỉ nào. Địa chỉ bạn dùng khi đặt hàng sẽ được lưu tại đây.</p>
+            <p className="text-sm text-bark-500 py-6 text-center">Chưa có địa chỉ nào. Địa chỉ mặc định được điền sẵn khi đặt hàng và đăng ký gói.</p>
           ) : (
             <ul className="space-y-2">
               {addresses.map((row) => (
@@ -185,7 +184,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1 mt-2 pl-6">
-                    <Button variant="link" size="sm" onClick={() => setEditing({ id: row.id, value: rowToAddress(row), isDefault: row.is_default })}>Sửa</Button>
+                    <Button variant="link" size="sm" onClick={() => { setShowAddrErrors(false); setEditing({ id: row.id, value: rowToAddress(row), isDefault: row.is_default }); }}>Sửa</Button>
                     {!row.is_default && (
                       <Button variant="link" size="sm" onClick={() => setDefault(row)}><Star className="w-3.5 h-3.5" /> Đặt mặc định</Button>
                     )}
@@ -196,14 +195,6 @@ export default function ProfilePage() {
             </ul>
           )}
         </section>
-      </div>
-
-      {/* Đăng xuất đặt riêng ở cuối trang, cách xa các nút lưu */}
-      <div className="pt-6 mt-2 border-t border-surface-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <p className="text-xs text-bark-500">Đăng xuất khỏi tài khoản trên thiết bị này.</p>
-        <Button variant="danger" onClick={() => setConfirmLogout(true)}>
-          <LogOut className="w-4 h-4" /> Đăng xuất
-        </Button>
       </div>
 
       {editing && (
@@ -219,8 +210,8 @@ export default function ProfilePage() {
             </>
           }
         >
-          <form id="address-form" onSubmit={saveAddress} className="space-y-3">
-            <AddressFields value={editing.value} onChange={(value) => setEditing({ ...editing, value })} idPrefix="book" />
+          <form id="address-form" onSubmit={saveAddress} noValidate className="space-y-3">
+            <AddressFields value={editing.value} onChange={(value) => setEditing({ ...editing, value })} idPrefix="book" showErrors={showAddrErrors} />
             <label className="flex items-center gap-2 min-h-11 text-sm text-bark-700 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 accent-pine-900" checked={editing.isDefault} onChange={(e) => setEditing({ ...editing, isDefault: e.target.checked })} />
               Đặt làm địa chỉ mặc định
@@ -236,17 +227,6 @@ export default function ProfilePage() {
         confirmLabel="Xóa địa chỉ"
         onConfirm={deleteAddress}
         onClose={() => setDeletingAddr(null)}
-      />
-      <ConfirmDialog
-        open={confirmLogout}
-        title="Đăng xuất?"
-        message="Bạn sẽ cần đăng nhập lại để xem đơn hàng và gói định kỳ."
-        confirmLabel="Đăng xuất"
-        onConfirm={async () => {
-          await logout();
-          window.location.href = "/";
-        }}
-        onClose={() => setConfirmLogout(false)}
       />
     </div>
   );
