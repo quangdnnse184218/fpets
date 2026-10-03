@@ -14,6 +14,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { SHIPPING_SUMMARY } from "@/lib/shipping";
 import { capitalize, discountSentence, freeShippingPlans, savingsSentence } from "@/lib/planCopy";
 import { usePlans } from "@/lib/usePlans";
+import { CONTACT_INFO } from "@/lib/contactInfo";
 
 // Lối vào nhanh theo loại bé: dẫn thẳng tới bộ lọc "Dành cho" của trang Mystery Box
 const AUDIENCE_CARDS = [
@@ -302,22 +303,43 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* 6. FAQ rút gọn */}
-      <section aria-labelledby="faq-heading" className={`${container} space-y-4 sm:space-y-5`}>
-        <div className="flex items-end justify-between gap-4 max-w-3xl">
-          <h2 id="faq-heading" className={sectionTitle}>Câu hỏi thường gặp</h2>
-          <Link href="/faq" className="text-sm font-bold text-pine-900 hover:underline shrink-0">Xem thêm câu hỏi</Link>
-        </div>
-        <div className="max-w-3xl rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border">
-          {HOME_FAQ.map((item) => (
-            <details key={item.q} className="group p-4 sm:p-5">
-              <summary className="flex items-center justify-between gap-3 cursor-pointer list-none text-sm sm:text-[15px] font-bold text-pine-950">
-                <span>{item.q}</span>
-                <ChevronDown className="w-4 h-4 text-bark-600 shrink-0 transition-transform group-open:rotate-180" />
-              </summary>
-              <p className="mt-2 text-sm text-bark-700 leading-relaxed">{item.a}</p>
-            </details>
-          ))}
+      {/* 6. FAQ rút gọn: tiêu đề và lối sang trang hỗ trợ ở cột trái, câu hỏi ở cột phải (câu đầu mở sẵn) */}
+      <section aria-labelledby="faq-heading" className={container}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-12 items-start">
+          <div className="lg:col-span-4 space-y-2 lg:space-y-3">
+            <h2 id="faq-heading" className={sectionTitle}>Câu hỏi thường gặp</h2>
+            <p className="text-sm sm:text-base text-bark-700 leading-relaxed">Những điều khách hay hỏi trước khi đặt hộp đầu tiên cho bé.</p>
+            <div className="hidden lg:block pt-3 space-y-4">
+              <ButtonLink href="/faq" variant="secondary">Xem tất cả câu hỏi</ButtonLink>
+              <p className="text-sm text-bark-700 leading-relaxed">
+                Cần hỏi thêm? Gọi{" "}
+                <a href={`tel:${CONTACT_INFO.hotlineTel}`} className="font-bold text-pine-900 hover:underline">{CONTACT_INFO.hotline}</a>
+                <span className="block text-bark-600">{CONTACT_INFO.hours} hằng ngày</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="lg:col-span-8 space-y-4">
+            <div className="rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border overflow-hidden">
+              {HOME_FAQ.map((item, i) => (
+                <details key={item.q} open={i === 0} className="group">
+                  <summary className="flex items-center justify-between gap-4 cursor-pointer list-none px-4 sm:px-6 py-4 sm:py-5 text-[15px] sm:text-base font-bold text-pine-950 hover:bg-surface-muted/50 transition-colors">
+                    <span>{item.q}</span>
+                    <ChevronDown className="w-5 h-5 text-bark-600 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                  </summary>
+                  <p className="px-4 sm:px-6 pb-4 sm:pb-5 text-sm sm:text-[15px] text-bark-700 leading-relaxed">{item.a}</p>
+                </details>
+              ))}
+            </div>
+            {/* Điện thoại: nút và số hotline nằm dưới danh sách câu hỏi */}
+            <div className="lg:hidden space-y-3">
+              <ButtonLink href="/faq" variant="secondary" className="w-full sm:w-auto">Xem tất cả câu hỏi</ButtonLink>
+              <p className="text-sm text-bark-700">
+                Cần hỏi thêm? Gọi{" "}
+                <a href={`tel:${CONTACT_INFO.hotlineTel}`} className="font-bold text-pine-900 underline underline-offset-2">{CONTACT_INFO.hotline}</a> ({CONTACT_INFO.hours} hằng ngày)
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
