@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import AccountShell from "./AccountShell";
 
 export const metadata: Metadata = {
-  title: { template: "%s | Tài khoản FPETS", default: "Tài khoản | FPETS" },
+  title: { template: "%s | Tài khoản FPETS", default: "Tài khoản" },
   robots: { index: false, follow: false },
 };
 

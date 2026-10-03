@@ -87,7 +87,7 @@ const navItemClass = (active: boolean) =>
 export default function MainNavbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { cart, isLoggedIn, user, logout } = useApp();
+  const { cart, isLoggedIn, isLoadingAuth, user, logout } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -330,6 +330,9 @@ export default function MainNavbar() {
                 )}
               </div>
             </div>
+          ) : isLoadingAuth ? (
+            // Đang đọc phiên đăng nhập: giữ chỗ trống, không nháy nút Đăng nhập/Đăng ký với người đã đăng nhập
+            <div className="hidden md:block w-10 h-10 ml-1 rounded-box bg-surface-muted animate-pulse" aria-hidden="true" />
           ) : (
             <div className="hidden md:flex items-center gap-2 pl-2 ml-1 border-l border-surface-border">
               <Link href="/login" className="inline-flex items-center h-10 px-3 text-sm font-medium text-bark-700 hover:text-pine-950 rounded-box hover:bg-surface-muted transition-colors">

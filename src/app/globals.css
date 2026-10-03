@@ -83,3 +83,13 @@ body {
 html {
   scroll-padding-top: 5rem;
 }
+
+/* Dải tab / chip cuộn ngang: vẫn vuốt được nhưng ẩn thanh cuộn */
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { fetchBoxTypeBySlug, fetchPlanOptions } from "@/lib/catalog";
-import { formatVND, formatDate } from "@/lib/formatters";
+import { formatVND, formatDate, formatWeight } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
 import { Check, CheckCircle2, ShieldCheck, PlusCircle, PawPrint, Truck, ChevronDown, Gift } from "lucide-react";
 import { EXCHANGE_POLICY, QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
@@ -262,7 +262,7 @@ export default function BoxDetailPage() {
                         <span className="text-sm font-bold text-pine-950">{pet.name}</span>
                       </div>
                       <div className="text-[11px] text-bark-500 mt-1 truncate">
-                        {[pet.breed, pet.weight ? `${pet.weight} kg` : ""].filter(Boolean).join(" · ")}
+                        {[pet.breed, pet.weight ? formatWeight(pet.weight) : ""].filter(Boolean).join(" · ")}
                       </div>
                       {pet.allergies.length > 0 && (
                         <div className="text-[10px] text-red-700 mt-1 truncate font-medium">

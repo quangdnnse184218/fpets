@@ -20,6 +20,7 @@ export default function CartPage() {
   const router = useRouter();
   const {
     cart,
+    isCartReady,
     pets,
     updateQuantity,
     updatePetForBox,
@@ -66,6 +67,11 @@ export default function CartPage() {
         (item.boxType.species !== "dog" || p.size === item.boxType.size)
     );
 
+  // Giỏ hàng tài khoản tải từ server: chưa tải xong thì chưa kết luận là giỏ trống
+  if (!isCartReady) {
+    return <div className="max-w-3xl mx-auto px-4 py-16 text-center text-sm text-bark-500" aria-busy="true">Đang tải giỏ hàng…</div>;
+  }
+
   if (cart.length === 0) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16 text-center space-y-6">
@@ -77,7 +83,7 @@ export default function CartPage() {
             Giỏ hàng của bạn đang trống
           </h1>
           <p className="text-sm text-bark-600 max-w-md mx-auto">
-            Hãy khám phá chiếc Mystery Box bất ngờ đầu tiên hoặc chọn các món snack thơm ngon cho bé nhé!
+            Chọn một Mystery Box theo hồ sơ của bé, hoặc mua lẻ đồ ăn, đồ chơi trong cửa hàng.
           </p>
         </div>
         <div className="pt-2 flex flex-col sm:flex-row justify-center gap-3">
@@ -85,13 +91,13 @@ export default function CartPage() {
             href="/boxes"
             className="px-6 py-3 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-xs transition-colors"
           >
-            Khám phá Mystery Box
+            Xem Mystery Box
           </Link>
           <Link
             href="/shop"
             className="px-6 py-3 rounded-box bg-surface-card hover:bg-surface-muted text-bark-800 border border-surface-border font-bold text-xs transition-colors"
           >
-            Xem shop đồ lẻ
+            Vào cửa hàng
           </Link>
         </div>
       </div>

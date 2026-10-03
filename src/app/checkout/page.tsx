@@ -8,7 +8,7 @@ import { formatVND } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/client";
 import { calcShippingFee, formatShippingFee, DELIVERY_DAYS } from "@/lib/shipping";
 import { fetchBoxTypeById, fetchPlanOptions } from "@/lib/catalog";
-import { CreditCard, Truck, ArrowLeft, Lock, Banknote, Smartphone } from "lucide-react";
+import { CreditCard, Truck, ArrowLeft, Banknote, Smartphone } from "lucide-react";
 import { BoxType, SubscriptionPlan } from "@/types/models";
 import AddressFields, { AddressValue, SavedAddressRow, emptyAddress, formatAddress, isAddressValid, rowToAddress } from "@/components/common/AddressFields";
 import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, nextDeliveryWindow } from "@/lib/deliverySchedule";
@@ -236,16 +236,13 @@ function CheckoutFormContent() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-      <div className="flex items-center justify-between pb-4 border-b border-surface-border">
+      <div className="pb-4 border-b border-surface-border space-y-2">
         {/* Đăng ký gói đi thẳng từ trang Box nên quay lại trang đó, không phải giỏ hàng */}
-        <Link href={isSubscription ? "/subscription" : "/cart"} className="text-xs font-semibold text-bark-600 hover:text-bark-900 flex items-center gap-1">
+        <Link href={isSubscription ? "/subscription" : "/cart"} className="text-xs font-semibold text-bark-600 hover:text-bark-900 inline-flex items-center gap-1">
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>{isSubscription ? "Quay lại chọn gói" : "Quay lại giỏ hàng"}</span>
         </Link>
-        <div className="flex items-center gap-1.5 text-xs text-grass-700 font-semibold">
-          <Lock className="w-3.5 h-3.5" />
-          <span>Thanh toán an toàn SSL</span>
-        </div>
+        <h1 className="text-2xl font-bold text-pine-950">{isSubscription ? "Đăng ký gói định kỳ" : "Thanh toán"}</h1>
       </div>
 
       {errorMsg && (

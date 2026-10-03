@@ -8,6 +8,13 @@ export const AGE_LABEL: Record<Pet["ageGroup"], string> = {
   senior: "Trên 7 tuổi",
 };
 
+// Cân nặng hợp lệ theo loài, dùng chung cho Pet Quiz và form hồ sơ
+export const weightRange = (species: Pet["species"]) => (species === "dog" ? { min: 0.5, max: 90 } : { min: 0.3, max: 15 });
+
+// Chó chia theo cân nặng: dưới 10 kg là size nhỏ, từ 10 kg là size lớn. Mèo dùng chung một loại hộp.
+export const sizeFromWeight = (species: Pet["species"], weight: number): Pet["size"] =>
+  species === "dog" && weight >= 10 ? "large" : "small";
+
 export const ALLERGY_OPTIONS = [
   "Thịt gà",
   "Thịt bò",

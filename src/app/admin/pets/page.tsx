@@ -265,7 +265,7 @@ export default function AdminPetsPage() {
                 <span>LƯU Ý DỊ ỨNG & GHI CHÚ KHI CHỌN MÓN:</span>
               </div>
               <p className="text-bark-700"><span className="font-semibold">Dị ứng: </span>{selectedPet.allergies.join(", ") || "Không có"}</p>
-              {selectedPet.notes && <p className="text-bark-600 text-[11px]"><span className="font-semibold">Ghi chú: </span>{selectedPet.notes}</p>}
+              {selectedPet.notes && <p className="text-bark-600 text-[11px] whitespace-pre-line"><span className="font-semibold">Ghi chú: </span>{selectedPet.notes}</p>}
               <p className="text-bark-600 text-[11px]"><span className="font-semibold">Đã nhận: </span>{boxesReceived} hộp</p>
             </div>
 
@@ -287,7 +287,7 @@ export default function AdminPetsPage() {
                         <div>
                           <span className="font-semibold text-bark-900 block">{item.products?.name || "Sản phẩm"}</span>
                           <span className="text-[10px] text-bark-500 block">{formatDate(item.created_at)}</span>
-                          {item.notes && <p className="text-[11px] text-bark-600 mt-1 italic">&ldquo;{item.notes}&rdquo;</p>}
+                          {item.notes && <p className="text-[11px] text-bark-600 mt-1 italic whitespace-pre-line">&ldquo;{item.notes}&rdquo;</p>}
                         </div>
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${badge.className}`}>
                           <Icon className="w-2.5 h-2.5" /><span>{badge.label}</span>

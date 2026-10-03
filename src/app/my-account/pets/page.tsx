@@ -3,11 +3,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Dog, Cat, Plus, MoreHorizontal, Pencil, Trash2, Camera, ClipboardList, Zap } from "lucide-react";
+import { Dog, Cat, Plus, MoreHorizontal, Pencil, Trash2, Camera, ClipboardList } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { createClient } from "@/lib/supabase/client";
+import { formatWeight } from "@/lib/formatters";
 import { Pet } from "@/types/models";
-import { AGE_LABEL, ALLERGY_OPTIONS, BREED_SUGGESTIONS, PREFERENCE_OPTIONS } from "@/lib/petOptions";
+import { AGE_LABEL, ALLERGY_OPTIONS, BREED_SUGGESTIONS, PREFERENCE_OPTIONS, sizeFromWeight, weightRange } from "@/lib/petOptions";
 import { Button, ButtonLink, IconButton } from "@/components/ui/Button";
 import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
@@ -125,8 +126,9 @@ export default function MyPetsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Tiêu đề trang do khung Tài khoản hiển thị; ở đây chỉ còn nút thêm hồ sơ */}
-      <div className="flex justify-end">
+      {/* Tiêu đề trang do khung Tài khoản hiển thị; ở đây chỉ còn số hồ sơ và nút thêm */}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-bark-600">{ready ? (pets.length > 0 ? `${pets.length} hồ sơ` : "Chưa có hồ sơ nào") : ""}</p>
         <div className="relative">
           <Button onClick={() => setAddChooserOpen((v) => !v)} disabled={!ready} aria-expanded={addChooserOpen}>
             <Plus className="w-4 h-4" />
@@ -143,7 +145,7 @@ export default function MyPetsPage() {
                 }}
                 className="w-full flex items-start gap-2.5 p-2.5 rounded-box hover:bg-surface-muted text-left"
               >
-                <Zap className="w-4 h-4 mt-0.5 text-pine-800 shrink-0" />
+                <Pencil className="w-4 h-4 mt-0.5 text-pine-800 shrink-0" />
                 <span>
                   <span className="block font-bold text-pine-950">Nhập nhanh</span>
                   <span className="block text-xs text-bark-500">Điền thông tin bé trong một form</span>
@@ -194,7 +196,7 @@ export default function MyPetsPage() {
                         </span>
                       </h3>
                       <p className="text-xs text-bark-600">
-                        {[pet.breed, pet.weight ? `${pet.weight} kg` : "", pet.ageLabel].filter(Boolean).join(" · ")}
+                        {[pet.breed, pet.weight ? formatWeight(pet.weight) : "", pet.ageLabel].filter(Boolean).join(" · ")}
                       </p>
                     </div>
                   </div>
@@ -268,7 +270,7 @@ export default function MyPetsPage() {
                     </Link>
                   )}
                 </div>
-                <ButtonLink href={`/boxes?species=${pet.species}`} variant="secondary" size="sm" className="w-full">
+                <ButtonLink href={`/boxes?pet=${pet.id}`} variant="secondary" size="sm" className="w-full">
                   Đặt hộp cho bé {pet.name}
                 </ButtonLink>
               </div>
@@ -410,7 +412,18 @@ function PetFormModal({
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [showErrors, setShowErrors] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const weight = Number(form.weight.trim().replace(",", "."));
+  const range = weightRange(form.species);
+  const nameError = form.name.trim() ? "" : "Vui lòng nhập tên bé.";
+  const weightError =
+    form.weight.trim() === ""
+      ? "Vui lòng nhập cân nặng."
+      : !Number.isFinite(weight) || weight < range.min || weight > range.max
+        ? `Cân nặng của ${form.species === "dog" ? "chó" : "mèo"} trong khoảng ${String(range.min).replace(".", ",")}–${range.max} kg.`
+        : "";
 
   const set = <K extends keyof PetFormValue>(key: K, value: PetFormValue[K]) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -431,9 +444,11 @@ function PetFormModal({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const weight = parseFloat(form.weight.replace(",", "."));
-    if (!form.name.trim()) return setError("Vui lòng nhập tên bé.");
-    if (!weight || weight <= 0 || weight > 120) return setError("Vui lòng nhập cân nặng hợp lệ (kg).");
+    if (nameError || weightError) {
+      setShowErrors(true);
+      document.getElementById(nameError ? "pet-name" : "pet-weight")?.focus();
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -442,7 +457,7 @@ function PetFormModal({
         species: form.species,
         breed: form.breed.trim(),
         weight,
-        size: (weight >= 10 ? "large" : "small") as Pet["size"],
+        size: sizeFromWeight(form.species, weight),
         ageGroup: form.ageGroup,
         ageLabel: AGE_LABEL[form.ageGroup],
         gender: form.gender,
@@ -483,7 +498,7 @@ function PetFormModal({
         </>
       }
     >
-      <form id="pet-form" onSubmit={submit} className="space-y-4">
+      <form id="pet-form" onSubmit={submit} noValidate className="space-y-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -520,7 +535,17 @@ function PetFormModal({
           </div>
           <div>
             <label className={label} htmlFor="pet-name">Tên bé *</label>
-            <input id="pet-name" className={input} value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Ví dụ: Bơ" required />
+            <input
+              id="pet-name"
+              className={`${input} ${showErrors && nameError ? "!border-red-400" : ""}`}
+              value={form.name}
+              onChange={(e) => set("name", e.target.value)}
+              placeholder="Ví dụ: Bơ"
+              maxLength={30}
+              aria-invalid={showErrors && !!nameError}
+              aria-describedby={showErrors && nameError ? "pet-name-error" : undefined}
+            />
+            {showErrors && nameError && <p id="pet-name-error" role="alert" className="text-[11px] text-red-600 font-semibold mt-1">{nameError}</p>}
           </div>
           <div>
             <label className={label} htmlFor="pet-breed">Giống</label>
@@ -531,7 +556,17 @@ function PetFormModal({
           </div>
           <div>
             <label className={label} htmlFor="pet-weight">Cân nặng (kg) *</label>
-            <input id="pet-weight" className={input} inputMode="decimal" value={form.weight} onChange={(e) => set("weight", e.target.value)} placeholder="Ví dụ: 6.5" required />
+            <input
+              id="pet-weight"
+              className={`${input} ${showErrors && weightError ? "!border-red-400" : ""}`}
+              inputMode="decimal"
+              value={form.weight}
+              onChange={(e) => set("weight", e.target.value)}
+              placeholder={form.species === "dog" ? "Ví dụ: 6,5" : "Ví dụ: 4"}
+              aria-invalid={showErrors && !!weightError}
+              aria-describedby={showErrors && weightError ? "pet-weight-error" : undefined}
+            />
+            {showErrors && weightError && <p id="pet-weight-error" role="alert" className="text-[11px] text-red-600 font-semibold mt-1">{weightError}</p>}
           </div>
           <div>
             <label className={label} htmlFor="pet-age">Độ tuổi *</label>
@@ -566,7 +601,7 @@ function PetFormModal({
           <ChipPicker tone="pine" options={PREFERENCE_OPTIONS[form.species]} value={form.preferences} onChange={(v) => set("preferences", v)} otherPlaceholder="Sở thích khác" />
         </div>
 
-        {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
+        {error && <p role="alert" className="text-xs text-red-600 font-semibold">{error}</p>}
       </form>
     </Modal>
   );

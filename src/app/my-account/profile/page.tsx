@@ -66,6 +66,7 @@ export default function ProfilePage() {
     if (!editing || !user.id) return;
     if (!isAddressValid(editing.value)) {
       setShowAddrErrors(true);
+      requestAnimationFrame(() => document.querySelector<HTMLElement>('#address-form [aria-invalid="true"]')?.focus());
       return;
     }
     setSavingAddr(true);

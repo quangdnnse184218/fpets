@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import ProductItemImage from "@/components/common/ProductItemImage";
 import { createClient } from "@/lib/supabase/client";
-import { formatVND } from "@/lib/formatters";
+import { formatVND, formatWeight } from "@/lib/formatters";
 import { fetchPendingCurations, fetchCandidateProducts, autoSuggest, CurationQueueRow, CandidateProduct } from "@/lib/curation";
 import { CheckCircle2, AlertTriangle, ShieldAlert, RefreshCw, PlusCircle, XCircle } from "lucide-react";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
@@ -156,7 +156,7 @@ export default function AdminBoxCurationPage() {
                       Tuyển chọn hộp cho bé {active.pets.name}
                     </h2>
                     <p className="text-xs text-bark-600 mt-1">
-                      Đơn hàng: <strong>{active.orders?.order_code}</strong> · {[active.pets.breed, active.pets.weight ? `${active.pets.weight} kg` : null, ageLabel[active.pets.age_group]].filter(Boolean).join(" · ")}
+                      Đơn hàng: <strong>{active.orders?.order_code}</strong> · {[active.pets.breed, active.pets.weight ? formatWeight(active.pets.weight) : null, ageLabel[active.pets.age_group]].filter(Boolean).join(" · ")}
                     </p>
                   </div>
                 </div>
@@ -178,6 +178,9 @@ export default function AdminBoxCurationPage() {
                   </div>
                   <div className="p-3.5 rounded-box bg-surface-muted border border-surface-border space-y-1">
                     <span className="font-bold text-pine-950 block">Ghi chú tuyển chọn:</span>
+                    {active.pets.notes && (
+                      <p className="text-[11px] text-pine-950 font-semibold whitespace-pre-line">{active.pets.notes}</p>
+                    )}
                     <p className="text-[11px] text-bark-600">
                       Món có nhãn &quot;Đã gửi trước&quot; hoặc &quot;Bé không thích&quot; nên tránh chọn lại nếu còn lựa chọn khác.
                     </p>

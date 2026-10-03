@@ -172,9 +172,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const supabase = createClient();
 
-      supabase.auth.getSession().then(({ data: { session } }) => {
+      // Chờ tải xong hồ sơ rồi mới báo hết "đang tải": nếu không, có một nhịp isLoadingAuth = false
+      // mà isLoggedIn vẫn false và các trang bắt buộc đăng nhập (thanh toán) đẩy nhầm người dùng ra /login
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
         if (session?.user) {
-          fetchUserProfile(session.user.id, session.user.email);
+          await fetchUserProfile(session.user.id, session.user.email);
         } else {
           setIsLoggedIn(false);
           setUser(DEFAULT_USER);
@@ -432,7 +434,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Đồng bộ giỏ hàng theo trạng thái đăng nhập (và gộp giỏ khách vãng lai khi vừa login)
   const prevLoggedIn = useRef(false);
   useEffect(() => {
-    if (isLoadingAuth || !isSupabaseConfigured()) return;
+    if (isLoadingAuth) return;
+    if (!isSupabaseConfigured()) {
+      setIsCartReady(true);
+      return;
+    }
     (async () => {
       setCartLoading(true);
       try {

@@ -6,7 +6,7 @@ import { ChevronRight } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchMyOrders, MyOrder, orderLines } from "@/lib/myOrders";
-import { formatDate, formatVND } from "@/lib/formatters";
+import { formatDate, formatVND, formatWeight } from "@/lib/formatters";
 import { ORDER_STATUS_LABEL, ORDER_STATUS_STYLE, cleanItemName } from "@/lib/orderDisplay";
 import { DeliverySchedule, cutoffOf, deliveryWindowLabel } from "@/lib/deliverySchedule";
 import { AGE_LABEL } from "@/lib/petOptions";
@@ -158,11 +158,11 @@ export default function AccountOverviewPage() {
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-pine-950 truncate">{pet.name}</p>
                   <p className="text-xs text-bark-500">
-                    {[pet.species === "dog" ? "Chó" : "Mèo", pet.weight ? `${pet.weight} kg` : "", AGE_LABEL[pet.ageGroup]].filter(Boolean).join(" · ")}
+                    {[pet.species === "dog" ? "Chó" : "Mèo", pet.weight ? formatWeight(pet.weight) : "", AGE_LABEL[pet.ageGroup]].filter(Boolean).join(" · ")}
                     {pet.allergies.length > 0 && ` · Dị ứng: ${pet.allergies.join(", ").toLowerCase()}`}
                   </p>
                 </div>
-                <Link href={`/boxes?species=${pet.species}`} className="text-xs font-bold text-pine-900 hover:underline shrink-0">Chọn hộp</Link>
+                <Link href={`/boxes?pet=${pet.id}`} className="text-xs font-bold text-pine-900 hover:underline shrink-0">Chọn hộp</Link>
               </li>
             ))}
           </ul>

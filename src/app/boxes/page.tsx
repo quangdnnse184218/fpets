@@ -43,12 +43,13 @@ function BoxesContent() {
   // Đến từ trang Gói định kỳ (?plan=3): giữ gói đã chọn khi sang trang chi tiết hộp
   const [planParam, setPlanParam] = useState("");
 
-  // Lọc sẵn theo link: /boxes?tier=premium, /boxes?species=cat (menu, trang chủ, hồ sơ thú cưng)
+  // Lọc sẵn theo link: /boxes?tier=premium, /boxes?species=cat (menu, trang chủ), /boxes?pet=<id> (hồ sơ thú cưng)
   useEffect(() => {
     const t = searchParams.get("tier");
     const s = searchParams.get("species");
     setTier(t === "premium" || t === "standard" ? t : "all");
     setSpecies(s === "dog" || s === "cat" ? s : "all");
+    setPetId(searchParams.get("pet") || "");
     const plan = searchParams.get("plan");
     setPlanParam(plan && /^[0-9]+$/.test(plan) ? plan : "");
   }, [searchParams]);
@@ -80,7 +81,7 @@ function BoxesContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boxes, species, tier, dogSize, petId, sort, pets]);
 
-  const activeCount = (species !== "all" ? 1 : 0) + (tier !== "all" ? 1 : 0) + (dogSize !== "all" ? 1 : 0) + (petId ? 1 : 0);
+  const activeCount = (species !== "all" ? 1 : 0) + (tier !== "all" ? 1 : 0) + (dogSize !== "all" ? 1 : 0) + (selectedPet ? 1 : 0);
   const reset = () => {
     setSpecies("all");
     setTier("all");

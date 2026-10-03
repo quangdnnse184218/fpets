@@ -7,10 +7,10 @@ import Link from "next/link";
 import { ArrowLeft, Cat, Check, Dog } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { fetchBoxTypes, fetchPlanOptions } from "@/lib/catalog";
-import { formatVND } from "@/lib/formatters";
+import { formatVND, formatWeight } from "@/lib/formatters";
 import { planUnitPrice } from "@/lib/pricing";
 import { calcShippingFee } from "@/lib/shipping";
-import { AGE_LABEL, ALLERGY_OPTIONS, BREED_SUGGESTIONS, PREFERENCE_OPTIONS, normalizeText } from "@/lib/petOptions";
+import { AGE_LABEL, ALLERGY_OPTIONS, BREED_SUGGESTIONS, PREFERENCE_OPTIONS, normalizeText, sizeFromWeight, weightRange } from "@/lib/petOptions";
 import { Button } from "@/components/ui/Button";
 import { BoxType, Pet, SubscriptionPlan } from "@/types/models";
 
@@ -38,9 +38,10 @@ interface QuizAnswers {
 }
 
 // Câu 6: mức độ gặm (chó) / vận động (mèo), giúp chọn đồ chơi đủ bền và đúng kiểu chơi
-const ENERGY_OPTIONS: Record<Species, { question: string; options: string[] }> = {
-  dog: { question: "Bé gặm đồ chơi mạnh cỡ nào?", options: ["Gặm nhẹ, giữ đồ chơi lâu", "Vừa phải", "Gặm rất mạnh, mau hỏng đồ"] },
-  cat: { question: "Bé vận động nhiều không?", options: ["Thích nằm, ít chạy nhảy", "Vừa phải", "Chạy nhảy, săn đồ chơi cả ngày"] },
+// noteLabel: tiêu đề dòng ghi chú lưu vào hồ sơ bé (admin đọc khi tuyển chọn hộp)
+const ENERGY_OPTIONS: Record<Species, { question: string; noteLabel: string; options: string[] }> = {
+  dog: { question: "Bé gặm đồ chơi mạnh cỡ nào?", noteLabel: "Lực gặm", options: ["Gặm nhẹ, giữ đồ chơi lâu", "Vừa phải", "Gặm rất mạnh, mau hỏng đồ"] },
+  cat: { question: "Bé vận động nhiều không?", noteLabel: "Mức vận động", options: ["Thích nằm, ít chạy nhảy", "Vừa phải", "Chạy nhảy, săn đồ chơi cả ngày"] },
 };
 
 const AGE_HINT: Record<Pet["ageGroup"], string> = {
@@ -49,9 +50,6 @@ const AGE_HINT: Record<Pet["ageGroup"], string> = {
   senior: "Món dễ tiêu, đồ chơi nhẹ nhàng",
 };
 
-// Chó chia theo cân nặng: dưới 10 kg là size nhỏ, từ 10 kg là size lớn. Mèo dùng chung một loại hộp.
-const sizeFromWeight = (species: Species, w: number): Pet["size"] => (species === "dog" && w >= 10 ? "large" : "small");
-const weightRange = (species: Species) => (species === "dog" ? { min: 0.5, max: 90 } : { min: 0.3, max: 15 });
 
 function pickBox(boxTypes: BoxType[], species: Species, weight: number, tier: Tier): BoxType | undefined {
   const size = sizeFromWeight(species, weight);
@@ -182,6 +180,11 @@ export default function PetQuizPage() {
     setSaving(true);
     setSaveError("");
     try {
+      const duplicate = pets.find((p) => p.species === a.species && normalizeText(p.name.trim()) === normalizeText(a.petName));
+      // Giữ ghi chú khách tự viết trong hồ sơ cũ, chỉ thay dòng lực gặm / mức vận động
+      const keptNotes = (duplicate?.notes || "")
+        .split("\n")
+        .filter((line) => line.trim() && !/^(Mức vận động:|Lực gặm:|Bé vận động nhiều không\?|Bé gặm đồ chơi mạnh cỡ nào\?)/.test(line.trim()));
       const profile = {
         name: a.petName,
         species: a.species,
@@ -193,9 +196,8 @@ export default function PetQuizPage() {
         gender: a.gender,
         allergies: a.allergies,
         preferences: a.preferences,
-        notes: `${ENERGY_OPTIONS[a.species].question} ${a.energy}`,
+        notes: [...keptNotes, `${ENERGY_OPTIONS[a.species].noteLabel}: ${a.energy}`].join("\n"),
       };
-      const duplicate = pets.find((p) => p.species === a.species && normalizeText(p.name.trim()) === normalizeText(a.petName));
       let petId = duplicate?.id;
       if (duplicate) await updatePet(duplicate.id, profile);
       else petId = (await addPet(profile)).id;
@@ -275,8 +277,8 @@ export default function PetQuizPage() {
     const total = selectedPlan ? unit * selectedPlan.cycles : recommendedBox.basePrice;
     const reasons = [
       current.species === "cat"
-        ? `Bé là mèo ${current.weight} kg: hộp cho mèo dùng chung cho mọi cân nặng.`
-        : `Bé là chó ${current.weight} kg: hộp ${current.weight >= 10 ? "cho chó từ 10 kg, đồ chơi cỡ lớn và chịu lực gặm" : "cho chó dưới 10 kg, đồ chơi vừa miệng"}.`,
+        ? `Bé là mèo ${formatWeight(current.weight)}: hộp cho mèo dùng chung cho mọi cân nặng.`
+        : `Bé là chó ${formatWeight(current.weight)}: hộp ${current.weight >= 10 ? "cho chó từ 10 kg, đồ chơi cỡ lớn và chịu lực gặm" : "cho chó dưới 10 kg, đồ chơi vừa miệng"}.`,
       `${AGE_LABEL[current.ageGroup]}: ${AGE_HINT[current.ageGroup].toLowerCase()}.`,
       current.allergies.length > 0 ? `Loại các món có: ${current.allergies.join(", ").toLowerCase()}.` : "Bé không dị ứng nên được chọn từ toàn bộ danh mục.",
       `Ưu tiên theo sở thích: ${current.preferences.join(", ").toLowerCase()}.`,
@@ -288,7 +290,7 @@ export default function PetQuizPage() {
             Hộp phù hợp với bé {current.petName}
           </h1>
           <p className="text-sm text-bark-600">
-            {current.species === "dog" ? "Chó" : "Mèo"} · {current.gender} · {current.weight} kg · {AGE_LABEL[current.ageGroup]}
+            {current.species === "dog" ? "Chó" : "Mèo"} · {current.gender} · {formatWeight(current.weight)} · {AGE_LABEL[current.ageGroup]}
             {current.breed ? ` · ${current.breed}` : ""}
           </p>
         </div>

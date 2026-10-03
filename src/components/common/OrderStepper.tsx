@@ -34,8 +34,22 @@ export default function OrderStepper({ steps, currentIndex }: { steps: OrderStep
             <span className={`mt-2 px-0.5 text-[11px] sm:text-xs leading-tight ${done ? "font-bold text-pine-950" : "text-bark-500"}`}>
               {step.label}
             </span>
-            {step.time && <span className="mt-0.5 px-0.5 text-[10px] sm:text-[11px] text-bark-500 leading-tight">{step.time}</span>}
-            <span className="sr-only">{current ? "(bước hiện tại)" : done ? "(đã xong)" : "(chưa tới)"}</span>
+            {/* "HH:mm · dd/MM/yyyy": giờ và ngày xuống 2 dòng; điện thoại bỏ năm (đã có ở dòng "Đặt lúc") để các cột không dính nhau */}
+            {step.time && (
+              <span className="mt-0.5 px-0.5 text-[10px] sm:text-[11px] text-bark-500 leading-tight tabular-nums">
+                {step.time.split(" · ").map((part) =>
+                  /^\d{2}\/\d{2}\/\d{4}$/.test(part) ? (
+                    <span key={part} className="block">
+                      <span className="sm:hidden">{part.slice(0, 5)}</span>
+                      <span className="hidden sm:inline">{part}</span>
+                    </span>
+                  ) : (
+                    <span key={part} className="block">{part}</span>
+                  )
+                )}
+              </span>
+            )}
+            <span className="sr-only">{current && i < steps.length - 1 ? "(bước hiện tại)" : done ? "(đã xong)" : "(chưa tới)"}</span>
           </li>
         );
       })}

@@ -5,6 +5,13 @@ export function formatVND(amount: number): string {
   return new Intl.NumberFormat("vi-VN").format(amount) + "₫";
 }
 
+/**
+ * Cân nặng kiểu Việt Nam: 4,2 kg (dấu phẩy thập phân)
+ */
+export function formatWeight(kg: number): string {
+  return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(kg) + " kg";
+}
+
 // Hiển thị theo giờ Việt Nam dù trình duyệt/máy chủ đặt múi giờ khác (AGENTS.md)
 const DATE_FORMAT = new Intl.DateTimeFormat("vi-VN", {
   day: "2-digit",

@@ -466,6 +466,8 @@ function DeliveryModal({ sub, onClose, onDone }: { sub: SubscriptionRow; onClose
     setError("");
     if (!isAddressValid(addr)) {
       setShowAddrErrors(true);
+      // Đưa con trỏ tới ô đầu tiên còn thiếu sau khi lỗi được vẽ ra
+      requestAnimationFrame(() => document.querySelector<HTMLElement>('#delivery-form [aria-invalid="true"]')?.focus());
       return;
     }
     setSaving(true);
@@ -475,7 +477,15 @@ function DeliveryModal({ sub, onClose, onDone }: { sub: SubscriptionRow; onClose
       p_address: { recipient_name: addr.recipientName.trim(), phone: addr.phone.trim(), province_city: addr.province, ward: addr.ward, address: addr.street.trim() },
     });
     setSaving(false);
-    if (err) return setError(err.message.includes("ERR_ADDRESS_INCOMPLETE") ? "Vui lòng điền đủ địa chỉ." : "Không lưu được thay đổi, vui lòng thử lại.");
+    if (err) {
+      return setError(
+        err.message.includes("ERR_ADDRESS_INCOMPLETE")
+          ? "Vui lòng điền đủ địa chỉ."
+          : err.message.includes("ERR_PHONE_INVALID")
+            ? "Số điện thoại phải gồm 10 số, bắt đầu bằng 0."
+            : "Không lưu được thay đổi, vui lòng thử lại."
+      );
+    }
     const next = (data as { next_delivery_date: string }).next_delivery_date;
     onDone(`Đã lưu. Hộp tiếp theo giao ${deliveryWindowLabel(next, schedule)}.`);
   };
@@ -493,7 +503,7 @@ function DeliveryModal({ sub, onClose, onDone }: { sub: SubscriptionRow; onClose
         </>
       }
     >
-      <form id="delivery-form" onSubmit={submit} className="space-y-4">
+      <form id="delivery-form" onSubmit={submit} noValidate className="space-y-4">
         <div className="space-y-2">
           <span className="text-xs font-bold text-bark-800 block">Đợt giao hằng tháng</span>
           <div className="grid grid-cols-2 gap-2">
