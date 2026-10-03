@@ -1,529 +1,508 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Plus, Pencil, EyeOff, Eye, AlertTriangle, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatVND } from "@/lib/formatters";
 import ProductItemImage from "@/components/common/ProductItemImage";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 import { Tables } from "@/types/database";
 import { resolveImageUrl } from "@/lib/adapters";
-import {
-  Plus, Edit2, Trash2, AlertTriangle, Search, X, PackagePlus, CheckCircle2,
-} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { ConfirmDialog, Modal } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
+import { useAdminTasks } from "../AdminTasks";
 
 type ProductRow = Tables<"products"> & { categories: { name: string; slug: string } | null };
+type Species = "dog" | "cat" | "both";
+
+const FILTERS = [
+  { id: "all", label: "Tất cả" },
+  { id: "low", label: "Sắp hết hàng" },
+  { id: "retail", label: "Đang bán lẻ" },
+  { id: "box_only", label: "Chỉ dùng cho hộp" },
+  { id: "hidden", label: "Đã ẩn" },
+] as const;
+type FilterId = (typeof FILTERS)[number]["id"];
+
+const SIZE_LABEL: Record<string, string> = { all: "Mọi cỡ", small: "Chó dưới 10 kg", large: "Chó từ 10 kg" };
+const AGE_LABEL: Record<string, string> = { all: "Mọi độ tuổi", puppy_kitten: "Dưới 1 tuổi", adult: "Trưởng thành", senior: "Trên 7 tuổi" };
+
+const isLow = (p: ProductRow) => p.is_active && p.stock_quantity <= p.low_stock_threshold;
+const matchesFilter = (p: ProductRow, f: FilterId) =>
+  f === "all" ? true : f === "low" ? isLow(p) : f === "retail" ? p.is_active && p.is_retail : f === "box_only" ? p.is_active && !p.is_retail && p.is_box_item : !p.is_active;
+
+interface FormState {
+  name: string;
+  categoryId: string;
+  species: Species;
+  targetSize: string;
+  targetAge: string;
+  price: string;
+  originalPrice: string;
+  stock: string;
+  lowStock: string;
+  ingredients: string;
+  description: string;
+  image: string;
+  isRetail: boolean;
+  isBoxItem: boolean;
+}
+
+const emptyForm = (categoryId = ""): FormState => ({
+  name: "",
+  categoryId,
+  species: "dog",
+  targetSize: "all",
+  targetAge: "all",
+  price: "",
+  originalPrice: "",
+  stock: "0",
+  lowStock: "5",
+  ingredients: "",
+  description: "",
+  image: "",
+  isRetail: true,
+  isBoxItem: true,
+});
+
+const slugify = (name: string) =>
+  name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 export default function AdminProductsPage() {
-  const [productList, setProductList] = useState<ProductRow[]>([]);
+  return (
+    <Suspense fallback={<div className="py-16 text-center text-xs text-bark-500">Đang tải sản phẩm…</div>}>
+      <ProductsContent />
+    </Suspense>
+  );
+}
+
+function ProductsContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { show } = useToast();
+  const { refresh: refreshTasks } = useAdminTasks();
+
+  const filter = (FILTERS.find((f) => f.id === searchParams.get("filter"))?.id || "all") as FilterId;
+  const [products, setProducts] = useState<ProductRow[]>([]);
   const [categories, setCategories] = useState<Tables<"categories">[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [notice, setNotice] = useState<string | null>(null);
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<ProductRow | null>(null);
-  const [deletingProduct, setDeletingProduct] = useState<ProductRow | null>(null);
+  const [editing, setEditing] = useState<ProductRow | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(emptyForm());
+  const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [hiding, setHiding] = useState<ProductRow | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const [formName, setFormName] = useState("");
-  const [formCategoryId, setFormCategoryId] = useState("");
-  const [formSpecies, setFormSpecies] = useState<"dog" | "cat" | "both">("dog");
-  const [formPrice, setFormPrice] = useState(45000);
-  const [formOriginalPrice, setFormOriginalPrice] = useState<number | undefined>(undefined);
-  const [formStock, setFormStock] = useState(50);
-  const [formIngredients, setFormIngredients] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formImage, setFormImage] = useState("");
-  const [formIsRetail, setFormIsRetail] = useState(true);
-  const [formIsBoxItem, setFormIsBoxItem] = useState(true);
-
-  const showNotification = (msg: string) => {
-    setNotice(msg);
-    setTimeout(() => setNotice(null), 3000);
-  };
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async () => {
     const supabase = createClient();
-    const [{ data: products }, { data: cats }] = await Promise.all([
+    const [{ data: rows }, { data: cats }] = await Promise.all([
       supabase.from("products").select("*, categories(name, slug)").order("created_at", { ascending: false }),
       supabase.from("categories").select("*").order("name"),
     ]);
-    setProductList((products as unknown as ProductRow[]) || []);
+    setProducts((rows as unknown as ProductRow[]) || []);
     setCategories(cats || []);
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const handleOpenAdd = () => {
-    setEditingProduct(null);
-    setFormName(""); setFormCategoryId(categories[0]?.id || ""); setFormSpecies("dog");
-    setFormPrice(45000); setFormOriginalPrice(undefined); setFormStock(50);
-    setFormIngredients(""); setFormDescription(""); setFormImage("");
-    setFormIsRetail(true); setFormIsBoxItem(true);
-    setIsModalOpen(true);
+  const setFilter = (id: FilterId) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (id === "all") params.delete("filter");
+    else params.set("filter", id);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
 
-  const handleOpenEdit = (prod: ProductRow) => {
-    setEditingProduct(prod);
-    setFormName(prod.name);
-    setFormCategoryId(prod.category_id || "");
-    setFormSpecies((prod.species as "dog" | "cat" | "both") || "both");
-    setFormPrice(prod.price);
-    setFormOriginalPrice(prod.original_price || undefined);
-    setFormStock(prod.stock_quantity);
-    setFormIngredients((prod.ingredients || []).join(", "));
-    setFormDescription(prod.description || "");
-    setFormImage(prod.images?.[0] || "");
-    setFormIsRetail(prod.is_retail);
-    setFormIsBoxItem(prod.is_box_item);
-    setIsModalOpen(true);
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
+
+  const openAdd = () => {
+    setEditing(null);
+    setForm(emptyForm(categories[0]?.id || ""));
+    setFormError("");
+    setFormOpen(true);
   };
 
-  const handleSaveProduct = async (e: React.FormEvent) => {
+  const openEdit = (p: ProductRow) => {
+    setEditing(p);
+    setForm({
+      name: p.name,
+      categoryId: p.category_id || "",
+      species: (p.species as Species) || "both",
+      targetSize: p.target_size || "all",
+      targetAge: p.target_age || "all",
+      price: String(p.price),
+      originalPrice: p.original_price ? String(p.original_price) : "",
+      stock: String(p.stock_quantity),
+      lowStock: String(p.low_stock_threshold),
+      ingredients: (p.ingredients || []).join(", "),
+      description: p.description || "",
+      image: p.images?.[0] || "",
+      isRetail: p.is_retail,
+      isBoxItem: p.is_box_item,
+    });
+    setFormError("");
+    setFormOpen(true);
+  };
+
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
-    const supabase = createClient();
-    const ingredientsArray = formIngredients.split(",").map((i) => i.trim()).filter(Boolean);
-    const slug = formName.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + "-" + Date.now().toString(36);
+    const price = Number(form.price);
+    const original = form.originalPrice.trim() ? Number(form.originalPrice) : null;
+    const stock = Number(form.stock);
+    const lowStock = Number(form.lowStock);
+    if (!form.name.trim()) return setFormError("Vui lòng nhập tên sản phẩm.");
+    if (!Number.isInteger(price) || price < 1000) return setFormError("Giá bán phải là số nguyên từ 1.000₫.");
+    if (original !== null && (!Number.isInteger(original) || original <= price)) return setFormError("Giá gốc phải lớn hơn giá bán (để trống nếu không giảm giá).");
+    if (!editing && (!Number.isInteger(stock) || stock < 0)) return setFormError("Tồn kho ban đầu phải là số nguyên không âm.");
+    if (!Number.isInteger(lowStock) || lowStock < 0) return setFormError("Ngưỡng báo sắp hết phải là số nguyên không âm.");
+    if (!form.isRetail && !form.isBoxItem) return setFormError("Chọn ít nhất một nơi dùng: bán lẻ hoặc cho vào hộp.");
 
+    setSaving(true);
+    setFormError("");
+    const supabase = createClient();
     const payload = {
-      name: formName,
-      category_id: formCategoryId || null,
-      species: formSpecies,
-      price: Number(formPrice),
-      original_price: formOriginalPrice ? Number(formOriginalPrice) : null,
-      stock_quantity: Math.max(0, Number(formStock)),
-      ingredients: ingredientsArray,
-      description: formDescription,
-      images: formImage.trim() ? [formImage.trim()] : [],
-      is_retail: formIsRetail,
-      is_box_item: formIsBoxItem,
+      name: form.name.trim(),
+      category_id: form.categoryId || null,
+      species: form.species,
+      // Cỡ chỉ áp dụng cho đồ của chó
+      target_size: form.species === "cat" ? "all" : form.targetSize,
+      target_age: form.targetAge,
+      price,
+      original_price: original,
+      low_stock_threshold: lowStock,
+      ingredients: form.ingredients.split(",").map((i) => i.trim()).filter(Boolean),
+      description: form.description.trim(),
+      images: form.image.trim() ? [form.image.trim()] : [],
+      is_retail: form.isRetail,
+      is_box_item: form.isBoxItem,
     };
 
-    if (editingProduct) {
-      const { error } = await supabase.from("products").update(payload).eq("id", editingProduct.id);
-      if (!error) showNotification(`Đã cập nhật sản phẩm "${formName}" thành công!`);
+    if (editing) {
+      const { error } = await supabase.from("products").update(payload).eq("id", editing.id);
+      setSaving(false);
+      if (error) return setFormError("Không lưu được sản phẩm, vui lòng thử lại.");
+      show(`Đã lưu "${payload.name}".`);
     } else {
-      const { error } = await supabase.from("products").insert({ ...payload, slug });
-      if (!error) showNotification(`Đã thêm sản phẩm mới "${formName}"!`);
+      // Tạo với tồn 0 rồi ghi phiếu nhập để có lịch sử kho ngay từ đầu
+      const { data, error } = await supabase
+        .from("products")
+        .insert({ ...payload, slug: `${slugify(payload.name)}-${Date.now().toString(36)}`, stock_quantity: 0 })
+        .select("id")
+        .single();
+      if (error || !data) {
+        setSaving(false);
+        return setFormError("Không tạo được sản phẩm, vui lòng thử lại.");
+      }
+      if (stock > 0) await supabase.rpc("adjust_product_stock", { p_product_id: data.id, p_delta: stock, p_movement_type: "import", p_note: "Tồn kho ban đầu" });
+      setSaving(false);
+      show(`Đã thêm "${payload.name}".`);
     }
-    setSaving(false);
-    setIsModalOpen(false);
-    loadData();
+    setFormOpen(false);
+    refreshTasks();
+    load();
   };
 
-  const handleConfirmDelete = async () => {
-    if (!deletingProduct) return;
-    const supabase = createClient();
-    // Ẩn sản phẩm (soft-delete) thay vì xóa cứng, tránh vỡ ràng buộc khóa
-    // ngoại với order_items/box_curation_items đã tồn tại.
-    await supabase.from("products").update({ is_active: false }).eq("id", deletingProduct.id);
-    showNotification(`Đã ẩn sản phẩm "${deletingProduct.name}" khỏi Shop.`);
-    setDeletingProduct(null);
-    loadData();
+  // Cộng/trừ trên số tồn hiện tại trong DB (không ghi đè số đang hiện trên màn hình)
+  const adjustStock = async (p: ProductRow, delta: number) => {
+    setBusyId(p.id);
+    const { data, error } = await createClient().rpc("adjust_product_stock", { p_product_id: p.id, p_delta: delta, p_movement_type: "adjustment", p_note: "Điều chỉnh nhanh từ trang Sản phẩm" });
+    setBusyId(null);
+    if (error) {
+      show(error.message.includes("ERR_STOCK_NEGATIVE") ? "Tồn kho không thể âm." : "Không cập nhật được tồn kho.", { tone: "error" });
+      return;
+    }
+    setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, stock_quantity: data as number } : x)));
+    refreshTasks();
   };
 
-  const adjustStock = async (prod: ProductRow, delta: number) => {
-    const supabase = createClient();
-    const newStock = Math.max(0, prod.stock_quantity + delta);
-    setProductList((prev) => prev.map((p) => (p.id === prod.id ? { ...p, stock_quantity: newStock } : p)));
-    await supabase.from("products").update({ stock_quantity: newStock }).eq("id", prod.id);
-    const { data: authData } = await supabase.auth.getUser();
-    await supabase.from("inventory_movements").insert({
-      product_id: prod.id,
-      movement_type: "adjustment",
-      quantity: delta,
-      previous_stock: prod.stock_quantity,
-      new_stock: newStock,
-      note: "Điều chỉnh nhanh từ trang Sản phẩm",
-      performed_by: authData.user?.id,
-    });
+  const updateFlag = async (p: ProductRow, patch: Partial<Pick<ProductRow, "is_retail" | "is_box_item" | "is_active">>, message: string) => {
+    setBusyId(p.id);
+    const { error } = await createClient().from("products").update(patch).eq("id", p.id);
+    setBusyId(null);
+    if (error) return show("Không cập nhật được sản phẩm.", { tone: "error" });
+    setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, ...patch } : x)));
+    show(message);
+    refreshTasks();
   };
 
-  const toggleRetail = async (prod: ProductRow) => {
-    const supabase = createClient();
-    const next = !prod.is_retail;
-    setProductList((prev) => prev.map((p) => (p.id === prod.id ? { ...p, is_retail: next } : p)));
-    await supabase.from("products").update({ is_retail: next }).eq("id", prod.id);
-  };
+  const q = search.trim().toLowerCase();
+  const visible = products.filter((p) => matchesFilter(p, filter) && (!q || p.name.toLowerCase().includes(q) || (p.categories?.name || "").toLowerCase().includes(q)));
 
-  const toggleBoxItem = async (prod: ProductRow) => {
-    const supabase = createClient();
-    const next = !prod.is_box_item;
-    setProductList((prev) => prev.map((p) => (p.id === prod.id ? { ...p, is_box_item: next } : p)));
-    await supabase.from("products").update({ is_box_item: next }).eq("id", prod.id);
-  };
-
-  const filtered = productList.filter(
-    (p) => p.name.toLowerCase().includes(search.toLowerCase()) || (p.categories?.name || "").toLowerCase().includes(search.toLowerCase())
+  const stockControl = (p: ProductRow) => (
+    <div className="flex items-center gap-1.5">
+      <div className="flex items-center border border-surface-border rounded-box bg-white overflow-hidden">
+        <button type="button" aria-label={`Giảm tồn kho ${p.name}`} disabled={busyId === p.id || p.stock_quantity === 0} onClick={() => adjustStock(p, -1)} className="w-7 h-7 text-bark-600 hover:bg-surface-muted font-bold disabled:opacity-40">−</button>
+        <span className={`w-10 text-center font-bold text-xs tabular-nums ${isLow(p) ? "text-amber-700" : "text-bark-900"}`}>{p.stock_quantity}</span>
+        <button type="button" aria-label={`Tăng tồn kho ${p.name}`} disabled={busyId === p.id} onClick={() => adjustStock(p, 1)} className="w-7 h-7 text-bark-600 hover:bg-surface-muted font-bold disabled:opacity-40">+</button>
+      </div>
+      {isLow(p) && <AlertTriangle className="w-3.5 h-3.5 text-amber-600" aria-label="Sắp hết hàng" />}
+    </div>
   );
 
-  if (loading) return <div className="py-16 text-center text-xs text-bark-500">Đang tải sản phẩm...</div>;
+  const usage = (p: ProductRow) => (
+    <div className="flex flex-wrap gap-1">
+      <button
+        type="button"
+        disabled={busyId === p.id}
+        onClick={() => updateFlag(p, { is_retail: !p.is_retail }, p.is_retail ? `Đã tắt bán lẻ "${p.name}".` : `Đã mở bán lẻ "${p.name}".`)}
+        className={`px-2 py-1 rounded-box text-[11px] font-bold border ${p.is_retail ? "bg-grass-50 text-grass-800 border-grass-200" : "bg-white text-bark-400 border-surface-border"}`}
+        aria-pressed={p.is_retail}
+      >
+        Bán lẻ
+      </button>
+      <button
+        type="button"
+        disabled={busyId === p.id}
+        onClick={() => updateFlag(p, { is_box_item: !p.is_box_item }, p.is_box_item ? `"${p.name}" không còn dùng cho hộp.` : `"${p.name}" được dùng cho hộp.`)}
+        className={`px-2 py-1 rounded-box text-[11px] font-bold border ${p.is_box_item ? "bg-honey-50 text-honey-800 border-honey-200" : "bg-white text-bark-400 border-surface-border"}`}
+        aria-pressed={p.is_box_item}
+      >
+        Cho vào hộp
+      </button>
+    </div>
+  );
+
+  const rowActions = (p: ProductRow) => (
+    <div className="flex items-center gap-1.5">
+      <Button size="sm" variant="secondary" onClick={() => openEdit(p)}>
+        <Pencil className="w-3.5 h-3.5" /> Sửa
+      </Button>
+      {p.is_active ? (
+        <Button size="sm" variant="secondary" onClick={() => setHiding(p)}>
+          <EyeOff className="w-3.5 h-3.5" /> Ẩn
+        </Button>
+      ) : (
+        <Button size="sm" variant="secondary" disabled={busyId === p.id} onClick={() => updateFlag(p, { is_active: true }, `Đã hiện lại "${p.name}".`)}>
+          <Eye className="w-3.5 h-3.5" /> Hiện lại
+        </Button>
+      )}
+    </div>
+  );
+
+  const input = "w-full h-10 px-3 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none bg-white text-xs";
+  const labelCls = "font-semibold text-bark-700 block mb-1 text-xs";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-pine-950 font-display">
-            Sản phẩm & Tồn kho ({productList.length} mặt hàng)
-          </h1>
-          <p className="text-xs text-bark-500">
-            Quản lý tồn kho trực tiếp, thêm/sửa/ẩn sản phẩm và cấu hình bán lẻ hoặc tuyển chọn Mystery Box.
-          </p>
+          <h1 className="text-2xl font-extrabold text-pine-950 font-display">Sản phẩm</h1>
+          <p className="text-xs text-bark-500">Giá, tồn kho, nơi dùng (bán lẻ / cho vào hộp) và thông tin để tuyển chọn hộp.</p>
         </div>
-        <button onClick={handleOpenAdd} className="inline-flex items-center gap-2 px-4 py-2 bg-pine-900 text-white rounded-box text-xs font-bold hover:bg-pine-800 transition-colors shadow-xs shrink-0">
-          <Plus className="w-4 h-4" />
-          <span>Thêm sản phẩm mới</span>
-        </button>
+        <Button onClick={openAdd} className="shrink-0">
+          <Plus className="w-4 h-4" /> Thêm sản phẩm
+        </Button>
       </div>
 
-      {notice && (
-        <div className="p-3 bg-grass-100 border border-grass-200 text-grass-900 rounded-box text-xs font-semibold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-grass-700 shrink-0" />
-          <span>{notice}</span>
-        </div>
-      )}
-
-      <div className="p-4 rounded-container bg-surface-card border border-surface-border">
+      <div className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border space-y-3">
         <div className="relative max-w-sm">
-          <Search className="w-4 h-4 text-bark-400 absolute left-3 top-2.5" />
-          <input type="text" placeholder="Tìm tên sản phẩm hoặc danh mục..." value={search} onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none" />
+          <Search className="w-4 h-4 text-bark-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input type="search" placeholder="Tên sản phẩm hoặc danh mục" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Tìm sản phẩm" className="w-full h-10 pl-9 pr-3 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none" />
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              aria-pressed={filter === f.id}
+              onClick={() => setFilter(f.id)}
+              className={`shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-semibold border transition-colors ${filter === f.id ? "bg-pine-900 border-pine-900 text-white" : "bg-white border-surface-border text-bark-700 hover:bg-surface-muted"}`}
+            >
+              {f.label}
+              <span className={`text-[10px] font-extrabold ${filter === f.id ? "text-pine-100" : "text-bark-500"}`}>{products.filter((p) => matchesFilter(p, f.id)).length}</span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Mobile Card List (< md) */}
-      <div className="md:hidden space-y-2.5">
-        {filtered.length === 0 ? (
-          <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
-            Không tìm thấy sản phẩm phù hợp.
-          </div>
-        ) : (
-          filtered.map((prod) => {
-            const isLowStock = prod.stock_quantity <= prod.low_stock_threshold;
-            return (
-              <div
-                key={prod.id}
-                className={`p-3.5 rounded-container bg-surface-card border border-surface-border space-y-3 shadow-2xs ${
-                  !prod.is_active ? "opacity-60" : ""
-                }`}
-              >
+      {loading ? (
+        <div className="py-16 text-center text-xs text-bark-500">Đang tải sản phẩm…</div>
+      ) : visible.length === 0 ? (
+        <div className="p-10 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">Không có sản phẩm phù hợp.</div>
+      ) : (
+        <>
+          <ul className="lg:hidden space-y-2.5">
+            {visible.map((p) => (
+              <li key={p.id} className={`p-3.5 rounded-container bg-surface-card border border-surface-border space-y-3 text-xs ${!p.is_active ? "opacity-70" : ""}`}>
                 <div className="flex items-start gap-3">
                   <div className="w-14 h-14 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
-                    <ProductItemImage
-                      src={resolveImageUrl(prod.images?.[0], "")}
-                      alt={prod.name}
-                      placeholderColor="#E1EDE8"
-                      sizes="56px"
-                      showNote={false}
-                    />
+                    <ProductItemImage src={resolveImageUrl(p.images?.[0], "")} alt={p.name} placeholderColor="#E1EDE8" sizes="56px" showNote={false} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-muted text-bark-700">
-                        {prod.categories?.name || "Chưa phân loại"}
-                      </span>
-                      <PetSpeciesIcon species={prod.species as "dog" | "cat" | "both"} variant="badge" size="xs" />
-                      {!prod.is_active && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">
-                          Đã ẩn
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="font-bold text-pine-950 text-xs sm:text-sm mt-1 leading-snug line-clamp-2">
-                      {prod.name}
-                    </h3>
-                    <div className="text-sm font-extrabold text-pine-950 font-display mt-0.5">
-                      {formatVND(prod.price)}
-                    </div>
+                    <p className="font-bold text-pine-950 leading-snug line-clamp-2">{p.name}{!p.is_active && <span className="text-red-600"> · Đã ẩn</span>}</p>
+                    <p className="text-bark-500 mt-0.5">{p.categories?.name || "Chưa phân loại"} · {SIZE_LABEL[p.target_size] || "Mọi cỡ"}</p>
+                    <p className="font-extrabold text-pine-950 mt-0.5">{formatVND(p.price)}</p>
                   </div>
                 </div>
-
-                {/* Tồn kho & Thao tác chuyển đổi */}
-                <div className="pt-2.5 border-t border-surface-border/70 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] text-bark-500 font-medium">Tồn kho:</span>
-                    <div className="flex items-center border border-surface-border rounded-box bg-white overflow-hidden shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={() => adjustStock(prod, -1)}
-                        className="px-2 py-1 text-bark-600 hover:bg-surface-muted font-bold text-xs"
-                      >
-                        −
-                      </button>
-                      <span
-                        className={`w-10 text-center font-bold text-xs py-1 ${
-                          isLowStock ? "text-amber-700 font-extrabold" : "text-bark-900"
-                        }`}
-                      >
-                        {prod.stock_quantity}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => adjustStock(prod, 1)}
-                        className="px-2 py-1 text-bark-600 hover:bg-surface-muted font-bold text-xs"
-                      >
-                        +
-                      </button>
-                    </div>
-                    {isLowStock && (
-                      <span title="Tồn kho sắp hết">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => toggleRetail(prod)}
-                      className={`px-2 py-1 rounded-box text-[10px] font-bold transition-colors ${
-                        prod.is_retail ? "bg-grass-100 text-grass-800" : "bg-surface-muted text-bark-400"
-                      }`}
-                      title="Bật/Tắt bán lẻ"
-                    >
-                      Bán lẻ: {prod.is_retail ? "Bật" : "Tắt"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => toggleBoxItem(prod)}
-                      className={`px-2 py-1 rounded-box text-[10px] font-bold transition-colors ${
-                        prod.is_box_item ? "bg-honey-100 text-honey-800" : "bg-surface-muted text-bark-400"
-                      }`}
-                      title="Bật/Tắt dùng cho Box"
-                    >
-                      Box: {prod.is_box_item ? "Bật" : "Tắt"}
-                    </button>
-                  </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  {stockControl(p)}
+                  {usage(p)}
                 </div>
+                {rowActions(p)}
+              </li>
+            ))}
+          </ul>
 
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-surface-border/50">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEdit(prod)}
-                    className="px-2.5 py-1 rounded-box bg-pine-50 hover:bg-pine-100 text-pine-900 font-semibold text-xs inline-flex items-center gap-1"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    <span>Sửa</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeletingProduct(prod)}
-                    className="px-2.5 py-1 rounded-box bg-bark-100 hover:bg-red-100 text-bark-700 hover:text-red-700 font-semibold text-xs inline-flex items-center gap-1"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>{prod.is_active ? "Ẩn" : "Hiện"}</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* Desktop Table (>= md) */}
-      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
-        <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
-          <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
-            <tr>
-              <th className="p-3.5">Tên sản phẩm</th>
-              <th className="p-3.5">Danh mục</th>
-              <th className="p-3.5">Dành cho</th>
-              <th className="p-3.5">Giá bán lẻ</th>
-              <th className="p-3.5">Tồn kho</th>
-              <th className="p-3.5 text-center">Bán lẻ</th>
-              <th className="p-3.5 text-center">Dùng Box</th>
-              <th className="p-3.5 text-center">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-border">
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={8} className="p-10 text-center text-xs text-bark-500">Không tìm thấy sản phẩm phù hợp.</td>
-              </tr>
-            )}
-            {filtered.map((prod) => {
-              const isLowStock = prod.stock_quantity <= prod.low_stock_threshold;
-              return (
-                <tr key={prod.id} className={`hover:bg-surface-muted/60 transition-colors ${!prod.is_active ? "opacity-50" : ""}`}>
-                  <td className="p-3.5 max-w-xs">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
-                        <ProductItemImage src={resolveImageUrl(prod.images?.[0], "")} alt={prod.name} placeholderColor="#E1EDE8" sizes="40px" showNote={false} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-bold text-pine-950 leading-snug truncate" title={prod.name}>
-                          {prod.name} {!prod.is_active && <span className="text-red-500">(Đã ẩn)</span>}
-                        </div>
-                        <div className="text-[10px] text-bark-500 truncate mt-0.5">
-                          Thành phần: {(prod.ingredients || []).join(", ") || "Không có"}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-3.5">
-                    <span className="px-2 py-0.5 rounded-tag bg-surface-muted text-bark-700 font-semibold text-[10px]">
-                      {prod.categories?.name || "Chưa phân loại"}
-                    </span>
-                  </td>
-                  <td className="p-3.5"><PetSpeciesIcon species={prod.species as "dog" | "cat" | "both"} variant="badge" size="xs" /></td>
-                  <td className="p-3.5 font-bold text-pine-950 font-display">{formatVND(prod.price)}</td>
-                  <td className="p-3.5">
-                    <div className="flex items-center gap-1.5">
-                      <div className="flex items-center border border-surface-border rounded-box bg-white overflow-hidden shadow-2xs">
-                        <button type="button" onClick={() => adjustStock(prod, -1)} className="px-1.5 py-1 text-bark-600 hover:bg-surface-muted font-bold text-xs">−</button>
-                        <span className={`w-14 text-center font-bold text-xs py-1 ${isLowStock ? "text-amber-700 font-extrabold" : "text-bark-900"}`}>{prod.stock_quantity}</span>
-                        <button type="button" onClick={() => adjustStock(prod, 1)} className="px-1.5 py-1 text-bark-600 hover:bg-surface-muted font-bold text-xs">+</button>
-                      </div>
-                      {isLowStock && <span title="Tồn kho sắp hết"><AlertTriangle className="w-3.5 h-3.5 text-amber-600" /></span>}
-                    </div>
-                  </td>
-                  <td className="p-3.5 text-center">
-                    <button type="button" onClick={() => toggleRetail(prod)} className={`px-2.5 py-1 rounded-box text-[11px] font-bold transition-colors ${prod.is_retail ? "bg-grass-100 text-grass-800" : "bg-surface-muted text-bark-400"}`}>
-                      {prod.is_retail ? "Bật" : "Tắt"}
-                    </button>
-                  </td>
-                  <td className="p-3.5 text-center">
-                    <button type="button" onClick={() => toggleBoxItem(prod)} className={`px-2.5 py-1 rounded-box text-[11px] font-bold transition-colors ${prod.is_box_item ? "bg-honey-100 text-honey-800" : "bg-surface-muted text-bark-400"}`}>
-                      {prod.is_box_item ? "Bật" : "Tắt"}
-                    </button>
-                  </td>
-                  <td className="p-3.5 text-center">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button type="button" onClick={() => handleOpenEdit(prod)} className="p-1.5 rounded-box bg-pine-50 hover:bg-pine-100 text-pine-900 transition-colors" title="Chỉnh sửa">
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button type="button" onClick={() => setDeletingProduct(prod)} className="p-1.5 rounded-box bg-bark-100 hover:bg-red-100 text-bark-700 hover:text-red-700 transition-colors" title="Ẩn sản phẩm">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
+          <div className="hidden lg:block rounded-container bg-surface-card border border-surface-border overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
+                <tr>
+                  <th className="p-3">Sản phẩm</th>
+                  <th className="p-3">Dành cho</th>
+                  <th className="p-3 text-right">Giá bán</th>
+                  <th className="p-3">Tồn kho</th>
+                  <th className="p-3">Nơi dùng</th>
+                  <th className="p-3"><span className="sr-only">Thao tác</span></th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-bark-900/60 backdrop-blur-xs">
-          <div className="bg-surface-card rounded-container border border-surface-border p-4 sm:p-6 max-w-xl w-full shadow-xl space-y-4 max-h-[90vh] overflow-y-auto text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-surface-border">
-              <h3 className="font-bold text-pine-950 text-sm flex items-center gap-2">
-                <PackagePlus className="w-4 h-4 text-pine-800" />
-                <span>{editingProduct ? `Chỉnh sửa: ${editingProduct.name}` : "Thêm sản phẩm mới"}</span>
-              </h3>
-              <button onClick={() => setIsModalOpen(false)} className="p-1 text-bark-400 hover:text-bark-700 rounded"><X className="w-4 h-4" /></button>
-            </div>
-
-            <form onSubmit={handleSaveProduct} className="space-y-4">
-              <div>
-                <label className="font-semibold text-bark-700 block mb-1">Tên sản phẩm *</label>
-                <input type="text" required value={formName} onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none text-xs" />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-bark-700 block mb-1">Danh mục *</label>
-                  <select value={formCategoryId} onChange={(e) => setFormCategoryId(e.target.value)}
-                    className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none bg-white text-xs">
-                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="font-semibold text-bark-700 block mb-1">Dành cho loài *</label>
-                  <select value={formSpecies} onChange={(e) => setFormSpecies(e.target.value as "dog" | "cat" | "both")}
-                    className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none bg-white text-xs">
-                    <option value="dog">Chó</option>
-                    <option value="cat">Mèo</option>
-                    <option value="both">Cả Chó và Mèo</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="font-semibold text-bark-700 block mb-1">Giá bán lẻ (VND) *</label>
-                  <input type="number" required value={formPrice} onChange={(e) => setFormPrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-surface-border rounded-box font-bold text-pine-900 focus:border-pine-900 focus:outline-none text-xs" />
-                </div>
-                <div>
-                  <label className="font-semibold text-bark-700 block mb-1">Giá gốc (VND)</label>
-                  <input type="number" value={formOriginalPrice || ""} onChange={(e) => setFormOriginalPrice(e.target.value ? Number(e.target.value) : undefined)}
-                    placeholder="Không bắt buộc" className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none text-xs" />
-                </div>
-                <div>
-                  <label className="font-semibold text-bark-700 block mb-1">Tồn kho *</label>
-                  <input type="number" required min="0" value={formStock} onChange={(e) => setFormStock(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-surface-border rounded-box font-bold focus:border-pine-900 focus:outline-none text-xs" />
-                </div>
-              </div>
-
-              <div>
-                <label className="font-semibold text-bark-700 block mb-1">Thành phần / Chất liệu (ngăn cách bởi dấu phẩy)</label>
-                <input type="text" value={formIngredients} onChange={(e) => setFormIngredients(e.target.value)}
-                  className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none text-xs" />
-              </div>
-
-              <div>
-                <label className="font-semibold text-bark-700 block mb-1">Mô tả sản phẩm</label>
-                <textarea rows={2} value={formDescription} onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none text-xs" />
-              </div>
-
-              <div>
-                <label className="font-semibold text-bark-700 block mb-1">URL hình ảnh</label>
-                <input type="text" value={formImage} onChange={(e) => setFormImage(e.target.value)} placeholder="https://..."
-                  className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none text-xs" />
-              </div>
-
-              <div className="p-3 rounded-box bg-surface-muted border border-surface-border flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-pine-950 block">Cho phép bán lẻ</span>
-                  <span className="text-[11px] text-bark-500">Hiển thị và cho phép khách mua lẻ trên Shop</span>
-                </div>
-                <input type="checkbox" checked={formIsRetail} onChange={(e) => setFormIsRetail(e.target.checked)} className="w-4 h-4 accent-pine-900 cursor-pointer" />
-              </div>
-
-              <div className="p-3 rounded-box bg-surface-muted border border-surface-border flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-pine-950 block">Dùng cho Mystery Box</span>
-                  <span className="text-[11px] text-bark-500">Cho phép tuyển chọn vào hộp định kỳ</span>
-                </div>
-                <input type="checkbox" checked={formIsBoxItem} onChange={(e) => setFormIsBoxItem(e.target.checked)} className="w-4 h-4 accent-pine-900 cursor-pointer" />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-surface-border">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-bark-600 hover:text-bark-900 font-semibold">Hủy</button>
-                <button type="submit" disabled={saving} className="px-4 py-2 bg-pine-900 text-white rounded-box font-bold hover:bg-pine-800 transition-colors shadow-xs disabled:opacity-60">
-                  {saving ? "Đang lưu..." : editingProduct ? "Lưu thay đổi" : "Tạo sản phẩm"}
-                </button>
-              </div>
-            </form>
+              </thead>
+              <tbody className="divide-y divide-surface-border">
+                {visible.map((p) => (
+                  <tr key={p.id} className={!p.is_active ? "opacity-60" : ""}>
+                    <td className="p-3 max-w-xs">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
+                          <ProductItemImage src={resolveImageUrl(p.images?.[0], "")} alt={p.name} placeholderColor="#E1EDE8" sizes="40px" showNote={false} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-pine-950 leading-snug line-clamp-2">{p.name}{!p.is_active && <span className="text-red-600"> · Đã ẩn</span>}</div>
+                          <div className="text-[11px] text-bark-500 truncate">{p.categories?.name || "Chưa phân loại"}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <PetSpeciesIcon species={p.species as Species} variant="badge" size="xs" />
+                      <div className="text-[11px] text-bark-500 mt-1">{p.species !== "cat" ? SIZE_LABEL[p.target_size] || "Mọi cỡ" : ""}{p.target_age !== "all" ? ` · ${AGE_LABEL[p.target_age]}` : ""}</div>
+                    </td>
+                    <td className="p-3 text-right whitespace-nowrap">
+                      <div className="font-bold text-pine-950 tabular-nums">{formatVND(p.price)}</div>
+                      {p.original_price && <div className="text-[11px] text-bark-400 line-through tabular-nums">{formatVND(p.original_price)}</div>}
+                    </td>
+                    <td className="p-3">{stockControl(p)}</td>
+                    <td className="p-3">{usage(p)}</td>
+                    <td className="p-3">{rowActions(p)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
+        </>
       )}
 
-      {deletingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bark-900/60 backdrop-blur-xs">
-          <div className="bg-surface-card rounded-container border border-surface-border p-6 max-w-sm w-full shadow-xl space-y-4 text-xs">
-            <div className="flex items-center gap-2.5 text-red-600">
-              <div className="p-2 rounded-full bg-red-100"><Trash2 className="w-5 h-5 text-red-600" /></div>
-              <h3 className="font-bold text-pine-950 text-sm">Xác nhận ẩn sản phẩm</h3>
+      <Modal
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        title={editing ? "Sửa sản phẩm" : "Thêm sản phẩm"}
+        maxWidth="max-w-2xl"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setFormOpen(false)} disabled={saving}>Hủy</Button>
+            <Button type="submit" form="product-form" loading={saving}>{editing ? "Lưu thay đổi" : "Thêm sản phẩm"}</Button>
+          </>
+        }
+      >
+        <form id="product-form" onSubmit={save} noValidate className="space-y-4 text-xs">
+          <div>
+            <label className={labelCls} htmlFor="p-name">Tên sản phẩm *</label>
+            <input id="p-name" className={input} value={form.name} onChange={(e) => set("name", e.target.value)} maxLength={150} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls} htmlFor="p-cat">Danh mục *</label>
+              <select id="p-cat" className={input} value={form.categoryId} onChange={(e) => set("categoryId", e.target.value)}>
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
             </div>
-            <p className="text-bark-700 leading-relaxed">
-              Bạn có chắc muốn ẩn sản phẩm <strong>&ldquo;{deletingProduct.name}&rdquo;</strong>? Sản phẩm sẽ không còn hiển thị trên Shop, nhưng lịch sử đơn hàng cũ vẫn giữ nguyên.
-            </p>
-            <div className="flex justify-end gap-2 pt-2 border-t border-surface-border">
-              <button type="button" onClick={() => setDeletingProduct(null)} className="px-3 py-1.5 text-bark-600 hover:text-bark-900 font-semibold">Hủy</button>
-              <button type="button" onClick={handleConfirmDelete} className="px-4 py-1.5 bg-red-600 text-white rounded-box font-bold hover:bg-red-700 transition-colors">Ẩn ngay</button>
+            <div>
+              <label className={labelCls} htmlFor="p-species">Dành cho *</label>
+              <select id="p-species" className={input} value={form.species} onChange={(e) => set("species", e.target.value as Species)}>
+                <option value="dog">Chó</option>
+                <option value="cat">Mèo</option>
+                <option value="both">Cả chó và mèo</option>
+              </select>
+            </div>
+            {form.species !== "cat" && (
+              <div>
+                <label className={labelCls} htmlFor="p-size">Cỡ chó phù hợp</label>
+                <select id="p-size" className={input} value={form.targetSize} onChange={(e) => set("targetSize", e.target.value)}>
+                  {Object.entries(SIZE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className={labelCls} htmlFor="p-age">Độ tuổi phù hợp</label>
+              <select id="p-age" className={input} value={form.targetAge} onChange={(e) => set("targetAge", e.target.value)}>
+                {Object.entries(AGE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
             </div>
           </div>
-        </div>
-      )}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label className={labelCls} htmlFor="p-price">Giá bán (₫) *</label>
+              <input id="p-price" className={`${input} font-bold`} inputMode="numeric" value={form.price} onChange={(e) => set("price", e.target.value.replace(/\D/g, ""))} placeholder="45000" />
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="p-orig">Giá gốc (₫)</label>
+              <input id="p-orig" className={input} inputMode="numeric" value={form.originalPrice} onChange={(e) => set("originalPrice", e.target.value.replace(/\D/g, ""))} placeholder="Không giảm" />
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="p-stock">{editing ? "Tồn kho" : "Tồn kho ban đầu"}</label>
+              <input id="p-stock" className={`${input} disabled:bg-surface-muted`} inputMode="numeric" value={form.stock} disabled={!!editing} onChange={(e) => set("stock", e.target.value.replace(/\D/g, ""))} />
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="p-low">Báo sắp hết khi còn</label>
+              <input id="p-low" className={input} inputMode="numeric" value={form.lowStock} onChange={(e) => set("lowStock", e.target.value.replace(/\D/g, ""))} />
+            </div>
+          </div>
+          {editing && <p className="text-[11px] text-bark-500 -mt-2">Đổi tồn kho bằng nút +/− trong danh sách hoặc phiếu nhập kho, để mọi thay đổi đều có trong lịch sử kho.</p>}
+          <div>
+            <label className={labelCls} htmlFor="p-ing">Thành phần / chất liệu (cách nhau bởi dấu phẩy)</label>
+            <input id="p-ing" className={input} value={form.ingredients} onChange={(e) => set("ingredients", e.target.value)} placeholder="Ví dụ: thịt bò, khoai lang" />
+            <p className="text-[11px] text-bark-500 mt-1">Dùng để cảnh báo dị ứng cho khách và loại món khi tuyển chọn hộp.</p>
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="p-desc">Mô tả</label>
+            <textarea id="p-desc" rows={3} className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none" value={form.description} onChange={(e) => set("description", e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="p-img">Đường dẫn ảnh</label>
+            <input id="p-img" className={input} value={form.image} onChange={(e) => set("image", e.target.value)} placeholder="https://… hoặc /images/…" />
+          </div>
+          <fieldset className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <legend className={labelCls}>Nơi dùng *</legend>
+            <label className="flex items-start gap-2.5 p-3 rounded-box border border-surface-border cursor-pointer">
+              <input type="checkbox" className="mt-0.5 w-4 h-4 accent-pine-900" checked={form.isRetail} onChange={(e) => set("isRetail", e.target.checked)} />
+              <span><span className="font-bold text-pine-950 block">Bán lẻ</span><span className="text-[11px] text-bark-500">Hiện trong Cửa hàng</span></span>
+            </label>
+            <label className="flex items-start gap-2.5 p-3 rounded-box border border-surface-border cursor-pointer">
+              <input type="checkbox" className="mt-0.5 w-4 h-4 accent-pine-900" checked={form.isBoxItem} onChange={(e) => set("isBoxItem", e.target.checked)} />
+              <span><span className="font-bold text-pine-950 block">Cho vào hộp</span><span className="text-[11px] text-bark-500">Xuất hiện khi tuyển chọn Mystery Box</span></span>
+            </label>
+          </fieldset>
+          {formError && <p role="alert" className="p-2.5 rounded-box bg-red-50 border border-red-200 text-red-700 font-semibold">{formError}</p>}
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!hiding}
+        title="Ẩn sản phẩm"
+        message={<>Ẩn <strong>{hiding?.name}</strong> khỏi Cửa hàng và danh sách tuyển chọn hộp? Đơn cũ vẫn giữ nguyên; có thể hiện lại bất cứ lúc nào.</>}
+        confirmLabel="Ẩn sản phẩm"
+        loading={!!hiding && busyId === hiding.id}
+        onClose={() => setHiding(null)}
+        onConfirm={async () => {
+          if (!hiding) return;
+          await updateFlag(hiding, { is_active: false }, `Đã ẩn "${hiding.name}".`);
+          setHiding(null);
+        }}
+      />
     </div>
   );
 }

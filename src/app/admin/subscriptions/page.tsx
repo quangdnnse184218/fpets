@@ -1,9 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Search, Pause, Play, XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Search, Pause, Play, XCircle, AlertCircle, CheckCircle2 } from "lucide-react";
-import { formatDate } from "@/lib/formatters";
+import { formatDate, formatVND } from "@/lib/formatters";
+import { deliveryWindowLabel, DeliverySchedule } from "@/lib/deliverySchedule";
+import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
 
 type SubStatus = "cho_thanh_toan" | "dang_hoat_dong" | "tam_dung" | "qua_han" | "het_han" | "da_huy";
 
@@ -11,13 +16,31 @@ const STATUS_LABEL: Record<SubStatus, string> = {
   cho_thanh_toan: "Chờ thanh toán",
   dang_hoat_dong: "Đang hoạt động",
   tam_dung: "Tạm dừng",
-  qua_han: "Quá hạn",
-  het_han: "Hết hạn",
+  qua_han: "Hết hộp, chờ gia hạn",
+  het_han: "Đã kết thúc",
   da_huy: "Đã hủy",
+};
+
+const STATUS_STYLE: Record<SubStatus, string> = {
+  dang_hoat_dong: "bg-grass-50 text-grass-700 border-grass-200",
+  tam_dung: "bg-honey-50 text-honey-700 border-honey-200",
+  qua_han: "bg-amber-50 text-amber-800 border-amber-200",
+  het_han: "bg-surface-muted text-bark-600 border-surface-border",
+  da_huy: "bg-red-50 text-red-700 border-red-200",
+  cho_thanh_toan: "bg-surface-muted text-bark-600 border-surface-border",
+};
+
+const ERROR_TEXT: Record<string, string> = {
+  ERR_PAST_CUTOFF: "Đã qua ngày chốt của kỳ này nên không tạm dừng được; hộp kỳ này vẫn được giao.",
+  ERR_INVALID_STATUS_FOR_PAUSE: "Chỉ tạm dừng được gói đang hoạt động.",
+  ERR_INVALID_STATUS_FOR_RESUME: "Gói không ở trạng thái tạm dừng.",
+  ERR_INVALID_STATUS_FOR_CANCEL: "Gói này không hủy được ở trạng thái hiện tại.",
+  ERR_NOT_FOUND_OR_FORBIDDEN: "Không tìm thấy gói hoặc không có quyền thao tác.",
 };
 
 interface SubRow {
   id: string;
+  user_id: string;
   subscription_code: string;
   status: SubStatus;
   total_cycles: number;
@@ -25,295 +48,321 @@ interface SubRow {
   current_cycle: number;
   next_delivery_date: string;
   cutoff_date: string;
-  delivery_schedule: string;
+  delivery_schedule: DeliverySchedule;
+  total_prepaid_amount: number;
+  cancellation_reason: string | null;
+  created_at: string;
+  shipping_address_snapshot: { phone?: string; recipient_name?: string } | null;
   pets: { name: string; breed: string | null } | null;
-  profiles: { full_name: string | null; phone: string | null } | null;
+  profiles: { full_name: string | null; phone: string | null; email: string } | null;
   box_types: { name: string } | null;
   subscription_plans: { name: string } | null;
 }
 
+const FILTERS: { id: string; label: string }[] = [
+  { id: "all", label: "Tất cả" },
+  { id: "dang_hoat_dong", label: "Đang hoạt động" },
+  { id: "cutoff", label: "Chốt trong 7 ngày" },
+  { id: "tam_dung", label: "Tạm dừng" },
+  { id: "qua_han", label: "Chờ gia hạn" },
+  { id: "da_huy", label: "Đã hủy" },
+  { id: "het_han", label: "Đã kết thúc" },
+];
+
+// SĐT liên hệ: ưu tiên SĐT nhận hàng của gói (hồ sơ khách có thể chưa nhập SĐT)
+const contactPhone = (s: SubRow) => s.shipping_address_snapshot?.phone || s.profiles?.phone || "Chưa có SĐT";
+
+const todayIso = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
+const plusDaysIso = (days: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(Date.now() + days * 86400000));
+
 export default function AdminSubscriptionsPage() {
+  return (
+    <Suspense fallback={<div className="py-16 text-center text-xs text-bark-500">Đang tải gói định kỳ…</div>}>
+      <SubscriptionsContent />
+    </Suspense>
+  );
+}
+
+function SubscriptionsContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { show } = useToast();
+
+  const filter = FILTERS.some((f) => f.id === (searchParams.get("filter") || searchParams.get("status")))
+    ? (searchParams.get("filter") || searchParams.get("status"))!
+    : "all";
+  const [search, setSearch] = useState(searchParams.get("q") || "");
   const [subs, setSubs] = useState<SubRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<SubRow | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
 
-  const loadSubs = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
-    const supabase = createClient();
-    const { data } = await supabase
+    const { data } = await createClient()
       .from("subscriptions")
-      .select("id, subscription_code, status, total_cycles, remaining_cycles, current_cycle, next_delivery_date, cutoff_date, delivery_schedule, pets(name, breed), profiles(full_name, phone), box_types(name), subscription_plans(name)")
+      .select(
+        "id, user_id, subscription_code, status, total_cycles, remaining_cycles, current_cycle, next_delivery_date, cutoff_date, delivery_schedule, total_prepaid_amount, cancellation_reason, created_at, shipping_address_snapshot, pets(name, breed), profiles(full_name, phone, email), box_types(name), subscription_plans(name)"
+      )
       .order("created_at", { ascending: false });
     setSubs((data as unknown as SubRow[]) || []);
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadSubs(); }, [loadSubs]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const showNotice = (msg: string) => { setActionNotice(msg); setTimeout(() => setActionNotice(null), 3000); };
+  const setFilter = (id: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("status");
+    if (id === "all") params.delete("filter");
+    else params.set("filter", id);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
 
-  const handleTogglePause = async (sub: SubRow) => {
+  // Báo cho khách khi admin thao tác hộ trên gói của họ
+  const notifyCustomer = async (sub: SubRow, title: string, message: string) => {
+    await createClient().from("notifications").insert({ user_id: sub.user_id, title, message, type: "subscription", link: "/my-account/subscriptions" });
+  };
+
+  const runAction = async (sub: SubRow, action: () => PromiseLike<{ error: { message: string } | null }>, success: string, notify?: [string, string]) => {
     setBusyId(sub.id);
-    const supabase = createClient();
-    if (sub.status === "tam_dung") {
-      const { error } = await supabase.rpc("resume_subscription", { p_subscription_id: sub.id });
-      if (!error) showNotice("Đã tiếp tục gói cho khách.");
-    } else {
-      const { error } = await supabase.rpc("pause_subscription", { p_subscription_id: sub.id, p_cycles: 1 });
-      if (!error) showNotice("Đã tạm dừng 1 kỳ hộ khách.");
-      else showNotice("Không thể tạm dừng: " + error.message);
+    const { error } = await action();
+    setBusyId(null);
+    if (error) {
+      const key = Object.keys(ERROR_TEXT).find((k) => error.message.includes(k));
+      show(key ? ERROR_TEXT[key] : "Không thực hiện được thao tác, vui lòng thử lại.", { tone: "error" });
+      return false;
     }
-    setBusyId(null);
-    loadSubs();
+    if (notify) await notifyCustomer(sub, notify[0], notify[1]);
+    show(success);
+    load();
+    return true;
   };
 
-  const handleCancelSub = async (sub: SubRow) => {
-    if (!confirm("Bạn có chắc chắn muốn hủy gói định kỳ này hộ khách hàng không?")) return;
-    setBusyId(sub.id);
-    const supabase = createClient();
-    const { error } = await supabase.rpc("cancel_subscription", { p_subscription_id: sub.id, p_reason: "Hủy bởi CSKH/Admin" });
-    setBusyId(null);
-    if (!error) showNotice("Đã hủy gói subscription thành công.");
-    loadSubs();
+  const pause = (sub: SubRow) =>
+    runAction(sub, () => createClient().rpc("pause_subscription", { p_subscription_id: sub.id, p_cycles: 1 }), `Đã tạm dừng 1 kỳ cho gói ${sub.subscription_code}.`, [
+      `Gói ${sub.subscription_code} đã tạm dừng 1 kỳ`,
+      "FPETS đã tạm dừng gói theo yêu cầu của bạn. Lịch giao mới có trong mục Gói định kỳ.",
+    ]);
+
+  const resume = (sub: SubRow) =>
+    runAction(sub, () => createClient().rpc("resume_subscription", { p_subscription_id: sub.id }), `Gói ${sub.subscription_code} đã hoạt động lại.`, [
+      `Gói ${sub.subscription_code} đã tiếp tục`,
+      "FPETS đã mở lại gói theo yêu cầu của bạn. Lịch giao có trong mục Gói định kỳ.",
+    ]);
+
+  const confirmCancel = async () => {
+    if (!cancelling) return;
+    if (!cancelReason.trim()) {
+      show("Vui lòng nhập lý do hủy để gửi cho khách.", { tone: "error" });
+      return;
+    }
+    const ok = await runAction(
+      cancelling,
+      () => createClient().rpc("cancel_subscription", { p_subscription_id: cancelling.id, p_reason: cancelReason.trim() }),
+      `Đã hủy gói ${cancelling.subscription_code}.`,
+      [`Gói ${cancelling.subscription_code} đã được hủy`, `Lý do: ${cancelReason.trim()}. Hộp đã qua ngày chốt vẫn được giao.`]
+    );
+    if (ok) {
+      setCancelling(null);
+      setCancelReason("");
+    }
   };
 
+  const today = todayIso();
+  const in7 = plusDaysIso(7);
+  const q = search.trim().toLowerCase();
   const filtered = subs.filter((s) => {
-    const matchStatus = statusFilter === "all" || s.status === statusFilter;
+    const matchFilter =
+      filter === "all" ||
+      (filter === "cutoff" ? s.status === "dang_hoat_dong" && s.remaining_cycles > 0 && s.cutoff_date >= today && s.cutoff_date <= in7 : s.status === filter);
     const matchSearch =
-      s.subscription_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (s.profiles?.full_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (s.pets?.name || "").toLowerCase().includes(searchTerm.toLowerCase());
-    return matchStatus && matchSearch;
+      !q ||
+      [s.subscription_code, s.profiles?.full_name || "", contactPhone(s), s.pets?.name || ""].some((v) => v.toLowerCase().includes(q));
+    return matchFilter && matchSearch;
   });
 
-  const STATUS_ICON: Record<SubStatus, typeof CheckCircle2> = {
-    dang_hoat_dong: CheckCircle2, tam_dung: Pause, qua_han: AlertCircle, het_han: XCircle, da_huy: XCircle, cho_thanh_toan: AlertCircle,
-  };
-  const STATUS_STYLE: Record<SubStatus, string> = {
-    dang_hoat_dong: "bg-grass-100 text-grass-800", tam_dung: "bg-honey-100 text-bark-800", qua_han: "bg-bark-100 text-bark-800",
-    het_han: "bg-surface-muted text-bark-500", da_huy: "bg-surface-muted text-bark-500", cho_thanh_toan: "bg-surface-muted text-bark-500",
+  const countOf = (id: string) =>
+    id === "all"
+      ? subs.length
+      : id === "cutoff"
+        ? subs.filter((s) => s.status === "dang_hoat_dong" && s.remaining_cycles > 0 && s.cutoff_date >= today && s.cutoff_date <= in7).length
+        : subs.filter((s) => s.status === id).length;
+
+  const actions = (sub: SubRow) => (
+    <div className="flex flex-wrap gap-1.5">
+      {sub.status === "dang_hoat_dong" && (
+        <Button size="sm" variant="secondary" loading={busyId === sub.id} onClick={() => pause(sub)}>
+          <Pause className="w-3.5 h-3.5" /> Tạm dừng 1 kỳ
+        </Button>
+      )}
+      {sub.status === "tam_dung" && (
+        <Button size="sm" variant="secondary" loading={busyId === sub.id} onClick={() => resume(sub)}>
+          <Play className="w-3.5 h-3.5" /> Tiếp tục
+        </Button>
+      )}
+      {["dang_hoat_dong", "tam_dung", "qua_han"].includes(sub.status) && (
+        <Button size="sm" variant="secondary" disabled={busyId === sub.id} onClick={() => setCancelling(sub)} className="!text-red-700">
+          <XCircle className="w-3.5 h-3.5" /> Hủy gói
+        </Button>
+      )}
+    </div>
+  );
+
+  const progress = (sub: SubRow) => {
+    const prepared = sub.total_cycles - sub.remaining_cycles;
+    return (
+      <div className="space-y-1">
+        <span className="text-xs font-semibold text-pine-950">Đã chuẩn bị {prepared}/{sub.total_cycles} hộp</span>
+        <div className="w-28 bg-surface-muted h-1.5 rounded-full overflow-hidden">
+          <div className="bg-grass-600 h-full rounded-full" style={{ width: `${(prepared / sub.total_cycles) * 100}%` }} />
+        </div>
+      </div>
+    );
   };
 
-  if (loading) return <div className="py-16 text-center text-xs text-bark-500">Đang tải gói định kỳ...</div>;
+  const nextDelivery = (sub: SubRow) =>
+    ["dang_hoat_dong", "tam_dung"].includes(sub.status) && sub.remaining_cycles > 0 ? (
+      <>
+        <div className="font-semibold text-bark-900">{deliveryWindowLabel(sub.next_delivery_date, sub.delivery_schedule)}</div>
+        <div className="text-[11px] text-bark-500">Chốt hộp {formatDate(sub.cutoff_date)}</div>
+      </>
+    ) : (
+      <span className="text-bark-400">–</span>
+    );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-extrabold text-pine-950 font-display">Quản lý Gói Định Kỳ Subscription ({subs.length} gói)</h1>
-        <p className="text-xs text-bark-500">Theo dõi tiến trình từng kỳ giao, ngày chốt và hỗ trợ khách hàng tạm dừng hoặc hủy gói.</p>
+        <h1 className="text-2xl font-extrabold text-pine-950 font-display">Gói định kỳ</h1>
+        <p className="text-xs text-bark-500">Theo dõi lịch giao từng kỳ, ngày chốt hộp; tạm dừng hoặc hủy gói theo yêu cầu của khách.</p>
       </div>
 
-      {actionNotice && (
-        <div className="p-3 bg-grass-100 border border-grass-200 text-grass-900 rounded-box text-xs font-semibold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-grass-700" /><span>{actionNotice}</span>
+      <div className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border space-y-3">
+        <div className="relative max-w-sm">
+          <Search className="w-4 h-4 text-bark-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="search"
+            placeholder="Mã gói, tên khách, SĐT, tên bé"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Tìm gói định kỳ"
+            className="w-full h-10 pl-9 pr-3 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none"
+          />
         </div>
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              aria-pressed={filter === f.id}
+              onClick={() => setFilter(f.id)}
+              className={`shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-semibold border transition-colors ${
+                filter === f.id ? "bg-pine-900 border-pine-900 text-white" : "bg-white border-surface-border text-bark-700 hover:bg-surface-muted"
+              }`}
+            >
+              {f.label}
+              <span className={`text-[10px] font-extrabold ${filter === f.id ? "text-pine-100" : "text-bark-500"}`}>{countOf(f.id)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="py-16 text-center text-xs text-bark-500">Đang tải gói định kỳ…</div>
+      ) : filtered.length === 0 ? (
+        <div className="p-10 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">Không có gói nào phù hợp.</div>
+      ) : (
+        <>
+          <ul className="lg:hidden space-y-2.5">
+            {filtered.map((sub) => (
+              <li key={sub.id} className="p-3.5 rounded-container bg-surface-card border border-surface-border space-y-3 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono font-bold text-pine-950">{sub.subscription_code}</span>
+                  <span className={`px-2 py-0.5 rounded-tag border text-[11px] font-bold ${STATUS_STYLE[sub.status]}`}>{STATUS_LABEL[sub.status]}</span>
+                </div>
+                <div>
+                  <p className="font-bold text-pine-950">{sub.profiles?.full_name || sub.profiles?.email} · {contactPhone(sub)}</p>
+                  <p className="text-bark-600">
+                    Bé {sub.pets?.name} · {sub.box_types?.name} · {sub.subscription_plans?.name} · {formatVND(sub.total_prepaid_amount)}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {progress(sub)}
+                  <div>{nextDelivery(sub)}</div>
+                </div>
+                {sub.status === "da_huy" && sub.cancellation_reason && <p className="text-bark-500">Lý do hủy: {sub.cancellation_reason}</p>}
+                {actions(sub)}
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden lg:block rounded-container bg-surface-card border border-surface-border overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
+                <tr>
+                  <th className="p-3">Gói</th>
+                  <th className="p-3">Khách hàng</th>
+                  <th className="p-3">Hộp</th>
+                  <th className="p-3">Tiến độ</th>
+                  <th className="p-3">Lần giao tới</th>
+                  <th className="p-3">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-border text-bark-700 align-top">
+                {filtered.map((sub) => (
+                  <tr key={sub.id}>
+                    <td className="p-3 whitespace-nowrap">
+                      <div className="font-mono font-bold text-pine-950">{sub.subscription_code}</div>
+                      <span className={`inline-block mt-1 px-2 py-0.5 rounded-tag border text-[11px] font-bold ${STATUS_STYLE[sub.status]}`}>{STATUS_LABEL[sub.status]}</span>
+                    </td>
+                    <td className="p-3">
+                      <div className="font-semibold text-pine-950">{sub.profiles?.full_name || sub.profiles?.email}</div>
+                      <div className="text-[11px] text-bark-500">{contactPhone(sub)} · bé {sub.pets?.name}</div>
+                    </td>
+                    <td className="p-3">
+                      <div className="font-medium text-bark-900">{sub.box_types?.name}</div>
+                      <div className="text-[11px] text-bark-500">{sub.subscription_plans?.name} · {formatVND(sub.total_prepaid_amount)}</div>
+                      {sub.status === "da_huy" && sub.cancellation_reason && <div className="text-[11px] text-bark-500 mt-0.5">Lý do hủy: {sub.cancellation_reason}</div>}
+                    </td>
+                    <td className="p-3">{progress(sub)}</td>
+                    <td className="p-3 whitespace-nowrap">{nextDelivery(sub)}</td>
+                    <td className="p-3">{actions(sub)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-        <div className="p-3.5 rounded-container bg-surface-card border border-surface-border">
-          <span className="text-bark-500 block text-[11px]">Tổng số gói</span>
-          <span className="font-extrabold text-pine-950 text-lg">{subs.length}</span>
-        </div>
-        <div className="p-3.5 rounded-container bg-grass-50/60 border border-grass-200">
-          <span className="text-grass-800 block text-[11px] font-medium">Đang hoạt động</span>
-          <span className="font-extrabold text-grass-900 text-lg">{subs.filter((s) => s.status === "dang_hoat_dong").length}</span>
-        </div>
-        <div className="p-3.5 rounded-container bg-honey-50/60 border border-honey-200">
-          <span className="text-bark-800 block text-[11px] font-medium">Đang tạm dừng</span>
-          <span className="font-extrabold text-bark-800 text-lg">{subs.filter((s) => s.status === "tam_dung").length}</span>
-        </div>
-        <div className="p-3.5 rounded-container bg-surface-muted border border-surface-border">
-          <span className="text-bark-500 block text-[11px]">Quá hạn / Đã hủy</span>
-          <span className="font-extrabold text-bark-700 text-lg">{subs.filter((s) => ["qua_han", "het_han", "da_huy"].includes(s.status)).length}</span>
-        </div>
-      </div>
-
-      <div className="p-4 rounded-container bg-surface-card border border-surface-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="w-4 h-4 text-bark-400 absolute left-3 top-2.5" />
-          <input type="text" placeholder="Tìm theo mã gói, tên khách, tên bé..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none" />
-        </div>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 rounded-box border border-surface-border bg-white text-bark-700 text-xs focus:outline-none">
-          <option value="all">Tất cả trạng thái</option>
-          <option value="dang_hoat_dong">Đang hoạt động</option>
-          <option value="tam_dung">Tạm dừng</option>
-          <option value="qua_han">Quá hạn</option>
-          <option value="het_han">Hết hạn</option>
-          <option value="da_huy">Đã hủy</option>
-        </select>
-      </div>
-
-      {/* Mobile Card List (< md) */}
-      <div className="md:hidden space-y-2.5">
-        {filtered.length === 0 ? (
-          <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
-            Chưa có gói định kỳ nào phù hợp.
-          </div>
-        ) : (
-          filtered.map((sub) => {
-            const Icon = STATUS_ICON[sub.status];
-            const completed = sub.total_cycles - sub.remaining_cycles;
-            return (
-              <div
-                key={sub.id}
-                className="p-3.5 rounded-container bg-surface-card border border-surface-border space-y-2.5 shadow-2xs"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono font-bold text-pine-950 text-xs">
-                    {sub.subscription_code}
-                  </span>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${STATUS_STYLE[sub.status]}`}>
-                    <Icon className="w-2.5 h-2.5" />
-                    <span>{STATUS_LABEL[sub.status]}</span>
-                  </span>
-                </div>
-
-                <div className="flex items-start justify-between gap-2 pt-0.5">
-                  <div>
-                    <h3 className="font-bold text-pine-950 text-xs">{sub.profiles?.full_name}</h3>
-                    <div className="text-[11px] text-bark-500">
-                      Bé: <strong className="text-pine-900">{sub.pets?.name}</strong>{sub.pets?.breed ? ` (${sub.pets.breed})` : ""}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-semibold text-bark-900 block">{sub.box_types?.name}</span>
-                    <span className="text-[10px] text-grass-700 font-bold">{sub.subscription_plans?.name}</span>
-                  </div>
-                </div>
-
-                {/* Tiến trình kỳ */}
-                <div className="pt-2 border-t border-surface-border/70 text-xs space-y-1">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-bark-500">Tiến trình:</span>
-                    <span className="font-bold text-pine-900">Đã giao {completed}/{sub.total_cycles} hộp</span>
-                  </div>
-                  <div className="w-full bg-surface-muted h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-grass-600 h-full rounded-full" style={{ width: `${(completed / sub.total_cycles) * 100}%` }} />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-2 text-[11px] text-bark-500 pt-1">
-                  <span>Giao kế tiếp: <strong>{formatDate(sub.next_delivery_date)}</strong></span>
-                  <span>Cutoff: <strong>{formatDate(sub.cutoff_date)}</strong></span>
-                </div>
-
-                {!["da_huy", "het_han"].includes(sub.status) && (
-                  <div className="pt-2 border-t border-surface-border/50 flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleTogglePause(sub)}
-                      disabled={busyId === sub.id}
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded transition-colors disabled:opacity-60 ${
-                        sub.status === "tam_dung" ? "bg-grass-100 text-grass-800" : "bg-surface-muted text-bark-700"
-                      }`}
-                    >
-                      {sub.status === "tam_dung" ? (
-                        <>
-                          <Play className="w-3 h-3" />
-                          <span>Tiếp tục</span>
-                        </>
-                      ) : (
-                        <>
-                          <Pause className="w-3 h-3" />
-                          <span>Tạm dừng</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleCancelSub(sub)}
-                      disabled={busyId === sub.id}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold bg-bark-100 text-bark-700 hover:bg-bark-200 rounded transition-colors disabled:opacity-60"
-                    >
-                      <XCircle className="w-3 h-3" />
-                      <span>Hủy</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* Desktop Table (>= md) */}
-      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
-        <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
-          <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
-            <tr>
-              <th className="p-3.5">Mã gói & Trạng thái</th>
-              <th className="p-3.5">Khách hàng & Bé cưng</th>
-              <th className="p-3.5">Loại Box & Gói</th>
-              <th className="p-3.5">Tiến trình kỳ</th>
-              <th className="p-3.5">Lịch giao kế tiếp</th>
-              <th className="p-3.5">Cutoff</th>
-              <th className="p-3.5">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-border text-bark-700">
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={7} className="p-10 text-center text-xs text-bark-500">Chưa có gói định kỳ nào phù hợp.</td>
-              </tr>
-            )}
-            {filtered.map((sub) => {
-              const Icon = STATUS_ICON[sub.status];
-              const completed = sub.total_cycles - sub.remaining_cycles;
-              return (
-                <tr key={sub.id} className="hover:bg-surface-muted/50 transition-colors">
-                  <td className="p-3.5">
-                    <div className="font-bold text-pine-950 font-mono text-xs">{sub.subscription_code}</div>
-                    <div className="mt-1">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${STATUS_STYLE[sub.status]}`}>
-                        <Icon className="w-2.5 h-2.5" /><span>{STATUS_LABEL[sub.status]}</span>
-                      </span>
-                    </div>
-                  </td>
-                  <td className="p-3.5">
-                    <div className="font-semibold text-pine-950">{sub.profiles?.full_name}</div>
-                    <div className="text-[11px] text-bark-500 mt-0.5">Bé: <strong className="text-pine-900">{sub.pets?.name}</strong>{sub.pets?.breed ? ` (${sub.pets.breed})` : ""}</div>
-                  </td>
-                  <td className="p-3.5">
-                    <div className="font-medium text-bark-900">{sub.box_types?.name}</div>
-                    <div className="text-[11px] text-grass-700 font-semibold">{sub.subscription_plans?.name}</div>
-                  </td>
-                  <td className="p-3.5">
-                    <span className="font-bold text-pine-900 text-sm">Đã giao {completed}/{sub.total_cycles} hộp</span>
-                    <div className="w-24 bg-surface-muted h-1.5 rounded-full overflow-hidden mt-1">
-                      <div className="bg-grass-600 h-full rounded-full" style={{ width: `${(completed / sub.total_cycles) * 100}%` }} />
-                    </div>
-                  </td>
-                  <td className="p-3.5">
-                    <div className="font-semibold text-bark-900">{formatDate(sub.next_delivery_date)}</div>
-                    <div className="text-[10px] text-bark-500">{sub.delivery_schedule === "dau_thang" ? "Đầu tháng" : "Giữa tháng"}</div>
-                  </td>
-                  <td className="p-3.5"><div className="text-[11px]"><strong className="text-bark-800">{formatDate(sub.cutoff_date)}</strong></div></td>
-                  <td className="p-3.5">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {!["da_huy", "het_han"].includes(sub.status) && (
-                        <button onClick={() => handleTogglePause(sub)} disabled={busyId === sub.id}
-                          className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded transition-colors disabled:opacity-60 ${sub.status === "tam_dung" ? "bg-grass-100 text-grass-800 hover:bg-grass-200" : "bg-surface-muted text-bark-700 hover:bg-bark-200"}`}>
-                          {sub.status === "tam_dung" ? (<><Play className="w-2.5 h-2.5" /><span>Tiếp tục</span></>) : (<><Pause className="w-2.5 h-2.5" /><span>Tạm dừng</span></>)}
-                        </button>
-                      )}
-                      {!["da_huy", "het_han"].includes(sub.status) && (
-                        <button onClick={() => handleCancelSub(sub)} disabled={busyId === sub.id}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold bg-bark-100 text-bark-700 hover:bg-bark-200 rounded transition-colors disabled:opacity-60">
-                          <XCircle className="w-2.5 h-2.5" /><span>Hủy</span>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <ConfirmDialog
+        open={!!cancelling}
+        title={`Hủy gói ${cancelling?.subscription_code || ""}`}
+        message="Gói dừng tạo hộp từ kỳ sau. Hộp đã qua ngày chốt vẫn được giao. Khách nhận thông báo kèm lý do."
+        confirmLabel="Hủy gói"
+        loading={!!cancelling && busyId === cancelling.id}
+        onClose={() => {
+          setCancelling(null);
+          setCancelReason("");
+        }}
+        onConfirm={confirmCancel}
+      >
+        <label className="block text-xs font-semibold text-bark-700">
+          Lý do hủy (bắt buộc)
+          <input
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Ví dụ: Khách chuyển nhà ra nước ngoài"
+            className="mt-1 w-full h-10 px-3 rounded-box border border-surface-border text-sm font-normal"
+          />
+        </label>
+      </ConfirmDialog>
     </div>
   );
 }

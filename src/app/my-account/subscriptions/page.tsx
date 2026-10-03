@@ -552,7 +552,7 @@ function RenewModal({
     setSaving(true);
     const { data, error } = await createClient().rpc("renew_subscription", { p_subscription_id: sub.id, p_plan_id: planId, p_payment_method: method });
     setSaving(false);
-    if (error || !data) return onError(error?.message.includes("ERR_RENEW_NOT_ALLOWED") ? "Gói này hiện không thể gia hạn." : "Không tạo được yêu cầu gia hạn, vui lòng thử lại.");
+    if (error || !data) return onError(error?.message.includes("ERR_RENEW_NOT_ALLOWED") ? "Gói này hiện không thể gia hạn." : error?.message.includes("ERR_ACCOUNT_LOCKED") ? "Tài khoản đang bị tạm khóa. Vui lòng gọi hotline để được hỗ trợ." : "Không tạo được yêu cầu gia hạn, vui lòng thử lại.");
     const r = data as { order_id: string; order_code: string; total_amount: number };
     onCreated(`/checkout/pay/${r.order_id}?code=${r.order_code}&amount=${r.total_amount}&method=${method}&sub=1`);
   };

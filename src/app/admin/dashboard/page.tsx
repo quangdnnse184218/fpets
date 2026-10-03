@@ -1,378 +1,220 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { ChevronRight, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { formatVND } from "@/lib/formatters";
-import {
-  Gift,
-  TrendingUp,
-  AlertTriangle,
-  RefreshCw,
-  MessageSquare,
-  Star,
-  PackageSearch,
-  ClipboardList,
-  Warehouse,
-  ChevronRight,
-  Package,
-  Sparkles,
-} from "lucide-react";
+import { formatDateTime, formatVND } from "@/lib/formatters";
+import { ORDER_STATUS_LABEL, ORDER_STATUS_STYLE, OrderStatus } from "@/lib/orderDisplay";
+import { ADMIN_TASK_ITEMS, useAdminTasks } from "../AdminTasks";
 
-const ORDER_STATUSES = [
-  { key: "cho_thanh_toan", label: "Chờ thanh toán", bg: "bg-surface-muted", text: "text-bark-800" },
-  { key: "da_xac_nhan", label: "Đã xác nhận", bg: "bg-pine-50", text: "text-pine-950" },
-  { key: "dang_chuan_bi", label: "Đang chuẩn bị", bg: "bg-amber-50/70", text: "text-amber-900" },
-  { key: "dang_giao", label: "Đang giao", bg: "bg-blue-50", text: "text-blue-950" },
-  { key: "da_giao", label: "Đã giao", bg: "bg-grass-50", text: "text-grass-900" },
-  { key: "da_huy", label: "Đã hủy", bg: "bg-red-50", text: "text-red-900" },
-  { key: "doi_tra", label: "Đổi / Trả", bg: "bg-amber-50", text: "text-amber-900" },
-];
+interface DashboardStats {
+  revenue_today: number;
+  revenue_month: number;
+  orders_month: number;
+  subs_active: number;
+  subs_paused: number;
+  subs_new_month: number;
+  subs_cancelled_month: number;
+  status_counts: Partial<Record<OrderStatus, number>>;
+}
+
+interface RecentOrder {
+  id: string;
+  order_code: string;
+  order_type: string;
+  status: OrderStatus;
+  total_amount: number;
+  recipient_name: string;
+  created_at: string;
+}
+
+const STATUS_ORDER: OrderStatus[] = ["da_xac_nhan", "dang_chuan_bi", "dang_giao", "da_giao", "doi_tra", "da_huy"];
+
+const TYPE_SHORT: Record<string, string> = {
+  retail: "Lẻ",
+  mystery_box: "Mystery Box",
+  subscription_initial: "Đăng ký gói",
+  subscription_renewal: "Gia hạn gói",
+  subscription_cycle: "Hộp theo gói",
+};
+
+const card = "rounded-container bg-surface-card border border-surface-border";
+const LONG_DATE = new Intl.DateTimeFormat("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
+const MONTH = new Intl.DateTimeFormat("vi-VN", { month: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
 
 export default function AdminDashboardPage() {
-  const [loading, setLoading] = useState(true);
+  const { counts, refresh: refreshTasks } = useAdminTasks();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recent, setRecent] = useState<RecentOrder[]>([]);
+  const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [pendingCurations, setPendingCurations] = useState(0);
-  const [revenueThisMonth, setRevenueThisMonth] = useState(0);
-  const [activeSubs, setActiveSubs] = useState(0);
-  const [pausedSubs, setPausedSubs] = useState(0);
-  const [cancelledSubs, setCancelledSubs] = useState(0);
-  const [lowStockCount, setLowStockCount] = useState(0);
-  const [newFeedback, setNewFeedback] = useState(0);
-  const [pendingReviews, setPendingReviews] = useState(0);
-  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-  const [totalOrders, setTotalOrders] = useState(0);
 
-  const load = useCallback(async (isManualRefresh = false) => {
-    if (isManualRefresh) setRefreshing(true);
-    else setLoading(true);
-
+  const load = useCallback(async () => {
     const supabase = createClient();
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
-
-    const [
-      { count: curationCount },
-      { data: paidOrders },
-      { count: activeCount },
-      { count: pausedCount },
-      { count: cancelledCount },
-      { data: products },
-      { data: allOrders },
-    ] = await Promise.all([
-      supabase.from("box_curations").select("id", { count: "exact", head: true }).eq("status", "pending_curation"),
-      supabase.from("orders").select("total_amount").eq("payment_status", "paid").gte("created_at", monthStart.toISOString()),
-      supabase.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "dang_hoat_dong"),
-      supabase.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "tam_dung"),
-      supabase.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "da_huy"),
-      supabase.from("products").select("stock_quantity, low_stock_threshold").eq("is_active", true),
-      supabase.from("orders").select("status"),
+    const [{ data, error: statsError }, { data: orders }] = await Promise.all([
+      supabase.rpc("admin_dashboard_stats"),
+      supabase
+        .from("orders")
+        .select("id, order_code, order_type, status, total_amount, recipient_name, created_at")
+        .neq("status", "cho_thanh_toan")
+        .neq("order_type", "subscription_cycle")
+        .order("created_at", { ascending: false })
+        .limit(6),
     ]);
-
-    const [{ count: feedbackCount }, { count: unrepliedCount }] = await Promise.all([
-      supabase.from("feedback_messages").select("id", { count: "exact", head: true }).eq("status", "new"),
-      supabase.from("reviews").select("id", { count: "exact", head: true }).is("admin_reply", null).lte("rating", 3),
-    ]);
-
-    setNewFeedback(feedbackCount || 0);
-    setPendingReviews(unrepliedCount || 0);
-    setPendingCurations(curationCount || 0);
-    setRevenueThisMonth((paidOrders || []).reduce((s, o) => s + o.total_amount, 0));
-    setActiveSubs(activeCount || 0);
-    setPausedSubs(pausedCount || 0);
-    setCancelledSubs(cancelledCount || 0);
-    setLowStockCount((products || []).filter((p) => p.stock_quantity <= p.low_stock_threshold).length);
-
-    const counts: Record<string, number> = {};
-    const ordersList = allOrders || [];
-    setTotalOrders(ordersList.length);
-    ordersList.forEach((o) => {
-      counts[o.status] = (counts[o.status] || 0) + 1;
-    });
-    setStatusCounts(counts);
-
-    setLoading(false);
-    setRefreshing(false);
+    setError(!!statsError);
+    if (data) setStats(data as unknown as DashboardStats);
+    setRecent((orders as RecentOrder[]) || []);
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  if (loading) {
-    return (
-      <div className="py-20 text-center space-y-3">
-        <RefreshCw className="w-6 h-6 text-pine-800 animate-spin mx-auto" />
-        <p className="text-xs text-bark-500">Đang tải dữ liệu tổng quan dashboard...</p>
-      </div>
-    );
-  }
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([load(), refreshTasks()]);
+    setRefreshing(false);
+  };
+
+  const now = new Date();
+  const monthLabel = `tháng ${MONTH.format(now)}`;
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Header trang Dashboard */}
-      <div className="flex items-center justify-between gap-3">
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-pine-950 font-display">
-            Tổng quan Dashboard
-          </h1>
-          <p className="text-xs text-bark-500 hidden sm:block">
-            Thống kê vận hành thời gian thực từ toàn bộ hệ thống FPETS.
-          </p>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-pine-950 font-display">Tổng quan</h1>
+          <p className="text-xs text-bark-500 first-letter:uppercase">{LONG_DATE.format(now)}</p>
         </div>
-
         <button
           type="button"
-          onClick={() => load(true)}
+          onClick={handleRefresh}
           disabled={refreshing}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-box bg-surface-card hover:bg-surface-muted text-bark-700 border border-surface-border text-xs font-semibold transition-colors disabled:opacity-50 shadow-2xs"
-          title="Tải lại dữ liệu mới nhất"
+          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-box bg-surface-card hover:bg-surface-muted text-bark-700 border border-surface-border text-xs font-semibold transition-colors disabled:opacity-60"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-pine-900" : ""}`} />
-          <span className="hidden sm:inline">Làm mới</span>
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+          <span>Làm mới</span>
         </button>
       </div>
 
-      {/* Hero Banner: Hộp chờ tuyển chọn (Cần xử lý đầu tiên) */}
-      <div
-        className={`rounded-container p-4 sm:p-6 transition-all ${
-          pendingCurations > 0
-            ? "bg-gradient-to-r from-pine-950 via-pine-900 to-pine-850 text-white shadow-md border border-pine-850"
-            : "bg-surface-card border border-surface-border text-bark-800 shadow-2xs"
-        }`}
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span
-                className={`px-2 py-0.5 rounded-tag text-[10px] font-bold uppercase tracking-wider ${
-                  pendingCurations > 0 ? "bg-honey-500 text-pine-950" : "bg-grass-100 text-grass-800"
-                }`}
-              >
-                {pendingCurations > 0 ? "Ưu tiên vận hành" : "Đã hoàn thành"}
-              </span>
-              <span className={`text-[11px] ${pendingCurations > 0 ? "text-pine-300" : "text-bark-500"}`}>
-                Hàng chờ tuyển chọn Mystery Box
-              </span>
-            </div>
+      {error && (
+        <p role="alert" className="p-3 rounded-box bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+          Không tải được số liệu tổng quan. Bấm Làm mới để thử lại.
+        </p>
+      )}
 
-            <div className="flex items-baseline gap-2">
-              <span className={`text-3xl sm:text-4xl font-extrabold font-display ${pendingCurations > 0 ? "text-white" : "text-pine-950"}`}>
-                {pendingCurations}
-              </span>
-              <span className={`text-xs font-semibold ${pendingCurations > 0 ? "text-pine-200" : "text-bark-500"}`}>
-                hộp đang chờ chọn món &amp; duyệt giao
-              </span>
-            </div>
-          </div>
-
-          <Link
-            href="/admin/box-curation"
-            className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-box font-bold text-xs transition-colors shadow-xs shrink-0 ${
-              pendingCurations > 0
-                ? "bg-white hover:bg-pine-50 text-pine-950"
-                : "bg-pine-900 hover:bg-pine-800 text-white"
-            }`}
-          >
-            <PackageSearch className="w-4 h-4" />
-            <span>Mở hàng chờ tuyển chọn</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* Lưới 4 chỉ số KPI chính (Cân bằng đẹp trên mobile 2x2) */}
+      {/* Chỉ số chính */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        {/* KPI 1: Doanh thu tháng */}
-        <div className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border space-y-1.5 shadow-2xs">
-          <div className="flex items-center justify-between text-bark-500">
-            <span className="text-[11px] font-medium truncate">Doanh thu tháng</span>
-            <TrendingUp className="w-4 h-4 text-grass-600 shrink-0" />
-          </div>
-          <div className="text-base sm:text-xl font-extrabold text-pine-950 font-display truncate">
-            {formatVND(revenueThisMonth)}
-          </div>
-          <div className="text-[10px] text-grass-700 font-semibold truncate">
-            Đơn đã thanh toán
-          </div>
-        </div>
-
-        {/* KPI 2: Subscription hoạt động */}
-        <Link
+        <Kpi label="Doanh thu hôm nay" value={stats ? formatVND(stats.revenue_today) : null} note="Tiền đã thu" />
+        <Kpi label={`Doanh thu ${monthLabel}`} value={stats ? formatVND(stats.revenue_month) : null} note={stats ? `${stats.orders_month} đơn trong tháng` : ""} />
+        <Kpi
+          label="Gói định kỳ đang chạy"
+          value={stats ? `${stats.subs_active} gói` : null}
+          note={stats ? `${stats.subs_paused} tạm dừng · ${stats.subs_new_month} mới · ${stats.subs_cancelled_month} hủy trong tháng` : ""}
           href="/admin/subscriptions"
-          className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border hover:border-pine-800/40 space-y-1.5 shadow-2xs transition-colors group"
-        >
-          <div className="flex items-center justify-between text-bark-500">
-            <span className="text-[11px] font-medium truncate">Gói định kỳ</span>
-            <Gift className="w-4 h-4 text-pine-800 shrink-0 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="text-base sm:text-xl font-extrabold text-pine-950 font-display truncate">
-            {activeSubs} gói
-          </div>
-          <div className="text-[10px] text-bark-500 truncate">
-            {pausedSubs} tạm dừng · {cancelledSubs} hủy
-          </div>
-        </Link>
-
-        {/* KPI 3: Cảnh báo tồn kho */}
-        <Link
-          href="/admin/products"
-          className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border hover:border-pine-800/40 space-y-1.5 shadow-2xs transition-colors group"
-        >
-          <div className="flex items-center justify-between text-bark-500">
-            <span className="text-[11px] font-medium truncate">Cảnh báo kho</span>
-            <AlertTriangle
-              className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
-                lowStockCount > 0 ? "text-amber-600" : "text-bark-400"
-              }`}
-            />
-          </div>
-          <div
-            className={`text-base sm:text-xl font-extrabold font-display truncate ${
-              lowStockCount > 0 ? "text-amber-700" : "text-pine-950"
-            }`}
-          >
-            {lowStockCount} món
-          </div>
-          <div className="text-[10px] text-bark-500 truncate">
-            {lowStockCount > 0 ? "Sắp hết hàng" : "Kho đủ hàng"}
-          </div>
-        </Link>
-
-        {/* KPI 4: Tổng đơn hàng */}
-        <Link
-          href="/admin/orders"
-          className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border hover:border-pine-800/40 space-y-1.5 shadow-2xs transition-colors group"
-        >
-          <div className="flex items-center justify-between text-bark-500">
-            <span className="text-[11px] font-medium truncate">Tổng đơn hàng</span>
-            <Package className="w-4 h-4 text-pine-800 shrink-0 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="text-base sm:text-xl font-extrabold text-pine-950 font-display truncate">
-            {totalOrders} đơn
-          </div>
-          <div className="text-[10px] text-bark-500 truncate">
-            Xem danh sách đơn
-          </div>
-        </Link>
+        />
+        <Kpi label="Đơn mới hôm nay" value={`${counts.orders_today} đơn`} note={`${counts.orders_in_transit} đơn đang giao`} href="/admin/orders" />
       </div>
 
-      {/* Việc CSKH & Khiếu nại cần xử lý */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 text-xs">
-        <Link
-          href="/admin/reviews"
-          className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border hover:border-pine-800/40 flex items-center justify-between gap-3 transition-colors shadow-2xs group"
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-box bg-amber-50 text-amber-800 flex items-center justify-center shrink-0">
-              <MessageSquare className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="font-bold text-pine-950 block truncate">Góp ý / Liên hệ mới</span>
-              <span className="text-[11px] text-bark-500 block truncate">Tin nhắn từ khách qua trang Liên hệ</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span
-              className={`text-base font-extrabold px-2.5 py-0.5 rounded-full ${
-                newFeedback > 0 ? "bg-amber-100 text-amber-800" : "bg-surface-muted text-bark-600"
-              }`}
-            >
-              {newFeedback}
-            </span>
-            <ChevronRight className="w-4 h-4 text-bark-400 group-hover:text-pine-900 group-hover:translate-x-0.5 transition-all" />
-          </div>
-        </Link>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-5 items-start">
+        {/* Việc cần xử lý: cùng nguồn với chuông thông báo */}
+        <section aria-labelledby="tasks-heading" className={`${card} lg:col-span-3`}>
+          <h2 id="tasks-heading" className="px-4 sm:px-5 py-3.5 border-b border-surface-border text-sm font-bold text-pine-950">
+            Việc cần xử lý
+          </h2>
+          <ul className="divide-y divide-surface-border">
+            {ADMIN_TASK_ITEMS.map((t) => {
+              const n = counts[t.key];
+              return (
+                <li key={t.key}>
+                  <Link href={t.href} className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-surface-muted/60 transition-colors">
+                    <span className={`flex-1 text-xs ${n > 0 ? "font-semibold text-pine-950" : "text-bark-500"}`}>{t.label}</span>
+                    <span
+                      className={`min-w-8 h-6 px-2 rounded-full text-xs font-extrabold flex items-center justify-center ${
+                        n === 0 ? "bg-surface-muted text-bark-400" : t.actionable ? "bg-honey-100 text-honey-800" : "bg-pine-50 text-pine-900"
+                      }`}
+                    >
+                      {n}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-bark-400 shrink-0" aria-hidden="true" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
 
-        <Link
-          href="/admin/reviews"
-          className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border hover:border-pine-800/40 flex items-center justify-between gap-3 transition-colors shadow-2xs group"
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-box bg-red-50 text-red-700 flex items-center justify-center shrink-0">
-              <Star className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="font-bold text-pine-950 block truncate">Đánh giá 1–3 sao</span>
-              <span className="text-[11px] text-bark-500 block truncate">Cần admin kiểm tra &amp; phản hồi</span>
-            </div>
+        {/* Đơn giao hàng theo trạng thái (không tính biên nhận thanh toán gói) */}
+        <section aria-labelledby="status-heading" className={`${card} lg:col-span-2`}>
+          <div className="px-4 sm:px-5 py-3.5 border-b border-surface-border flex items-center justify-between gap-2">
+            <h2 id="status-heading" className="text-sm font-bold text-pine-950">Đơn giao hàng theo trạng thái</h2>
+            <Link href="/admin/orders" className="text-xs font-bold text-pine-900 hover:underline shrink-0">Tất cả đơn</Link>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span
-              className={`text-base font-extrabold px-2.5 py-0.5 rounded-full ${
-                pendingReviews > 0 ? "bg-red-100 text-red-800" : "bg-surface-muted text-bark-600"
-              }`}
-            >
-              {pendingReviews}
-            </span>
-            <ChevronRight className="w-4 h-4 text-bark-400 group-hover:text-pine-900 group-hover:translate-x-0.5 transition-all" />
-          </div>
-        </Link>
+          <ul className="divide-y divide-surface-border">
+            {STATUS_ORDER.map((s) => (
+              <li key={s}>
+                <Link href={`/admin/orders?status=${s}`} className="flex items-center justify-between gap-3 px-4 sm:px-5 py-2.5 hover:bg-surface-muted/60 transition-colors">
+                  <span className={`px-2 py-0.5 rounded-tag border text-[11px] font-bold ${ORDER_STATUS_STYLE[s]}`}>{ORDER_STATUS_LABEL[s]}</span>
+                  <span className="text-sm font-extrabold text-pine-950 tabular-nums">{stats ? stats.status_counts[s] || 0 : "–"}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
 
-      {/* Phân bổ đơn hàng theo 7 trạng thái */}
-      <div className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-3 sm:space-y-4 shadow-2xs">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xs sm:text-sm font-bold text-pine-950">Phân bổ đơn hàng theo trạng thái</h2>
-            <p className="text-[11px] text-bark-500">Bấm vào từng mục để xem danh sách đơn tương ứng.</p>
-          </div>
-          <Link href="/admin/orders" className="text-xs font-bold text-pine-900 hover:underline shrink-0">
-            Tất cả đơn
-          </Link>
+      <section aria-labelledby="recent-heading" className={card}>
+        <div className="px-4 sm:px-5 py-3.5 border-b border-surface-border flex items-center justify-between gap-2">
+          <h2 id="recent-heading" className="text-sm font-bold text-pine-950">Đơn mới nhất</h2>
+          <Link href="/admin/orders" className="text-xs font-bold text-pine-900 hover:underline">Xem tất cả</Link>
         </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-2.5 text-center">
-          {ORDER_STATUSES.map((s) => {
-            const count = statusCounts[s.key] || 0;
-            return (
-              <Link
-                key={s.key}
-                href={`/admin/orders?status=${s.key}`}
-                className={`p-2.5 sm:p-3 rounded-box ${s.bg} hover:ring-1 hover:ring-pine-900/30 transition-all block`}
-              >
-                <span className={`text-[10px] sm:text-[11px] block font-medium truncate ${s.text}`}>{s.label}</span>
-                <span className={`text-base sm:text-lg font-extrabold block mt-0.5 ${s.text}`}>{count}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Phím tắt truy cập nhanh cho mobile */}
-      <div className="p-4 rounded-container bg-surface-card border border-surface-border space-y-2.5 shadow-2xs">
-        <h3 className="text-xs font-bold text-bark-600 uppercase tracking-wider">Thao tác nhanh</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-          <Link
-            href="/admin/orders"
-            className="p-2.5 rounded-box bg-surface-muted hover:bg-surface-border flex items-center gap-2 font-semibold text-bark-800 transition-colors"
-          >
-            <ClipboardList className="w-4 h-4 text-pine-800 shrink-0" />
-            <span className="truncate">Quản lý Đơn hàng</span>
-          </Link>
-          <Link
-            href="/admin/products"
-            className="p-2.5 rounded-box bg-surface-muted hover:bg-surface-border flex items-center gap-2 font-semibold text-bark-800 transition-colors"
-          >
-            <Warehouse className="w-4 h-4 text-pine-800 shrink-0" />
-            <span className="truncate">Sản phẩm &amp; Kho</span>
-          </Link>
-          <Link
-            href="/admin/box-curation"
-            className="p-2.5 rounded-box bg-surface-muted hover:bg-surface-border flex items-center gap-2 font-semibold text-bark-800 transition-colors"
-          >
-            <PackageSearch className="w-4 h-4 text-pine-800 shrink-0" />
-            <span className="truncate">Tuyển chọn Box</span>
-          </Link>
-          <Link
-            href="/admin/analytics"
-            className="p-2.5 rounded-box bg-surface-muted hover:bg-surface-border flex items-center gap-2 font-semibold text-bark-800 transition-colors"
-          >
-            <Sparkles className="w-4 h-4 text-pine-800 shrink-0" />
-            <span className="truncate">Báo cáo &amp; Thống kê</span>
-          </Link>
-        </div>
-      </div>
+        {recent.length === 0 ? (
+          <p className="px-5 py-8 text-center text-xs text-bark-500">Chưa có đơn hàng.</p>
+        ) : (
+          <ul className="divide-y divide-surface-border">
+            {recent.map((o) => (
+              <li key={o.id}>
+                <Link
+                  href={`/admin/orders?q=${encodeURIComponent(o.order_code)}&type=all`}
+                  className="grid grid-cols-[1fr_auto] sm:grid-cols-[10rem_1fr_7rem_6.5rem] items-center gap-x-3 gap-y-1 px-4 sm:px-5 py-3 hover:bg-surface-muted/60 transition-colors text-xs"
+                >
+                  <span className="font-mono font-bold text-pine-950">{o.order_code}</span>
+                  <span className="text-bark-700 truncate order-3 sm:order-none col-span-2 sm:col-span-1">
+                    {o.recipient_name} · {TYPE_SHORT[o.order_type] || o.order_type} · {formatDateTime(o.created_at)}
+                  </span>
+                  <span className="font-bold text-pine-950 text-right tabular-nums order-2 sm:order-none">{formatVND(o.total_amount)}</span>
+                  <span className={`hidden sm:inline-flex justify-center px-2 py-0.5 rounded-tag border text-[11px] font-bold ${ORDER_STATUS_STYLE[o.status]}`}>
+                    {ORDER_STATUS_LABEL[o.status]}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
+  );
+}
+
+function Kpi({ label, value, note, href }: { label: string; value: string | null; note?: string; href?: string }) {
+  const body = (
+    <>
+      <span className="text-[11px] font-medium text-bark-500 block truncate">{label}</span>
+      {value === null ? (
+        <span className="block h-6 w-24 mt-1.5 rounded bg-surface-muted animate-pulse" aria-hidden="true" />
+      ) : (
+        <span className="block text-base sm:text-xl font-extrabold text-pine-950 font-display truncate mt-1">{value}</span>
+      )}
+      {note && <span className="block text-[11px] text-bark-500 mt-1 line-clamp-2">{note}</span>}
+    </>
+  );
+  const cls = "p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border";
+  return href ? (
+    <Link href={href} className={`${cls} hover:border-pine-800/40 transition-colors`}>
+      {body}
+    </Link>
+  ) : (
+    <div className={cls}>{body}</div>
   );
 }

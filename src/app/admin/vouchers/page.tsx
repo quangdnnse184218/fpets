@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatDate, formatVND } from "@/lib/formatters";
 import { Tables } from "@/types/database";
 import { Plus, Edit2, Trash2, Power, Search, X, CheckCircle2 } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 
 type VoucherRow = Tables<"vouchers">;
 
@@ -25,6 +26,8 @@ export default function AdminVouchersPage() {
   const [deletingVoucher, setDeletingVoucher] = useState<VoucherRow | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+  const { show } = useToast();
 
   const [formCode, setFormCode] = useState("");
   const [formType, setFormType] = useState<"percentage" | "fixed_amount" | "free_shipping">("percentage");
@@ -56,6 +59,7 @@ export default function AdminVouchersPage() {
     const today = new Date().toISOString().slice(0, 10);
     const future = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
     setFormValidFrom(today); setFormValidTo(future); setFormScope("all");
+    setFormError("");
     setIsModalOpen(true);
   };
 
@@ -66,23 +70,37 @@ export default function AdminVouchersPage() {
     setFormUsageLimitTotal(v.usage_limit_total); setFormUsageLimitPerUser(v.usage_limit_per_user);
     setFormValidFrom(toDateInput(v.valid_from)); setFormValidTo(toDateInput(v.valid_to));
     setFormScope(v.scope as "all" | "retail" | "box" | "first_subscription");
+    setFormError("");
     setIsModalOpen(true);
   };
 
   const toggleActive = async (v: VoucherRow) => {
     const supabase = createClient();
     setVouchers((prev) => prev.map((x) => (x.id === v.id ? { ...x, is_active: !x.is_active } : x)));
-    await supabase.from("vouchers").update({ is_active: !v.is_active }).eq("id", v.id);
+    const { error } = await supabase.from("vouchers").update({ is_active: !v.is_active }).eq("id", v.id);
+    if (error) {
+      setVouchers((prev) => prev.map((x) => (x.id === v.id ? { ...x, is_active: v.is_active } : x)));
+      show("Không cập nhật được voucher.", { tone: "error" });
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const code = formCode.toUpperCase().trim();
+    if (!/^[A-Z0-9_-]{3,30}$/.test(code)) return setFormError("Mã gồm 3–30 ký tự: chữ không dấu, số, gạch ngang hoặc gạch dưới.");
+    if (formType === "percentage" && (formDiscountValue < 1 || formDiscountValue > 100)) return setFormError("Mức giảm theo % phải từ 1 đến 100.");
+    if (formType === "fixed_amount" && formDiscountValue < 1000) return setFormError("Số tiền giảm phải từ 1.000₫.");
+    if (formMinOrder < 0) return setFormError("Đơn tối thiểu không được âm.");
+    if (formUsageLimitTotal < 1 || formUsageLimitPerUser < 1) return setFormError("Giới hạn lượt dùng phải từ 1.");
+    if (!formValidFrom || !formValidTo || formValidTo < formValidFrom) return setFormError("Ngày hết hạn phải sau hoặc bằng ngày bắt đầu.");
+    setFormError("");
     setSaving(true);
     const supabase = createClient();
     const payload = {
-      code: formCode.toUpperCase().trim(),
+      code,
       voucher_type: formType,
-      discount_value: Number(formDiscountValue),
+      // Voucher miễn phí vận chuyển không có mức giảm riêng
+      discount_value: formType === "free_shipping" ? 0 : Number(formDiscountValue),
       min_order_value: Number(formMinOrder),
       max_discount: formType === "percentage" && formMaxDiscount ? Number(formMaxDiscount) : null,
       usage_limit_total: Number(formUsageLimitTotal),
@@ -92,14 +110,14 @@ export default function AdminVouchersPage() {
       valid_to: new Date(`${formValidTo}T23:59:59+07:00`).toISOString(),
       scope: formScope,
     };
-    if (editingVoucher) {
-      await supabase.from("vouchers").update(payload).eq("id", editingVoucher.id);
-      showNotice(`Đã cập nhật mã "${payload.code}"!`);
-    } else {
-      await supabase.from("vouchers").insert(payload);
-      showNotice(`Đã tạo mã khuyến mãi "${payload.code}" thành công!`);
-    }
+    const { error } = editingVoucher
+      ? await supabase.from("vouchers").update(payload).eq("id", editingVoucher.id)
+      : await supabase.from("vouchers").insert(payload);
     setSaving(false);
+    if (error) {
+      return setFormError(error.code === "23505" ? `Mã "${code}" đã tồn tại.` : "Không lưu được voucher, vui lòng thử lại.");
+    }
+    showNotice(editingVoucher ? `Đã cập nhật mã ${code}.` : `Đã tạo mã ${code}.`);
     setIsModalOpen(false);
     loadVouchers();
   };
@@ -126,7 +144,7 @@ export default function AdminVouchersPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-pine-950 font-display">Quản lý Mã Khuyến Mãi (Voucher)</h1>
+          <h1 className="text-2xl font-extrabold text-pine-950 font-display">Voucher</h1>
           <p className="text-xs text-bark-500">Tạo mã giảm giá theo %, tiền mặt hoặc miễn phí ship; thiết lập phạm vi và giới hạn lượt dùng.</p>
         </div>
         <button onClick={handleOpenAdd} className="inline-flex items-center gap-2 px-3.5 py-2 bg-pine-900 text-white rounded-box text-xs font-bold hover:bg-pine-800 transition-colors shadow-xs">
@@ -149,7 +167,7 @@ export default function AdminVouchersPage() {
       </div>
 
       {/* Mobile Card List (< md) */}
-      <div className="md:hidden space-y-2.5">
+      <div className="lg:hidden space-y-2.5">
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
             Chưa có voucher nào phù hợp.
@@ -242,7 +260,7 @@ export default function AdminVouchersPage() {
       </div>
 
       {/* Desktop Table (>= md) */}
-      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      <div className="hidden lg:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>
@@ -328,11 +346,13 @@ export default function AdminVouchersPage() {
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {formType !== "free_shipping" && (
                 <div>
                   <label className="font-semibold text-bark-700 block mb-1">{formType === "percentage" ? "Mức giảm (%)" : "Số tiền giảm (VND)"}</label>
                   <input type="number" value={formDiscountValue} onChange={(e) => setFormDiscountValue(Number(e.target.value))}
                     className="w-full px-3 py-2 border border-surface-border rounded-box font-bold text-pine-900 focus:border-pine-900 focus:outline-none" />
                 </div>
+                )}
                 <div>
                   <label className="font-semibold text-bark-700 block mb-1">Đơn hàng tối thiểu (VND)</label>
                   <input type="number" value={formMinOrder} onChange={(e) => setFormMinOrder(Number(e.target.value))}
@@ -353,9 +373,9 @@ export default function AdminVouchersPage() {
                     className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none bg-white">
                     <option value="all">Toàn bộ đơn hàng</option>
                     <option value="retail">Chỉ sản phẩm Shop bán lẻ</option>
-                    <option value="box">Chỉ Mystery Box</option>
-                    <option value="first_subscription">Gói định kỳ lần đầu</option>
+                    <option value="box">Chỉ Mystery Box mua 1 lần</option>
                   </select>
+                  <p className="text-[11px] text-bark-500 mt-1">Gói định kỳ đã có giảm 10–15% nên không áp dụng voucher.</p>
                 </div>
                 <div>
                   <label className="font-semibold text-bark-700 block mb-1">Tổng lượt dùng tối đa</label>
@@ -380,6 +400,7 @@ export default function AdminVouchersPage() {
                     className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none" />
                 </div>
               </div>
+              {formError && <p role="alert" className="p-2.5 rounded-box bg-red-50 border border-red-200 text-red-700 font-semibold">{formError}</p>}
               <div className="flex justify-end gap-2 pt-2 border-t border-surface-border">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-3 py-1.5 text-bark-600 hover:text-bark-900 font-medium">Hủy</button>
                 <button type="submit" disabled={saving} className="px-4 py-1.5 bg-pine-900 text-white rounded-box font-bold hover:bg-pine-800 transition-colors disabled:opacity-60">

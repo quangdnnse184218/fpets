@@ -5,8 +5,15 @@ import ProductItemImage from "@/components/common/ProductItemImage";
 import { createClient } from "@/lib/supabase/client";
 import { formatVND, formatWeight } from "@/lib/formatters";
 import { fetchPendingCurations, fetchCandidateProducts, autoSuggest, CurationQueueRow, CandidateProduct } from "@/lib/curation";
-import { CheckCircle2, AlertTriangle, ShieldAlert, RefreshCw, PlusCircle, XCircle } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, AlertTriangle, ShieldAlert, Plus, PlusCircle, XCircle } from "lucide-react";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
+import { Modal } from "@/components/ui/Modal";
+import { formatDateTime } from "@/lib/formatters";
+import { useAdminTasks } from "../AdminTasks";
+
+const ORDER_TYPE_SHORT: Record<string, string> = { mystery_box: "Mua 1 lần", subscription_cycle: "Theo gói" };
+const sizeLabel = (pet: { species: string; size: string }) => (pet.species === "cat" ? "Mèo" : pet.size === "small" ? "Chó dưới 10 kg" : "Chó từ 10 kg");
 
 export default function AdminBoxCurationPage() {
   const [queue, setQueue] = useState<CurationQueueRow[]>([]);
@@ -18,6 +25,8 @@ export default function AdminBoxCurationPage() {
   const [error, setError] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [lastApproved, setLastApproved] = useState<string | null>(null);
+  const { refresh: refreshTasks } = useAdminTasks();
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -66,13 +75,16 @@ export default function AdminBoxCurationPage() {
         ERR_BELOW_MIN_VALUE: "Chưa đạt giá trị tối thiểu, vui lòng thêm món.",
         ERR_OUT_OF_STOCK: "Một món đã hết hàng, vui lòng chọn món khác.",
         ERR_ALREADY_CURATED: "Hộp này đã được duyệt trước đó.",
+        ERR_ORDER_NOT_READY: "Đơn của hộp này chưa thanh toán hoặc đã hủy nên chưa tuyển chọn được.",
       };
       const key = Object.keys(map).find((k) => rpcError.message.includes(k));
       setError(key ? map[key] : rpcError.message);
       return;
     }
-    setNotice("Đã duyệt thành công! Đơn chuyển sang trạng thái Đang chuẩn bị, tồn kho đã được trừ.");
-    setTimeout(() => setNotice(null), 4000);
+    setNotice(`Đã duyệt hộp cho bé ${active.pets.name}. Đơn ${active.orders?.order_code} chuyển sang Đang chuẩn bị, tồn kho đã được trừ.`);
+    setLastApproved(active.orders?.order_code || null);
+    setTimeout(() => setNotice(null), 6000);
+    refreshTasks();
     loadQueue();
   };
 
@@ -85,16 +97,19 @@ export default function AdminBoxCurationPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-pine-950 font-display">Hàng chờ tuyển chọn Mystery Box</h1>
+        <h1 className="text-2xl font-extrabold text-pine-950 font-display">Hàng chờ tuyển chọn</h1>
         <p className="text-xs text-bark-500">
-          Hệ thống tự động đề xuất món dựa trên hồ sơ bé (loài/size/tuổi), loại trừ dị ứng và cảnh báo món đã gửi/bé không thích.
+          Món được gợi ý theo hồ sơ bé (loài, cỡ, tuổi), loại món chứa thành phần dị ứng và đánh dấu món đã gửi hoặc bé không thích.
         </p>
       </div>
 
       {notice && (
         <div className="p-3.5 rounded-box bg-grass-50 border border-grass-200 text-grass-800 text-xs font-bold flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{notice}</span>
+          <span className="flex-1">{notice}</span>
+          {lastApproved && (
+            <Link href={`/admin/orders?q=${lastApproved}&status=dang_chuan_bi`} className="underline shrink-0">Bàn giao vận chuyển</Link>
+          )}
         </div>
       )}
       {error && (
@@ -121,17 +136,18 @@ export default function AdminBoxCurationPage() {
                   onClick={() => setSelectedId(item.id)}
                   className={`w-full p-4 rounded-container border text-left transition-all ${isSelected ? "border-pine-900 bg-surface-card ring-2 ring-pine-900/10 shadow-sm" : "border-surface-border bg-surface-card hover:bg-surface-muted"}`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-[11px] font-bold text-bark-600">{item.orders?.order_code}</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-tag bg-amber-100 text-amber-800">Chờ duyệt</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-tag bg-surface-muted text-bark-700">
+                      {ORDER_TYPE_SHORT[item.orders?.order_type || ""] || "Mystery Box"}{item.orders?.cycle_index ? ` · kỳ ${item.orders.cycle_index}` : ""}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2.5 mt-2">
                     <PetSpeciesIcon species={item.pets.species} variant="avatar" size="sm" />
                     <div>
                       <h3 className="text-sm font-bold text-pine-950">Bé {item.pets.name}</h3>
-                      <p className="text-[11px] text-bark-500">
-                        {item.pets.species === "dog" ? "Chó" : "Mèo"} · {item.pets.size === "small" ? "Nhỏ" : "Lớn"} · {item.box_types.name}
-                      </p>
+                      <p className="text-[11px] text-bark-500">{sizeLabel(item.pets)} · {item.box_types.name}</p>
+                      {item.orders?.created_at && <p className="text-[10px] text-bark-400">Đặt lúc {formatDateTime(item.orders.created_at)}</p>}
                     </div>
                   </div>
                   {item.pets.allergies?.length > 0 && (
@@ -273,11 +289,12 @@ export default function AdminBoxCurationPage() {
         </div>
       )}
 
-      {pickerOpen && active && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-surface-card rounded-container p-6 space-y-4 shadow-xl border border-surface-border text-xs max-h-[80vh] flex flex-col">
-            <h3 className="text-base font-bold text-pine-950">Chọn sản phẩm cho hộp bé {active.pets.name}</h3>
-            <div className="space-y-2 overflow-y-auto flex-1 pr-1">
+      {active && (
+        <Modal open={pickerOpen} onClose={() => setPickerOpen(false)} title={`Thêm món cho hộp bé ${active.pets.name}`} maxWidth="max-w-lg">
+            <div className="space-y-2 text-xs">
+              {candidates.filter((c) => !selectedIds.includes(c.id)).length === 0 && (
+                <p className="py-6 text-center text-bark-500">Không còn món phù hợp nào trong kho.</p>
+              )}
               {candidates.filter((c) => !selectedIds.includes(c.id)).map((prod) => (
                 <div key={prod.id} className="p-3 rounded-box border border-surface-border hover:bg-surface-muted flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -287,7 +304,7 @@ export default function AdminBoxCurationPage() {
                     <div className="min-w-0">
                       <span className="font-bold text-pine-950 block truncate">{prod.name}</span>
                       <span className="text-[11px] text-bark-500 flex items-center gap-1.5">
-                        Tồn: {prod.stock}
+                        {prod.categoryLabel} · Tồn: {prod.stock}
                         {prod.isAllergic && <span className="text-red-600 font-bold">Dị ứng!</span>}
                         {prod.wasSentBefore && <span className="text-amber-600 font-bold">Đã gửi</span>}
                         {prod.wasDisliked && <span className="text-amber-600 font-bold">Không thích</span>}
@@ -299,20 +316,14 @@ export default function AdminBoxCurationPage() {
                     <button type="button" disabled={prod.isAllergic}
                       onClick={() => { setSelectedIds((prev) => [...prev, prod.id]); setPickerOpen(false); }}
                       className="px-3 py-1.5 rounded-box bg-pine-900 text-white font-bold text-xs disabled:opacity-40 flex items-center gap-1">
-                      <RefreshCw className="w-3 h-3" />
-                      <span>Chọn</span>
+                      <Plus className="w-3 h-3" />
+                      <span>Thêm</span>
                     </button>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="pt-2 border-t border-surface-border flex justify-end">
-              <button type="button" onClick={() => setPickerOpen(false)} className="px-4 py-2 rounded-box border border-surface-border text-bark-700 font-semibold">
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

@@ -1234,6 +1234,17 @@ export type Database = {
         Returns: undefined
       }
       _deduct_retail_stock: { Args: { p_order_id: string }; Returns: undefined }
+      adjust_product_stock: {
+        Args: {
+          p_delta: number
+          p_movement_type: Database["public"]["Enums"]["inventory_movement_type"]
+          p_note?: string
+          p_product_id: string
+        }
+        Returns: number
+      }
+      admin_dashboard_stats: { Args: never; Returns: Json }
+      admin_task_counts: { Args: never; Returns: Json }
       approve_box_curation: {
         Args: { p_curation_id: string; p_product_ids: string[] }
         Returns: Json
@@ -1315,9 +1326,31 @@ export type Database = {
         }
         Returns: Json
       }
+      next_delivery_window: {
+        Args: {
+          p_from: string
+          p_schedule: Database["public"]["Enums"]["delivery_schedule"]
+        }
+        Returns: string
+      }
       pause_subscription: {
         Args: { p_cycles: number; p_subscription_id: string }
         Returns: Json
+      }
+      plan_unit_price: {
+        Args: { p_base: number; p_discount_percentage: number }
+        Returns: number
+      }
+      preview_voucher: {
+        Args: { p_code: string }
+        Returns: {
+          code: string
+          discount_value: number
+          max_discount: number
+          min_order_value: number
+          scope: string
+          voucher_type: Database["public"]["Enums"]["voucher_discount_type"]
+        }[]
       }
       renew_subscription: {
         Args: {
@@ -1331,11 +1364,26 @@ export type Database = {
         Args: { p_order_id: string; p_reason: string }
         Returns: Json
       }
+      resolve_order_return: {
+        Args: { p_note: string; p_order_id: string; p_resolution: string }
+        Returns: Json
+      }
       resume_subscription: {
         Args: { p_subscription_id: string }
         Returns: Json
       }
       send_subscription_reminders: { Args: never; Returns: number }
+      start_order_preparation: { Args: { p_order_id: string }; Returns: Json }
+      submit_feedback: {
+        Args: {
+          p_email: string
+          p_full_name: string
+          p_message: string
+          p_phone: string
+          p_subject: string
+        }
+        Returns: string
+      }
       subscribe_to_box: {
         Args: {
           p_box_type_id: string
@@ -1351,27 +1399,6 @@ export type Database = {
           p_ward: string
         }
         Returns: Json
-      }
-      next_delivery_window: {
-        Args: {
-          p_from: string
-          p_schedule: Database["public"]["Enums"]["delivery_schedule"]
-        }
-        Returns: string
-      }
-      resolve_order_return: {
-        Args: { p_note: string; p_order_id: string; p_resolution: string }
-        Returns: Json
-      }
-      submit_feedback: {
-        Args: {
-          p_email: string
-          p_full_name: string
-          p_message: string
-          p_phone: string
-          p_subject: string
-        }
-        Returns: string
       }
       update_my_subscription_delivery: {
         Args: {

@@ -1,271 +1,278 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { BarChart3, Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatVND } from "@/lib/formatters";
-import { BarChart3, Download } from "lucide-react";
 
-interface MonthBucket { label: string; value: number }
-interface TopProduct { name: string; boxCount: number; retailCount: number; revenue: number }
-interface CancelReason { reason: string; count: number }
+interface MonthBucket {
+  label: string;
+  value: number;
+}
+interface RetailRow {
+  name: string;
+  quantity: number;
+  revenue: number;
+}
+interface BoxItemRow {
+  name: string;
+  count: number;
+}
+interface CancelReason {
+  reason: string;
+  count: number;
+}
+
+const TZ = "Asia/Ho_Chi_Minh";
+const YEAR_FMT = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric" });
+const MONTH_FMT = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, month: "numeric" });
+
+const SUB_ROWS = [
+  { key: "dang_hoat_dong", label: "Đang hoạt động", color: "bg-grass-600" },
+  { key: "tam_dung", label: "Tạm dừng", color: "bg-honey-500" },
+  { key: "qua_han", label: "Hết hộp, chờ gia hạn", color: "bg-amber-500" },
+  { key: "het_han", label: "Đã kết thúc", color: "bg-bark-300" },
+  { key: "da_huy", label: "Đã hủy", color: "bg-red-400" },
+] as const;
+
+const card = "p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-4";
 
 export default function AdminAnalyticsPage() {
   const [loading, setLoading] = useState(true);
-  const [monthlyRevenue, setMonthlyRevenue] = useState<MonthBucket[]>([]);
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [subCounts, setSubCounts] = useState({ active: 0, paused: 0, cancelled: 0, expired: 0 });
+  const [year] = useState(() => Number(YEAR_FMT.format(new Date())));
+  const [monthly, setMonthly] = useState<MonthBucket[]>([]);
+  const [retailTop, setRetailTop] = useState<RetailRow[]>([]);
+  const [boxTop, setBoxTop] = useState<BoxItemRow[]>([]);
+  const [subCounts, setSubCounts] = useState<Record<string, number>>({});
   const [cancelReasons, setCancelReasons] = useState<CancelReason[]>([]);
-  const [ytdRevenue, setYtdRevenue] = useState(0);
+  const [ytd, setYtd] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
-    const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString();
+    const yearStart = new Date(`${year}-01-01T00:00:00+07:00`).toISOString();
 
-    const [{ data: paidOrders }, { data: orderItems }, { data: subs }] = await Promise.all([
-      supabase.from("orders").select("total_amount, created_at").eq("payment_status", "paid").gte("created_at", yearStart),
-      supabase.from("order_items").select("product_name_snapshot, quantity, total_price, product_id, box_type_id"),
+    const [{ data: paid }, { data: retailItems }, { data: boxItems }, { data: subs }] = await Promise.all([
+      // Doanh thu = tiền đã thu, tính theo lúc thu tiền (đơn đã hoàn tiền không tính)
+      supabase.from("orders").select("total_amount, paid_at, created_at").eq("payment_status", "paid").gte("created_at", yearStart).limit(10000),
+      // Bán lẻ: chỉ đơn đã xác nhận trở đi, bỏ đơn hủy / chưa thanh toán
+      supabase
+        .from("order_items")
+        .select("product_name_snapshot, quantity, total_price, orders!inner(status, created_at)")
+        .not("product_id", "is", null)
+        .not("orders.status", "in", "(da_huy,cho_thanh_toan)")
+        .gte("orders.created_at", yearStart)
+        .limit(10000),
+      // Món thật trong các hộp đã tuyển chọn
+      supabase.from("box_curation_items").select("quantity, products(name), box_curations!inner(status, curated_at)").eq("box_curations.status", "curated").gte("box_curations.curated_at", yearStart).limit(10000),
       supabase.from("subscriptions").select("status, cancellation_reason"),
     ]);
 
-    const buckets = new Map<string, number>();
-    (paidOrders || []).forEach((o) => {
-      const d = new Date(o.created_at);
-      const key = `T${d.getMonth() + 1}`;
-      buckets.set(key, (buckets.get(key) || 0) + o.total_amount);
+    const buckets = new Array(12).fill(0) as number[];
+    (paid || []).forEach((o) => {
+      const at = new Date(o.paid_at || o.created_at);
+      if (Number(YEAR_FMT.format(at)) !== year) return;
+      buckets[Number(MONTH_FMT.format(at)) - 1] += o.total_amount;
     });
-    const orderedMonths = Array.from({ length: new Date().getMonth() + 1 }, (_, i) => `T${i + 1}`);
-    setMonthlyRevenue(orderedMonths.map((label) => ({ label, value: buckets.get(label) || 0 })));
-    setYtdRevenue((paidOrders || []).reduce((s, o) => s + o.total_amount, 0));
+    const months = Number(MONTH_FMT.format(new Date()));
+    setMonthly(buckets.slice(0, months).map((value, i) => ({ label: `T${i + 1}`, value })));
+    setYtd(buckets.reduce((s, v) => s + v, 0));
 
-    const productMap = new Map<string, TopProduct>();
-    (orderItems || []).forEach((item) => {
-      const key = item.product_name_snapshot;
-      const cur = productMap.get(key) || { name: key, boxCount: 0, retailCount: 0, revenue: 0 };
-      if (item.box_type_id) cur.boxCount += item.quantity;
-      else cur.retailCount += item.quantity;
-      cur.revenue += item.total_price;
-      productMap.set(key, cur);
+    const retail = new Map<string, RetailRow>();
+    ((retailItems as unknown as { product_name_snapshot: string; quantity: number; total_price: number }[]) || []).forEach((it) => {
+      const cur = retail.get(it.product_name_snapshot) || { name: it.product_name_snapshot, quantity: 0, revenue: 0 };
+      cur.quantity += it.quantity;
+      cur.revenue += it.total_price;
+      retail.set(it.product_name_snapshot, cur);
     });
-    setTopProducts(Array.from(productMap.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 5));
+    setRetailTop(Array.from(retail.values()).sort((a, b) => b.quantity - a.quantity || b.revenue - a.revenue).slice(0, 5));
 
-    const active = (subs || []).filter((s) => s.status === "dang_hoat_dong").length;
-    const paused = (subs || []).filter((s) => s.status === "tam_dung").length;
-    const cancelled = (subs || []).filter((s) => s.status === "da_huy").length;
-    const expired = (subs || []).filter((s) => s.status === "het_han").length;
-    setSubCounts({ active, paused, cancelled, expired });
-
-    const reasonMap = new Map<string, number>();
-    (subs || []).filter((s) => s.status === "da_huy" && s.cancellation_reason).forEach((s) => {
-      const r = s.cancellation_reason as string;
-      reasonMap.set(r, (reasonMap.get(r) || 0) + 1);
+    const inBox = new Map<string, number>();
+    ((boxItems as unknown as { quantity: number; products: { name: string } | null }[]) || []).forEach((it) => {
+      const name = it.products?.name || "Sản phẩm đã xóa";
+      inBox.set(name, (inBox.get(name) || 0) + it.quantity);
     });
-    setCancelReasons(Array.from(reasonMap.entries()).map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count));
+    setBoxTop(Array.from(inBox.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 5));
 
+    const counts: Record<string, number> = {};
+    const reasons = new Map<string, number>();
+    (subs || []).forEach((s) => {
+      counts[s.status] = (counts[s.status] || 0) + 1;
+      // Gói không thanh toán khi đăng ký không phải khách hủy
+      if (s.status === "da_huy" && s.cancellation_reason && s.cancellation_reason !== "Không thanh toán khi đăng ký") {
+        reasons.set(s.cancellation_reason, (reasons.get(s.cancellation_reason) || 0) + 1);
+      }
+    });
+    setSubCounts(counts);
+    setCancelReasons(Array.from(reasons.entries()).map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count));
     setLoading(false);
-  }, []);
+  }, [year]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const handleExportCsv = () => {
-    const rows = [
+  const exportCsv = () => {
+    const rows: string[][] = [
       ["Tháng", "Doanh thu (VND)"],
-      ...monthlyRevenue.map((m) => [m.label, String(m.value)]),
+      ...monthly.map((m) => [m.label, String(m.value)]),
       [],
-      ["Top sản phẩm", "Lượt vào Box", "Bán lẻ", "Doanh thu (VND)"],
-      ...topProducts.map((p) => [p.name, String(p.boxCount), String(p.retailCount), String(p.revenue)]),
+      ["Sản phẩm bán lẻ", "Số lượng", "Doanh thu (VND)"],
+      ...retailTop.map((p) => [p.name, String(p.quantity), String(p.revenue)]),
+      [],
+      ["Món trong hộp", "Số lượt"],
+      ...boxTop.map((p) => [p.name, String(p.count)]),
     ];
     const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `FPETS_Bao_Cao_${new Date().getFullYear()}.csv`;
+    a.download = `FPETS_bao_cao_${year}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const maxVal = Math.max(1, ...monthlyRevenue.map((m) => m.value));
-  const totalSubs = subCounts.active + subCounts.paused + subCounts.cancelled + subCounts.expired;
-  // Mẫu số cho % và thanh tiến độ, tránh chia cho 0 khi chưa có gói nào
-  const subsBase = totalSubs || 1;
+  const maxMonth = Math.max(1, ...monthly.map((m) => m.value));
+  const relevantSubs = SUB_ROWS.reduce((s, r) => s + (subCounts[r.key] || 0), 0);
+  const subsBase = relevantSubs || 1;
 
-  if (loading) return <div className="py-16 text-center text-xs text-bark-500">Đang tải báo cáo...</div>;
+  if (loading) return <div className="py-16 text-center text-xs text-bark-500">Đang tải báo cáo…</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-pine-950 font-display">Báo cáo & Thống kê Hoạt động</h1>
-          <p className="text-xs text-bark-500">Doanh thu, cơ cấu trạng thái gói định kỳ và hiệu suất sản phẩm — số liệu thật từ hệ thống.</p>
+          <h1 className="text-2xl font-extrabold text-pine-950 font-display">Báo cáo</h1>
+          <p className="text-xs text-bark-500">Doanh thu năm {year}, gói định kỳ và sản phẩm. Số liệu tính theo giờ Việt Nam.</p>
         </div>
-        <button
-          type="button"
-          onClick={handleExportCsv}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-pine-900 text-white rounded-box text-xs font-bold hover:bg-pine-800 transition-colors shadow-xs"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>Xuất báo cáo (CSV)</span>
+        <button type="button" onClick={exportCsv} className="inline-flex items-center gap-1.5 h-9 px-3.5 bg-pine-900 text-white rounded-box text-xs font-bold hover:bg-pine-800 transition-colors">
+          <Download className="w-3.5 h-3.5" /> Xuất file Excel (CSV)
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-        <div className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border">
-          <span className="text-bark-500 text-[11px] block mb-1">Tổng doanh thu (YTD)</span>
-          <span className="font-extrabold text-pine-950 text-base sm:text-xl font-display truncate block">{formatVND(ytdRevenue)}</span>
-        </div>
-        <div className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border">
-          <span className="text-bark-500 text-[11px] block mb-1">Subscription hoạt động</span>
-          <span className="font-extrabold text-pine-900 text-lg sm:text-xl font-display">{subCounts.active} gói</span>
-        </div>
-        <div className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border">
-          <span className="text-bark-500 text-[11px] block mb-1">Đã hủy</span>
-          <span className="font-extrabold text-bark-800 text-lg sm:text-xl font-display">{subCounts.cancelled} gói</span>
-        </div>
-        <div className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border">
-          <span className="text-bark-500 text-[11px] block mb-1">Hết hạn</span>
-          <span className="font-extrabold text-amber-700 text-lg sm:text-xl font-display">{subCounts.expired} gói</span>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+        <Stat label={`Doanh thu năm ${year}`} value={formatVND(ytd)} />
+        <Stat label="Gói đang hoạt động" value={`${subCounts.dang_hoat_dong || 0} gói`} />
+        <Stat label="Gói chờ gia hạn" value={`${subCounts.qua_han || 0} gói`} />
+        <Stat label="Gói đã hủy" value={`${(subCounts.da_huy || 0)} gói`} />
       </div>
 
-      <div className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs">
+      <section className={card}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-pine-800" />
-            <h3 className="font-bold text-pine-950 text-sm">Doanh thu theo tháng ({new Date().getFullYear()})</h3>
-          </div>
-          <span className="text-[11px] text-bark-500 font-medium">Đơn vị: VNĐ</span>
+          <h2 className="font-bold text-pine-950 text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4 text-pine-800" /> Doanh thu theo tháng</h2>
+          <span className="text-[11px] text-bark-500">Đơn vị: ₫</span>
         </div>
-        {monthlyRevenue.every((m) => m.value === 0) ? (
-          <p className="text-xs text-bark-500 py-8 text-center">Chưa có đơn hàng thanh toán nào trong năm nay.</p>
+        {monthly.every((m) => m.value === 0) ? (
+          <p className="text-xs text-bark-500 py-8 text-center">Chưa có doanh thu trong năm {year}.</p>
         ) : (
-          <div className="pt-6 pb-2 overflow-x-auto">
-            <div className="h-52 flex items-end justify-between gap-2 sm:gap-4 px-2 border-b border-surface-border min-w-[500px]">
-              {monthlyRevenue.map((item, idx) => (
-                <div key={idx} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
-                  <span className="text-[10px] font-bold text-pine-900 opacity-0 group-hover:opacity-100 transition-opacity">{formatVND(item.value)}</span>
-                  <div className="w-full max-w-[40px] rounded-t-sm bg-pine-800 hover:bg-grass-600 transition-all duration-300" style={{ height: `${Math.round((item.value / maxVal) * 100)}%` }} />
-                  <span className="text-[11px] font-semibold text-bark-600">{item.label}</span>
+          <div className="overflow-x-auto">
+            <div className="h-52 flex items-end gap-2 sm:gap-4 px-1 border-b border-surface-border min-w-[480px]">
+              {monthly.map((m) => (
+                <div key={m.label} className="flex-1 h-full flex flex-col items-center justify-end gap-1.5">
+                  <span className="text-[10px] font-bold text-pine-900 tabular-nums">{m.value > 0 ? `${Math.round(m.value / 100000) / 10}tr` : ""}</span>
+                  <div className="w-full max-w-[40px] rounded-t-sm bg-pine-800" style={{ height: `${Math.round((m.value / maxMonth) * 85)}%` }} title={formatVND(m.value)} />
+                  <span className="text-[11px] font-semibold text-bark-600">{m.label}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        <div className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs text-xs">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+        <section className={`${card} text-xs`}>
           <div className="flex items-center justify-between pb-2 border-b border-surface-border">
-            <h3 className="font-bold text-pine-950 text-sm">Cơ cấu Trạng thái Subscription</h3>
-            <span className="text-bark-500 text-[11px]">Tổng {totalSubs} gói</span>
+            <h2 className="font-bold text-pine-950 text-sm">Gói định kỳ theo trạng thái</h2>
+            <span className="text-bark-500 text-[11px]">{relevantSubs} gói</span>
           </div>
           <div className="space-y-3">
-            {[
-              { label: "Đang hoạt động", count: subCounts.active, color: "bg-grass-600" },
-              { label: "Tạm dừng", count: subCounts.paused, color: "bg-honey-500" },
-              { label: "Đã hủy", count: subCounts.cancelled, color: "bg-bark-400" },
-              { label: "Hết hạn", count: subCounts.expired, color: "bg-red-400" },
-            ].map((row) => (
-              <div key={row.label}>
-                <div className="flex justify-between text-bark-800 font-semibold mb-1">
-                  <span>{row.label}</span>
-                  <span>{row.count} gói ({Math.round((row.count / subsBase) * 100)}%)</span>
+            {SUB_ROWS.map((row) => {
+              const n = subCounts[row.key] || 0;
+              return (
+                <div key={row.key}>
+                  <div className="flex justify-between text-bark-800 font-semibold mb-1">
+                    <span>{row.label}</span>
+                    <span className="tabular-nums">{n} ({Math.round((n / subsBase) * 100)}%)</span>
+                  </div>
+                  <div className="h-2 w-full bg-surface-muted rounded-full overflow-hidden">
+                    <div className={`h-full ${row.color} rounded-full`} style={{ width: `${(n / subsBase) * 100}%` }} />
+                  </div>
                 </div>
-                <div className="h-2 w-full bg-surface-muted rounded-full overflow-hidden">
-                  <div className={`h-full ${row.color} rounded-full`} style={{ width: `${(row.count / subsBase) * 100}%` }} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        </div>
+        </section>
 
-        <div className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs text-xs">
-          <div className="flex items-center justify-between pb-2 border-b border-surface-border">
-            <h3 className="font-bold text-pine-950 text-sm">Lý do Hủy gói (thực tế)</h3>
-          </div>
+        <section className={`${card} text-xs`}>
+          <h2 className="font-bold text-pine-950 text-sm pb-2 border-b border-surface-border">Lý do hủy gói</h2>
           {cancelReasons.length === 0 ? (
-            <p className="text-bark-500 py-3 text-center">Chưa có gói nào bị hủy.</p>
+            <p className="text-bark-500 py-3 text-center">Chưa có khách nào hủy gói.</p>
           ) : (
-            <div className="space-y-3">
+            <ul className="space-y-2">
               {cancelReasons.map((r) => (
-                <div key={r.reason}>
-                  <div className="flex justify-between text-bark-800 font-medium mb-1">
-                    <span className="line-clamp-1">{r.reason}</span>
-                    <span className="font-bold text-pine-900 shrink-0 ml-2">{r.count} khách</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-surface-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-pine-800 rounded-full" style={{ width: `${(r.count / Math.max(...cancelReasons.map((x) => x.count))) * 100}%` }} />
-                  </div>
-                </div>
+                <li key={r.reason} className="flex justify-between gap-3">
+                  <span className="text-bark-800">{r.reason}</span>
+                  <span className="font-bold text-pine-950 shrink-0">{r.count}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
-        </div>
+        </section>
       </div>
 
-      <div className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs">
-        <h3 className="font-bold text-pine-950 text-sm">Top 5 Sản phẩm Hiệu quả nhất</h3>
-        {topProducts.length === 0 ? (
-          <p className="text-xs text-bark-500 py-4 text-center">Chưa có dữ liệu bán hàng.</p>
-        ) : (
-          <>
-            {/* Mobile Card List */}
-            <div className="md:hidden space-y-2.5">
-              {topProducts.map((p, idx) => (
-                <div key={idx} className="p-3 rounded-box bg-surface-muted border border-surface-border space-y-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-pine-100 text-pine-900 text-[10px] font-bold flex items-center justify-center shrink-0">
-                      {idx + 1}
-                    </span>
-                    <span className="font-bold text-pine-950 truncate flex-1">{p.name}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5 text-center text-[11px] pt-1.5 border-t border-surface-border">
-                    <div className="bg-surface-card p-1.5 rounded border border-surface-border">
-                      <span className="text-bark-500 block text-[10px]">Vào Box</span>
-                      <span className="font-bold text-bark-800">{p.boxCount} lượt</span>
-                    </div>
-                    <div className="bg-surface-card p-1.5 rounded border border-surface-border">
-                      <span className="text-bark-500 block text-[10px]">Bán lẻ</span>
-                      <span className="font-bold text-bark-800">{p.retailCount} món</span>
-                    </div>
-                    <div className="bg-surface-card p-1.5 rounded border border-surface-border">
-                      <span className="text-bark-500 block text-[10px]">Doanh thu</span>
-                      <span className="font-bold text-grass-700 truncate block">{formatVND(p.revenue)}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
-                  <tr>
-                    <th className="p-3">Sản phẩm</th>
-                    <th className="p-3">Tuyển vào Box</th>
-                    <th className="p-3">Bán lẻ Shop</th>
-                    <th className="p-3">Tổng doanh thu</th>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+        <section className={`${card} text-xs`}>
+          <h2 className="font-bold text-pine-950 text-sm">Bán lẻ chạy nhất</h2>
+          {retailTop.length === 0 ? (
+            <p className="text-bark-500 py-4 text-center">Chưa có đơn bán lẻ.</p>
+          ) : (
+            <table className="w-full text-left">
+              <thead className="text-[11px] text-bark-500 border-b border-surface-border">
+                <tr><th className="py-2 font-semibold">Sản phẩm</th><th className="py-2 font-semibold text-right">SL</th><th className="py-2 font-semibold text-right">Doanh thu</th></tr>
+              </thead>
+              <tbody className="divide-y divide-surface-border">
+                {retailTop.map((p) => (
+                  <tr key={p.name}>
+                    <td className="py-2 pr-2 text-pine-950 font-semibold">{p.name}</td>
+                    <td className="py-2 text-right tabular-nums">{p.quantity}</td>
+                    <td className="py-2 text-right tabular-nums font-bold">{formatVND(p.revenue)}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-border text-bark-700">
-                  {topProducts.map((p, idx) => (
-                    <tr key={idx} className="hover:bg-surface-muted/50 transition-colors">
-                      <td className="p-3 font-semibold text-pine-950 flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-pine-100 text-pine-900 text-[10px] font-bold flex items-center justify-center shrink-0">{idx + 1}</span>
-                        <span>{p.name}</span>
-                      </td>
-                      <td className="p-3 font-medium text-bark-900">{p.boxCount} lượt</td>
-                      <td className="p-3 font-medium text-bark-900">{p.retailCount} món</td>
-                      <td className="p-3 font-bold text-grass-800">{formatVND(p.revenue)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+
+        <section className={`${card} text-xs`}>
+          <h2 className="font-bold text-pine-950 text-sm">Món dùng nhiều trong hộp</h2>
+          {boxTop.length === 0 ? (
+            <p className="text-bark-500 py-4 text-center">Chưa có hộp nào được tuyển chọn.</p>
+          ) : (
+            <table className="w-full text-left">
+              <thead className="text-[11px] text-bark-500 border-b border-surface-border">
+                <tr><th className="py-2 font-semibold">Sản phẩm</th><th className="py-2 font-semibold text-right">Số hộp</th></tr>
+              </thead>
+              <tbody className="divide-y divide-surface-border">
+                {boxTop.map((p) => (
+                  <tr key={p.name}>
+                    <td className="py-2 pr-2 text-pine-950 font-semibold">{p.name}</td>
+                    <td className="py-2 text-right tabular-nums font-bold">{p.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
       </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="p-3.5 sm:p-4 rounded-container bg-surface-card border border-surface-border">
+      <span className="text-bark-500 text-[11px] block mb-1">{label}</span>
+      <span className="font-extrabold text-pine-950 text-base sm:text-xl font-display truncate block">{value}</span>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { resolveImageUrl } from "@/lib/adapters";
 import { Plus, Edit2, Trash2, Check, Settings, X, AlertTriangle, CheckCircle2 } from "lucide-react";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 import { planUnitPrice } from "@/lib/pricing";
+import { useToast } from "@/components/ui/Toast";
 
 type BoxTypeRow = Tables<"box_types">;
 type PlanRow = Tables<"subscription_plans">;
@@ -25,6 +26,8 @@ export default function AdminBoxTypesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingBox, setDeletingBox] = useState<BoxTypeRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+  const { show } = useToast();
 
   const [formName, setFormName] = useState("");
   const [formSpecies, setFormSpecies] = useState<"dog" | "cat">("dog");
@@ -63,7 +66,8 @@ export default function AdminBoxTypesPage() {
     setEditingBox(null);
     setFormName(""); setFormSpecies("dog"); setFormSize("small");
     setFormItemMin(4); setFormItemMax(5); setFormMinRetail(380000); setFormBasePrice(299000);
-    setFormImageUrl(""); setFormDescription("Hộp quà tuyển chọn định kỳ cho bé cưng");
+    setFormImageUrl(""); setFormDescription("");
+    setFormError("");
     setIsModalOpen(true);
   };
 
@@ -73,17 +77,23 @@ export default function AdminBoxTypesPage() {
     setFormItemMin(box.item_count_min); setFormItemMax(box.item_count_max);
     setFormMinRetail(box.min_retail_value); setFormBasePrice(box.baseprice);
     setFormImageUrl(box.images?.[0] || ""); setFormDescription(box.description || "");
+    setFormError("");
     setIsModalOpen(true);
   };
 
   const handleSaveBox = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formName.trim()) return setFormError("Vui lòng nhập tên loại hộp.");
+    if (formItemMin < 1 || formItemMax < formItemMin) return setFormError("Số món tối thiểu từ 1 và không lớn hơn số món tối đa.");
+    if (formBasePrice < 1000 || formMinRetail < formBasePrice) return setFormError("Giá trị tối thiểu các món phải lớn hơn hoặc bằng giá bán của hộp.");
+    setFormError("");
     setSaving(true);
     const supabase = createClient();
     const payload = {
-      name: formName,
+      name: formName.trim(),
       species: formSpecies,
-      size: formSize,
+      // Hộp cho mèo dùng chung mọi cân nặng
+      size: formSpecies === "cat" ? ("small" as const) : formSize,
       item_count_min: formItemMin,
       item_count_max: formItemMax,
       min_retail_value: Number(formMinRetail),
@@ -91,15 +101,13 @@ export default function AdminBoxTypesPage() {
       description: formDescription,
       images: formImageUrl.trim() ? [formImageUrl.trim()] : [],
     };
-    if (editingBox) {
-      await supabase.from("box_types").update(payload).eq("id", editingBox.id);
-      setNotice(`Đã cập nhật "${formName}"!`);
-    } else {
-      const slug = formName.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-") + "-" + Date.now().toString(36);
-      await supabase.from("box_types").insert({ ...payload, slug });
-      setNotice(`Đã thêm loại box "${formName}"!`);
-    }
+    const slug = formName.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9]+/g, "-") + "-" + Date.now().toString(36);
+    const { error } = editingBox
+      ? await supabase.from("box_types").update(payload).eq("id", editingBox.id)
+      : await supabase.from("box_types").insert({ ...payload, slug });
     setSaving(false);
+    if (error) return setFormError("Không lưu được loại hộp, vui lòng thử lại.");
+    setNotice(editingBox ? `Đã cập nhật "${payload.name}".` : `Đã thêm loại hộp "${payload.name}".`);
     setIsModalOpen(false);
     setTimeout(() => setNotice(null), 3000);
     loadData();
@@ -116,11 +124,16 @@ export default function AdminBoxTypesPage() {
   };
 
   const handleSaveDiscountConfig = async () => {
+    if (discount3 < 0 || discount3 > 50 || discount6 < 0 || discount6 > 50) return show("Mức giảm của gói nằm trong khoảng 0–50%.", { tone: "error" });
+    if (discount6 < discount3) return show("Gói 6 hộp nên giảm nhiều hơn hoặc bằng gói 3 hộp.", { tone: "error" });
     setSavingDiscount(true);
     const supabase = createClient();
-    if (plan3) await supabase.from("subscription_plans").update({ discount_percentage: discount3 }).eq("id", plan3.id);
-    if (plan6) await supabase.from("subscription_plans").update({ discount_percentage: discount6 }).eq("id", plan6.id);
+    const results = await Promise.all([
+      plan3 ? supabase.from("subscription_plans").update({ discount_percentage: discount3 }).eq("id", plan3.id) : Promise.resolve({ error: null }),
+      plan6 ? supabase.from("subscription_plans").update({ discount_percentage: discount6 }).eq("id", plan6.id) : Promise.resolve({ error: null }),
+    ]);
     setSavingDiscount(false);
+    if (results.some((r) => r.error)) return show("Không lưu được mức giảm của gói.", { tone: "error" });
     setSavedDiscount(true);
     setTimeout(() => setSavedDiscount(false), 2500);
     loadData();
@@ -132,8 +145,8 @@ export default function AdminBoxTypesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-pine-950 font-display">Quản lý Mystery Box & Gói Định Kỳ</h1>
-          <p className="text-xs text-bark-500">Cấu hình quy cách các loại hộp quà, cam kết giá trị tối thiểu và tỉ lệ chiết khấu theo gói.</p>
+          <h1 className="text-2xl font-extrabold text-pine-950 font-display">Loại Mystery Box</h1>
+          <p className="text-xs text-bark-500">Quy cách từng loại hộp, giá trị tối thiểu cam kết với khách và mức giảm của gói 3 / 6 hộp.</p>
         </div>
         <button onClick={handleOpenAdd} className="inline-flex items-center gap-2 px-3.5 py-2 bg-pine-900 text-white rounded-box text-xs font-bold hover:bg-pine-800 transition-colors shadow-xs">
           <Plus className="w-4 h-4" />
@@ -151,9 +164,9 @@ export default function AdminBoxTypesPage() {
       <div className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-4 shadow-xs">
         <div className="flex items-center gap-2 text-pine-900 font-bold text-sm">
           <Settings className="w-4 h-4 text-pine-700" />
-          <span>Cấu hình tỉ lệ chiết khấu gói Subscription</span>
+          <span>Mức giảm của gói định kỳ</span>
         </div>
-        <p className="text-xs text-bark-600">Tỉ lệ này áp dụng khi khách chọn mua gói định kỳ 3 hoặc 6 hộp.</p>
+        <p className="text-xs text-bark-600">Áp dụng cho đăng ký mới và gia hạn từ lúc lưu; gói đã trả trước giữ nguyên giá. Giá mỗi hộp làm tròn đến 1.000₫.</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div className="p-3.5 rounded-box bg-surface-muted border border-surface-border">
@@ -189,7 +202,7 @@ export default function AdminBoxTypesPage() {
       </div>
 
       {/* Mobile Card List */}
-      <div className="md:hidden space-y-3">
+      <div className="lg:hidden space-y-3">
         {boxList.map((box) => {
           const price3 = planUnitPrice(box.baseprice, discount3);
           return (
@@ -258,7 +271,7 @@ export default function AdminBoxTypesPage() {
       </div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      <div className="hidden lg:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>
@@ -341,7 +354,7 @@ export default function AdminBoxTypesPage() {
                     <option value="cat">Mèo</option>
                   </select>
                 </div>
-                <div>
+                <div className={formSpecies === "cat" ? "hidden" : ""}>
                   <label className="font-semibold text-bark-700 block mb-1">Kích cỡ *</label>
                   <select value={formSize} onChange={(e) => setFormSize(e.target.value as "small" | "large")}
                     className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none bg-white">
@@ -382,10 +395,11 @@ export default function AdminBoxTypesPage() {
                 <textarea rows={2} value={formDescription} onChange={(e) => setFormDescription(e.target.value)}
                   className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none" />
               </div>
+              {formError && <p role="alert" className="p-2.5 rounded-box bg-red-50 border border-red-200 text-red-700 font-semibold">{formError}</p>}
               <div className="flex justify-end gap-2 pt-2 border-t border-surface-border">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-3 py-1.5 text-bark-600 hover:text-bark-900 font-medium">Hủy</button>
                 <button type="submit" disabled={saving} className="px-4 py-1.5 bg-pine-900 text-white rounded-box font-bold hover:bg-pine-800 transition-colors disabled:opacity-60">
-                  {saving ? "Đang lưu..." : editingBox ? "Lưu thay đổi" : "Tạo loại Box"}
+                  {saving ? "Đang lưu..." : editingBox ? "Lưu thay đổi" : "Tạo loại hộp"}
                 </button>
               </div>
             </form>

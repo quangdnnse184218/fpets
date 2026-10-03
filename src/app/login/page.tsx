@@ -7,6 +7,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { safeRedirect } from "@/lib/safeRedirect";
 import { useApp } from "@/context/AppContext";
 import BrandLogo from "@/components/common/BrandLogo";
+import { CONTACT_INFO } from "@/lib/contactInfo";
 import GoogleSignInButton from "@/components/common/GoogleSignInButton";
 import {
   Eye,
@@ -111,13 +112,21 @@ function LoginForm() {
       }
 
       if (data?.session) {
-        setSuccessMessage("Đăng nhập thành công! Đang chuyển hướng...");
-
         const { data: profile } = await supabase
           .from("profiles")
-          .select("role")
+          .select("role, is_active")
           .eq("id", data.session.user.id)
           .maybeSingle();
+
+        // Tài khoản bị admin khóa: thoát phiên ngay, không cho vào khu vực khách
+        if (profile?.is_active === false) {
+          await supabase.auth.signOut();
+          setErrorMessage(`Tài khoản này đã bị khóa. Vui lòng gọi ${CONTACT_INFO.hotline} để được hỗ trợ.`);
+          setIsLoading(false);
+          return;
+        }
+
+        setSuccessMessage("Đăng nhập thành công! Đang chuyển hướng...");
 
         await refreshUser();
 

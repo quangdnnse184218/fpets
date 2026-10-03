@@ -135,6 +135,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .eq("id", userId)
         .maybeSingle();
 
+      if (profile && !error && profile.is_active === false) {
+        // Tài khoản bị khóa: thoát phiên, coi như khách chưa đăng nhập
+        await supabase.auth.signOut();
+        setIsLoggedIn(false);
+        setUser(DEFAULT_USER);
+        return;
+      }
       if (profile && !error) {
         setUser({
           id: profile.id,
@@ -559,7 +566,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setVoucherMessage("");
   };
 
-  // Xem trước giảm giá bằng dữ liệu voucher THẬT trong Supabase (public select cho voucher active).
+  // Xem trước giảm giá: server chỉ trả đúng mã khách nhập nếu còn hiệu lực (bảng voucher không mở công khai).
   // Số tiền giảm cuối cùng luôn được checkout_create_order tính lại ở server, không tin giá trị này.
   const applyVoucher = async (code: string): Promise<boolean> => {
     const clean = code.trim().toUpperCase();
@@ -569,16 +576,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const supabase = createClient();
-    const { data: voucher } = await supabase
-      .from("vouchers")
-      .select("*")
-      .eq("code", clean)
-      .eq("is_active", true)
-      .maybeSingle();
+    const { data: rows } = await supabase.rpc("preview_voucher", { p_code: clean });
+    const voucher = rows?.[0];
 
-    const now = Date.now();
-    const expired = voucher && (new Date(voucher.valid_from).getTime() > now || new Date(voucher.valid_to).getTime() < now);
-    if (!voucher || expired || (voucher && voucher.used_count >= voucher.usage_limit_total)) {
+    if (!voucher) {
       setVoucherMessage("Mã voucher không hợp lệ hoặc đã hết hạn");
       setVoucherCode("");
       storeVoucherCode("");

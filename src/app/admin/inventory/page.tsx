@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ui/Toast";
 import { PackagePlus, AlertTriangle, History } from "lucide-react";
 import { formatDateTime } from "@/lib/formatters";
 
@@ -43,6 +45,8 @@ export default function AdminInventoryPage() {
   const [importQty, setImportQty] = useState(50);
   const [importNote, setImportNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [importError, setImportError] = useState("");
+  const { show } = useToast();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -55,33 +59,29 @@ export default function AdminInventoryPage() {
     setMovements((moves as unknown as MovementRow[]) || []);
     setLowStock((low || []).filter((p) => p.stock_quantity <= p.low_stock_threshold));
     setProducts(allProducts || []);
-    if (allProducts && allProducts.length > 0) setImportProductId(allProducts[0].id);
+    if (allProducts && allProducts.length > 0) setImportProductId((prev) => prev || allProducts[0].id);
     setLoading(false);
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Cộng vào số tồn hiện tại trong DB (không ghi đè số đang hiện trên màn hình)
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!importProductId || importQty <= 0) return;
+    if (!importProductId) return setImportError("Chọn sản phẩm cần nhập.");
+    if (!Number.isInteger(importQty) || importQty <= 0 || importQty > 100000) return setImportError("Số lượng nhập là số nguyên từ 1.");
     setSaving(true);
-    const supabase = createClient();
-    const product = products.find((p) => p.id === importProductId);
-    if (product) {
-      const newStock = product.stock_quantity + importQty;
-      await supabase.from("products").update({ stock_quantity: newStock }).eq("id", importProductId);
-      const { data: authData } = await supabase.auth.getUser();
-      await supabase.from("inventory_movements").insert({
-        product_id: importProductId,
-        movement_type: "import",
-        quantity: importQty,
-        previous_stock: product.stock_quantity,
-        new_stock: newStock,
-        note: importNote || "Phiếu nhập hàng",
-        performed_by: authData.user?.id,
-      });
-    }
+    setImportError("");
+    const { data, error } = await createClient().rpc("adjust_product_stock", {
+      p_product_id: importProductId,
+      p_delta: importQty,
+      p_movement_type: "import",
+      p_note: importNote.trim() || "Phiếu nhập hàng",
+    });
     setSaving(false);
+    if (error) return setImportError("Không lưu được phiếu nhập, vui lòng thử lại.");
+    const name = products.find((p) => p.id === importProductId)?.name || "sản phẩm";
+    show(`Đã nhập ${importQty} ${name}. Tồn kho mới: ${data}.`);
     setImportModalOpen(false);
     setImportQty(50);
     setImportNote("");
@@ -94,10 +94,10 @@ export default function AdminInventoryPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-pine-950 font-display">Kho & Tồn kho</h1>
-          <p className="text-xs text-bark-500">Phiếu nhập hàng và lịch sử biến động kho (xuất bán lẻ, đóng box, hoàn kho, điều chỉnh).</p>
+          <h1 className="text-2xl font-extrabold text-pine-950 font-display">Nhập / xuất kho</h1>
+          <p className="text-xs text-bark-500">Phiếu nhập hàng và lịch sử biến động kho: bán lẻ, đóng hộp, hoàn kho, điều chỉnh.</p>
         </div>
-        <button onClick={() => setImportModalOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-pine-900 text-white rounded-box text-xs font-bold hover:bg-pine-800 transition-colors shadow-xs">
+        <button onClick={() => { setImportError(""); setImportModalOpen(true); }} className="inline-flex items-center gap-2 px-4 py-2 bg-pine-900 text-white rounded-box text-xs font-bold hover:bg-pine-800 transition-colors shadow-xs">
           <PackagePlus className="w-4 h-4" />
           <span>Tạo phiếu nhập kho</span>
         </button>
@@ -107,20 +107,26 @@ export default function AdminInventoryPage() {
         <div className="p-4 rounded-container bg-amber-50 border border-amber-200 space-y-2">
           <div className="flex items-center gap-2 font-bold text-amber-900 text-sm">
             <AlertTriangle className="w-4 h-4" />
-            <span>Cảnh báo sắp hết hàng ({lowStock.length} sản phẩm)</span>
+            <span className="flex-1">Sắp hết hàng ({lowStock.length} sản phẩm)</span>
+            <Link href="/admin/products?filter=low" className="text-xs underline">Xem trong Sản phẩm</Link>
           </div>
           <div className="flex flex-wrap gap-2">
             {lowStock.map((p) => (
-              <span key={p.id} className="text-xs px-2.5 py-1 rounded-tag bg-white border border-amber-300 text-amber-800 font-semibold">
-                {p.name}: còn {p.stock_quantity}
-              </span>
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => { setImportProductId(p.id); setImportError(""); setImportModalOpen(true); }}
+                className="text-xs px-2.5 py-1 rounded-tag bg-white border border-amber-300 text-amber-800 font-semibold hover:bg-amber-100"
+              >
+                {p.name}: còn {p.stock_quantity} · Nhập thêm
+              </button>
             ))}
           </div>
         </div>
       )}
 
       {/* Mobile Card List (< md) */}
-      <div className="md:hidden space-y-2.5">
+      <div className="lg:hidden space-y-2.5">
         <div className="flex items-center gap-2 font-bold text-pine-950 text-xs px-1">
           <History className="w-4 h-4" />
           <span>Biến động kho gần đây ({movements.length})</span>
@@ -165,7 +171,7 @@ export default function AdminInventoryPage() {
       </div>
 
       {/* Desktop Table (>= md) */}
-      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      <div className="hidden lg:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <div className="p-4 border-b border-surface-border flex items-center gap-2 font-bold text-pine-950 text-sm">
           <History className="w-4 h-4" />
           <span>Lịch sử biến động kho (100 gần nhất)</span>
@@ -229,6 +235,7 @@ export default function AdminInventoryPage() {
                 <input type="text" value={importNote} onChange={(e) => setImportNote(e.target.value)}
                   className="w-full px-3 py-2 border border-surface-border rounded-box" />
               </div>
+              {importError && <p role="alert" className="p-2.5 rounded-box bg-red-50 border border-red-200 text-red-700 font-semibold">{importError}</p>}
               <div className="flex justify-end gap-2 pt-2 border-t border-surface-border">
                 <button type="button" onClick={() => setImportModalOpen(false)} className="px-3 py-1.5 text-bark-600 hover:text-bark-900 font-medium">Hủy</button>
                 <button type="submit" disabled={saving} className="px-4 py-1.5 bg-pine-900 text-white rounded-box font-bold hover:bg-pine-800 transition-colors disabled:opacity-60">

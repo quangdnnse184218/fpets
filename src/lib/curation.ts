@@ -13,7 +13,7 @@ export interface CurationQueueRow {
   pet_id: string;
   box_type_id: string;
   created_at: string;
-  orders: { order_code: string; order_type: string } | null;
+  orders: { order_code: string; order_type: string; status: string; created_at: string; cycle_index: number | null } | null;
   pets: Tables<"pets">;
   box_types: Tables<"box_types">;
 }
@@ -22,8 +22,10 @@ export async function fetchPendingCurations(): Promise<CurationQueueRow[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("box_curations")
-    .select("id, status, order_id, pet_id, box_type_id, created_at, orders(order_code, order_type), pets(*), box_types(*)")
+    .select("id, status, order_id, pet_id, box_type_id, created_at, orders!inner(order_code, order_type, status, created_at, cycle_index), pets(*), box_types(*)")
     .eq("status", "pending_curation")
+    // Chỉ hộp của đơn đã xác nhận: đơn chờ thanh toán / đã hủy không được tuyển chọn (khớp approve_box_curation)
+    .in("orders.status", ["da_xac_nhan", "dang_chuan_bi"])
     .order("created_at", { ascending: true });
   if (error || !data) return [];
   return data as unknown as CurationQueueRow[];

@@ -70,8 +70,8 @@ export default function AdminPetsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-pine-950 font-display">Quản lý Pet Profile ({pets.length} bé cưng)</h1>
-          <p className="text-xs text-bark-500">Xem hồ sơ dị ứng, sở thích và phản hồi từng món của từng bé cưng.</p>
+          <h1 className="text-2xl font-extrabold text-pine-950 font-display">Hồ sơ thú cưng ({pets.length})</h1>
+          <p className="text-xs text-bark-500">Dị ứng, sở thích và đánh giá từng món của từng bé, dùng khi tuyển chọn hộp.</p>
         </div>
       </div>
 
@@ -98,7 +98,7 @@ export default function AdminPetsPage() {
       </div>
 
       {/* Mobile Card List (< md) */}
-      <div className="md:hidden space-y-2.5">
+      <div className="lg:hidden space-y-2.5">
         {filteredPets.length === 0 ? (
           <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
             Chưa có hồ sơ thú cưng nào phù hợp.
@@ -176,7 +176,7 @@ export default function AdminPetsPage() {
       </div>
 
       {/* Desktop Table (>= md) */}
-      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      <div className="hidden lg:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>

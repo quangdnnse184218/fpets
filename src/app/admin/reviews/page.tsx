@@ -1,7 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { Suspense, useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
+import { useAdminTasks } from "../AdminTasks";
 import { createClient } from "@/lib/supabase/client";
 import { Star, Eye, EyeOff, MessageSquare, Search, X } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
@@ -29,8 +32,26 @@ function validImages(images: string[] | null | undefined): string[] {
 }
 
 export default function AdminReviewsPage() {
-  const [tab, setTab] = useState<"reviews" | "feedback">("reviews");
+  return (
+    <Suspense fallback={<div className="py-16 text-center text-xs text-bark-500">Đang tải…</div>}>
+      <ReviewsContent />
+    </Suspense>
+  );
+}
+
+function ReviewsContent() {
+  const searchParams = useSearchParams();
+  const { refresh: refreshTasks } = useAdminTasks();
+  // Mở đúng tab khi đi từ chuông thông báo / Tổng quan (?tab=feedback, ?filter=unreplied)
+  const [tab, setTab] = useState<"reviews" | "feedback">(searchParams.get("tab") === "feedback" ? "feedback" : "reviews");
   const [newFeedback, setNewFeedback] = useState<number | null>(null);
+  const onFeedbackCount = useCallback(
+    (n: number) => {
+      setNewFeedback(n);
+      refreshTasks();
+    },
+    [refreshTasks]
+  );
 
   // Đếm góp ý chưa xử lý ngay khi mở trang để admin thấy trên tab
   useEffect(() => {
@@ -44,8 +65,8 @@ export default function AdminReviewsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-pine-950 font-display">Đánh giá & Feedback</h1>
-        <p className="text-xs text-bark-500">Kiểm duyệt đánh giá sau khi nhận hàng và xử lý góp ý, liên hệ gửi từ trang Liên hệ.</p>
+        <h1 className="text-2xl font-extrabold text-pine-950 font-display">Đánh giá & góp ý</h1>
+        <p className="text-xs text-bark-500">Ẩn/hiện và trả lời đánh giá sau khi nhận hàng; xử lý góp ý gửi từ trang Liên hệ.</p>
       </div>
       <div role="tablist" className="flex gap-1 border-b border-surface-border text-sm">
         {([
@@ -64,15 +85,17 @@ export default function AdminReviewsPage() {
           </button>
         ))}
       </div>
-      {tab === "reviews" ? <ReviewsPanel /> : <FeedbackInbox onCountChange={setNewFeedback} />}
+      {tab === "reviews" ? <ReviewsPanel initialUnreplied={searchParams.get("filter") === "unreplied"} onChanged={refreshTasks} /> : <FeedbackInbox onCountChange={onFeedbackCount} />}
     </div>
   );
 }
 
-function ReviewsPanel() {
+function ReviewsPanel({ initialUnreplied, onChanged }: { initialUnreplied: boolean; onChanged: () => void }) {
+  const { show } = useToast();
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [starFilter, setStarFilter] = useState<number | "all">("all");
+  const [unrepliedOnly, setUnrepliedOnly] = useState(initialUnreplied);
   const [search, setSearch] = useState("");
   const [replyingReview, setReplyingReview] = useState<ReviewRow | null>(null);
   const [replyContent, setReplyContent] = useState("");
@@ -95,7 +118,13 @@ function ReviewsPanel() {
     const supabase = createClient();
     const nextStatus = rev.status === "published" ? "hidden" : "published";
     setReviews((prev) => prev.map((r) => (r.id === rev.id ? { ...r, status: nextStatus } : r)));
-    await supabase.from("reviews").update({ status: nextStatus }).eq("id", rev.id);
+    const { error } = await supabase.from("reviews").update({ status: nextStatus }).eq("id", rev.id);
+    if (error) {
+      setReviews((prev) => prev.map((r) => (r.id === rev.id ? { ...r, status: rev.status } : r)));
+      show("Không cập nhật được đánh giá.", { tone: "error" });
+      return;
+    }
+    show(nextStatus === "published" ? "Đánh giá đã hiện trên trang Đánh giá." : "Đã ẩn đánh giá khỏi trang công khai.");
   };
 
   const handleOpenReply = (review: ReviewRow) => {
@@ -106,16 +135,35 @@ function ReviewsPanel() {
   const handleSaveReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!replyingReview) return;
+    const reply = replyContent.trim();
+    if (!reply) return;
     setSaving(true);
     const supabase = createClient();
-    await supabase.from("reviews").update({ admin_reply: replyContent, admin_reply_at: new Date().toISOString() }).eq("id", replyingReview.id);
+    const { error } = await supabase.from("reviews").update({ admin_reply: reply, admin_reply_at: new Date().toISOString() }).eq("id", replyingReview.id);
+    if (error) {
+      setSaving(false);
+      show("Không lưu được phản hồi, vui lòng thử lại.", { tone: "error" });
+      return;
+    }
+    // Lần trả lời đầu tiên: báo cho khách biết FPETS đã đọc đánh giá
+    if (!replyingReview.admin_reply) {
+      await supabase.from("notifications").insert({
+        user_id: replyingReview.user_id,
+        title: `FPETS đã trả lời đánh giá đơn ${replyingReview.orders?.order_code || ""}`.trim(),
+        message: reply.length > 140 ? `${reply.slice(0, 140)}…` : reply,
+        type: "order",
+        link: `/my-account/orders/${replyingReview.order_id}`,
+      });
+    }
     setSaving(false);
     setReplyingReview(null);
+    show("Đã lưu phản hồi.");
+    onChanged();
     loadReviews();
   };
 
   const filtered = reviews.filter((r) => {
-    const matchStar = starFilter === "all" || r.rating === starFilter;
+    const matchStar = (starFilter === "all" || r.rating === starFilter) && (!unrepliedOnly || !r.admin_reply);
     const matchSearch =
       (r.profiles?.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
       (r.comment || "").toLowerCase().includes(search.toLowerCase());
@@ -133,15 +181,17 @@ function ReviewsPanel() {
           <span className="text-bark-500 block text-[11px]">Đánh giá trung bình</span>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="font-extrabold text-pine-950 text-xl">{avgRating}</span>
-            <div className="flex text-honey-500">{[...Array(5)].map((_, i) => <Star key={i} className="w-3.5 h-3.5 fill-honey-500" />)}</div>
+            <div className="flex text-honey-500" aria-hidden="true">
+              {[...Array(5)].map((_, i) => <Star key={i} className={`w-3.5 h-3.5 ${i < Math.round(Number(avgRating)) ? "fill-honey-500" : "fill-bark-200 text-bark-200"}`} />)}
+            </div>
           </div>
         </div>
         <div className="p-3.5 rounded-container bg-grass-50/60 border border-grass-200">
-          <span className="text-grass-800 block text-[11px] font-medium">5 sao tuyệt đối</span>
+          <span className="text-grass-800 block text-[11px] font-medium">Đánh giá 5 sao</span>
           <span className="font-extrabold text-grass-900 text-lg">{reviews.filter((r) => r.rating === 5).length} lượt</span>
         </div>
         <div className="p-3.5 rounded-container bg-surface-card border border-surface-border">
-          <span className="text-bark-500 block text-[11px]">Có ảnh unbox</span>
+          <span className="text-bark-500 block text-[11px]">Có ảnh</span>
           <span className="font-extrabold text-pine-900 text-lg">{reviews.filter((r) => r.images?.length > 0).length} bài</span>
         </div>
         <div className="p-3.5 rounded-container bg-honey-50/60 border border-honey-200">
@@ -157,7 +207,9 @@ function ReviewsPanel() {
             className="w-full pl-9 pr-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none" />
         </div>
         <div className="flex items-center gap-1.5 flex-wrap text-xs">
-          <button onClick={() => setStarFilter("all")} className={`px-3 py-1.5 rounded-box font-semibold transition-colors ${starFilter === "all" ? "bg-pine-900 text-white" : "bg-surface-muted text-bark-700 hover:bg-bark-200"}`}>Tất cả</button>
+          <button onClick={() => setUnrepliedOnly((v) => !v)} aria-pressed={unrepliedOnly} className={`px-3 py-1.5 rounded-box font-semibold transition-colors ${unrepliedOnly ? "bg-pine-900 text-white" : "bg-surface-muted text-bark-700 hover:bg-bark-200"}`}>Chưa phản hồi</button>
+          <span className="w-px h-5 bg-surface-border mx-1" aria-hidden="true" />
+          <button onClick={() => setStarFilter("all")} className={`px-3 py-1.5 rounded-box font-semibold transition-colors ${starFilter === "all" ? "bg-pine-900 text-white" : "bg-surface-muted text-bark-700 hover:bg-bark-200"}`}>Tất cả sao</button>
           {[5, 4, 3, 2, 1].map((star) => (
             <button key={star} onClick={() => setStarFilter(star)} className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-box font-semibold transition-colors ${starFilter === star ? "bg-pine-900 text-white" : "bg-surface-muted text-bark-700 hover:bg-bark-200"}`}>
               <span>{star}</span><Star className="w-3 h-3 fill-honey-500 text-honey-500" />
@@ -167,7 +219,7 @@ function ReviewsPanel() {
       </div>
 
       {/* Mobile Card List */}
-      <div className="md:hidden space-y-3">
+      <div className="lg:hidden space-y-3">
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
             Chưa có đánh giá nào phù hợp.
@@ -249,7 +301,7 @@ function ReviewsPanel() {
       </div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      <div className="hidden lg:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs min-w-[700px]">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>
@@ -321,14 +373,14 @@ function ReviewsPanel() {
             <div className="p-3 rounded-box bg-surface-muted text-bark-700 italic">&ldquo;{replyingReview.comment}&rdquo;</div>
             <form onSubmit={handleSaveReply} className="space-y-3">
               <div>
-                <label className="font-semibold text-bark-700 block mb-1">Nội dung phản hồi từ FPETS Care Team *</label>
+                <label className="font-semibold text-bark-700 block mb-1">Phản hồi của FPETS (hiện công khai dưới đánh giá) *</label>
                 <textarea rows={4} required value={replyContent} onChange={(e) => setReplyContent(e.target.value)}
                   className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none" />
               </div>
               <div className="flex justify-end gap-2 pt-2 border-t border-surface-border">
                 <button type="button" onClick={() => setReplyingReview(null)} className="px-3 py-1.5 text-bark-600 hover:text-bark-900 font-medium">Hủy</button>
                 <button type="submit" disabled={saving} className="px-4 py-1.5 bg-pine-900 text-white rounded-box font-bold hover:bg-pine-800 transition-colors disabled:opacity-60">
-                  {saving ? "Đang lưu..." : "Gửi phản hồi công khai"}
+                  {saving ? "Đang lưu..." : "Lưu phản hồi"}
                 </button>
               </div>
             </form>

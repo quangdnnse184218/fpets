@@ -198,6 +198,7 @@ function CheckoutFormContent() {
   };
 
   function friendlyCheckoutError(message: string): string {
+    if (message.includes("ERR_ACCOUNT_LOCKED")) return "Tài khoản đang bị tạm khóa nên chưa đặt hàng được. Vui lòng gọi hotline để được hỗ trợ.";
     if (message.includes("ERR_ADDRESS_INCOMPLETE")) return "Thông tin nhận hàng chưa đủ. Vui lòng kiểm tra họ tên, tỉnh/thành, phường/xã và địa chỉ.";
     if (message.includes("ERR_PHONE_INVALID")) return "Số điện thoại nhận hàng gồm 10 số, bắt đầu bằng 0.";
     if (message.includes("ERR_OUT_OF_STOCK")) return "Một sản phẩm trong giỏ đã hết hàng: " + message.split(":")[1];

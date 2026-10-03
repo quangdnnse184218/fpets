@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { formatVND, formatDate } from "@/lib/formatters";
 import { Search, Lock, Unlock, Eye, Phone, Mail, Heart, X } from "lucide-react";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
+import { ConfirmDialog } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
 
 interface ProfileRow {
   id: string;
@@ -27,6 +29,8 @@ export default function AdminCustomersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [locking, setLocking] = useState<ProfileRow | null>(null);
+  const { show } = useToast();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -71,12 +75,22 @@ export default function AdminCustomersPage() {
     return map;
   }, [subs]);
 
-  const toggleLockCustomer = async (id: string, currentActive: boolean) => {
+  const setActive = async (customer: ProfileRow, active: boolean) => {
     setBusy(true);
-    const supabase = createClient();
-    await supabase.from("profiles").update({ is_active: !currentActive }).eq("id", id);
+    const { error } = await createClient().from("profiles").update({ is_active: active }).eq("id", customer.id);
     setBusy(false);
+    if (error) return show("Không cập nhật được tài khoản.", { tone: "error" });
+    show(active ? `Đã mở khóa tài khoản ${customer.email}.` : `Đã khóa tài khoản ${customer.email}.`);
+    setLocking(null);
     loadData();
+  };
+
+  // Khóa cần xác nhận (khách bị đăng xuất, không đặt hàng được); mở khóa làm ngay
+  const toggleLockCustomer = (id: string, currentActive: boolean) => {
+    const customer = profiles.find((p) => p.id === id);
+    if (!customer) return;
+    if (currentActive) setLocking(customer);
+    else setActive(customer, true);
   };
 
   const filtered = profiles.filter(
@@ -94,7 +108,7 @@ export default function AdminCustomersPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold text-pine-950 font-display">Quản lý Khách hàng ({profiles.length} tài khoản)</h1>
+          <h1 className="text-2xl font-extrabold text-pine-950 font-display">Khách hàng ({profiles.length})</h1>
           <p className="text-xs text-bark-500">Xem hồ sơ, đơn hàng, gói định kỳ và quản lý quyền truy cập.</p>
         </div>
       </div>
@@ -108,7 +122,7 @@ export default function AdminCustomersPage() {
       </div>
 
       {/* Mobile Card List (< md) */}
-      <div className="md:hidden space-y-2.5">
+      <div className="lg:hidden space-y-2.5">
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-xs text-bark-500 rounded-container bg-surface-card border border-surface-border">
             Không tìm thấy khách hàng phù hợp.
@@ -220,7 +234,7 @@ export default function AdminCustomersPage() {
       </div>
 
       {/* Desktop Table (>= md) */}
-      <div className="hidden md:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
+      <div className="hidden lg:block rounded-container bg-surface-card border border-surface-border overflow-x-auto shadow-xs">
         <table className="w-full text-left text-xs min-w-[760px] whitespace-nowrap">
           <thead className="bg-surface-muted text-bark-700 font-bold border-b border-surface-border text-[11px]">
             <tr>
@@ -338,7 +352,7 @@ export default function AdminCustomersPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-box border border-surface-border bg-white">
-                <span className="text-[11px] text-bark-500 block mb-1">Gói Subscription</span>
+                <span className="text-[11px] text-bark-500 block mb-1">Gói định kỳ đang chạy</span>
                 <span className="font-bold text-pine-900 block">{activeSubByUser.get(selectedCustomer.id) || "Chưa có gói"}</span>
               </div>
               <div className="p-3 rounded-box border border-surface-border bg-white">
@@ -359,6 +373,21 @@ export default function AdminCustomersPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!locking}
+        title="Khóa tài khoản khách"
+        message={
+          <>
+            Khóa <strong>{locking?.full_name || locking?.email}</strong>? Khách bị đăng xuất, không đăng nhập và không đặt hàng được nữa.
+            Gói định kỳ đã trả trước vẫn tiếp tục giao; muốn dừng hãy hủy gói ở trang Gói định kỳ.
+          </>
+        }
+        confirmLabel="Khóa tài khoản"
+        loading={busy}
+        onClose={() => setLocking(null)}
+        onConfirm={() => locking && setActive(locking, false)}
+      />
     </div>
   );
 }
