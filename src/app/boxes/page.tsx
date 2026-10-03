@@ -12,12 +12,35 @@ import { planUnitPrice } from "@/lib/pricing";
 import { useApp } from "@/context/AppContext";
 import { BoxType, SubscriptionPlan } from "@/types/models";
 
-type Species = "all" | "dog" | "cat";
+// Loài và cân nặng gộp thành 1 nhóm dạng cây: cân nặng chỉ có nghĩa với chó nên nằm dưới "Chó"
+type Audience = "all" | "dog" | "dog_small" | "dog_large" | "cat";
 type Tier = "all" | "standard" | "premium";
-type DogSize = "all" | "small" | "large";
 type Sort = "default" | "price_asc" | "price_desc";
 
+const AUDIENCES: { value: Audience; label: string; nested?: boolean }[] = [
+  { value: "all", label: "Tất cả" },
+  { value: "dog", label: "Chó" },
+  { value: "dog_small", label: "Dưới 10 kg", nested: true },
+  { value: "dog_large", label: "Từ 10 kg", nested: true },
+  { value: "cat", label: "Mèo" },
+];
+
+const TIERS: { value: Tier; label: string; hint?: string }[] = [
+  { value: "all", label: "Tất cả" },
+  { value: "standard", label: "Tiêu chuẩn", hint: STANDARD_ITEMS },
+  { value: "premium", label: "Premium", hint: PREMIUM_ITEMS },
+];
+
 const isPremium = (box: BoxType) => box.slug.includes("premium");
+
+const matchesAudience = (box: BoxType, a: Audience) => {
+  if (a === "all") return true;
+  if (a === "cat") return box.species === "cat";
+  if (box.species !== "dog") return false;
+  return a === "dog" || box.size === (a === "dog_small" ? "small" : "large");
+};
+
+const matchesTier = (box: BoxType, t: Tier) => t === "all" || (t === "premium") === isPremium(box);
 
 export default function BoxesPage() {
   return (
@@ -34,21 +57,22 @@ function BoxesContent() {
   const [boxes, setBoxes] = useState<BoxType[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [species, setSpecies] = useState<Species>("all");
+  const [audience, setAudience] = useState<Audience>("all");
   const [tier, setTier] = useState<Tier>("all");
-  const [dogSize, setDogSize] = useState<DogSize>("all");
   const [petId, setPetId] = useState("");
   const [sort, setSort] = useState<Sort>("default");
   const [filterOpen, setFilterOpen] = useState(false);
   // Đến từ trang Gói định kỳ (?plan=3): giữ gói đã chọn khi sang trang chi tiết hộp
   const [planParam, setPlanParam] = useState("");
 
-  // Lọc sẵn theo link: /boxes?tier=premium, /boxes?species=cat (menu, trang chủ), /boxes?pet=<id> (hồ sơ thú cưng)
+  // Lọc sẵn theo link: /boxes?tier=premium, /boxes?species=cat, /boxes?species=dog&size=small (menu, trang chủ),
+  // /boxes?pet=<id> (hồ sơ thú cưng)
   useEffect(() => {
     const t = searchParams.get("tier");
     const s = searchParams.get("species");
+    const size = searchParams.get("size");
     setTier(t === "premium" || t === "standard" ? t : "all");
-    setSpecies(s === "dog" || s === "cat" ? s : "all");
+    setAudience(s === "cat" ? "cat" : s === "dog" ? (size === "small" ? "dog_small" : size === "large" ? "dog_large" : "dog") : "all");
     setPetId(searchParams.get("pet") || "");
     const plan = searchParams.get("plan");
     setPlanParam(plan && /^[0-9]+$/.test(plan) ? plan : "");
@@ -65,27 +89,24 @@ function BoxesContent() {
   const selectedPet = pets.find((p) => p.id === petId);
   const selectedPlan = plans.find((p) => String(p.cycles) === planParam);
 
-  // Chọn "Hợp với bé X" thì lọc theo loài và size của bé, thay cho 2 bộ lọc tay
+  // Chọn "Hợp với bé X" thì lọc theo loài và cân nặng của bé, thay cho nhóm "Dành cho"
   const fits = (box: BoxType) => {
     if (selectedPet) return box.species === selectedPet.species && (box.species !== "dog" || box.size === selectedPet.size);
-    if (species !== "all" && box.species !== species) return false;
-    if (dogSize !== "all" && (box.species !== "dog" || box.size !== dogSize)) return false;
-    return true;
+    return matchesAudience(box, audience);
   };
 
   const filtered = useMemo(() => {
-    const list = boxes.filter((box) => fits(box) && (tier === "all" || (tier === "premium") === isPremium(box)));
+    const list = boxes.filter((box) => fits(box) && matchesTier(box, tier));
     if (sort === "price_asc") return [...list].sort((a, b) => a.basePrice - b.basePrice);
     if (sort === "price_desc") return [...list].sort((a, b) => b.basePrice - a.basePrice);
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boxes, species, tier, dogSize, petId, sort, pets]);
+  }, [boxes, audience, tier, petId, sort, pets]);
 
-  const activeCount = (species !== "all" ? 1 : 0) + (tier !== "all" ? 1 : 0) + (dogSize !== "all" ? 1 : 0) + (selectedPet ? 1 : 0);
+  const activeCount = (audience !== "all" && !selectedPet ? 1 : 0) + (tier !== "all" ? 1 : 0) + (selectedPet ? 1 : 0);
   const reset = () => {
-    setSpecies("all");
+    setAudience("all");
     setTier("all");
-    setDogSize("all");
     setPetId("");
     router.replace(planParam ? `/boxes?plan=${planParam}` : "/boxes");
   };
@@ -118,42 +139,32 @@ function BoxesContent() {
       )}
 
       {!selectedPet && (
-        <>
-          <FilterGroup label="Dành cho">
-            {([["all", "Tất cả"], ["dog", "Chó"], ["cat", "Mèo"]] as const).map(([value, label]) => (
-              <FilterOption
-                key={value}
-                name="box-species"
-                checked={species === value}
-                onSelect={() => {
-                  setSpecies(value);
-                  if (value === "cat") setDogSize("all");
-                }}
-                label={label}
-                count={loading ? undefined : boxes.filter((b) => value === "all" || b.species === value).length}
-              />
-            ))}
-          </FilterGroup>
-
-          {species !== "cat" && (
-            <FilterGroup label="Cân nặng của chó">
-              {([["all", "Mọi cân nặng"], ["small", "Dưới 10 kg"], ["large", "Từ 10 kg"]] as const).map(([value, label]) => (
-                <FilterOption key={value} name="box-size" checked={dogSize === value} onSelect={() => setDogSize(value)} label={label} />
-              ))}
-            </FilterGroup>
-          )}
-        </>
+        <FilterGroup label="Dành cho">
+          {AUDIENCES.map((a) => (
+            <FilterOption
+              key={a.value}
+              name="box-audience"
+              checked={audience === a.value}
+              onSelect={() => setAudience(a.value)}
+              label={a.label}
+              nested={a.nested}
+              // Số hộp tính theo loại hộp đang chọn, để con số khớp với kết quả sẽ hiện
+              count={loading ? undefined : boxes.filter((b) => matchesAudience(b, a.value) && matchesTier(b, tier)).length}
+            />
+          ))}
+        </FilterGroup>
       )}
 
       <FilterGroup label="Loại hộp">
-        {([["all", "Tất cả"], ["standard", "Tiêu chuẩn"], ["premium", "Premium"]] as const).map(([value, label]) => (
+        {TIERS.map((t) => (
           <FilterOption
-            key={value}
+            key={t.value}
             name="box-tier"
-            checked={tier === value}
-            onSelect={() => setTier(value)}
-            label={label}
-            hint={value === "standard" ? STANDARD_ITEMS : value === "premium" ? PREMIUM_ITEMS : undefined}
+            checked={tier === t.value}
+            onSelect={() => setTier(t.value)}
+            label={t.label}
+            hint={t.hint}
+            count={loading ? undefined : boxes.filter((b) => fits(b) && matchesTier(b, t.value)).length}
           />
         ))}
       </FilterGroup>
@@ -363,6 +374,7 @@ function FilterOption({
   label,
   hint,
   count,
+  nested = false,
   checked,
   onSelect,
 }: {
@@ -370,14 +382,16 @@ function FilterOption({
   label: string;
   hint?: string;
   count?: number;
+  // Lựa chọn con (cân nặng dưới "Chó"): thụt vào, có đường dẫn bên trái
+  nested?: boolean;
   checked: boolean;
   onSelect: () => void;
 }) {
   return (
     <label
-      className={`flex items-center gap-2.5 min-h-10 px-2.5 rounded-box cursor-pointer text-sm transition-colors ${
-        checked ? "bg-pine-50 text-pine-950 font-semibold" : "text-bark-700 hover:bg-surface-muted"
-      }`}
+      className={`flex items-center gap-2.5 min-h-10 px-2.5 rounded-box cursor-pointer transition-colors ${
+        nested ? `ml-4 pl-3 text-[13px] rounded-l-none border-l-2 ${checked ? "border-pine-800" : "border-surface-border"}` : "text-sm"
+      } ${checked ? "bg-pine-50 text-pine-950 font-semibold" : "text-bark-700 hover:bg-surface-muted"}`}
     >
       <input type="radio" name={name} checked={checked} onChange={onSelect} className="w-4 h-4 accent-pine-900 shrink-0" />
       <span className="flex-1 min-w-0">

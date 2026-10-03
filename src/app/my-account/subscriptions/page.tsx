@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarClock, Check, CreditCard, MapPin, Pause, Play, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/currentUser";
 import { formatVND, formatDate } from "@/lib/formatters";
 import { fetchPlanOptions } from "@/lib/catalog";
 import { SubscriptionPlan } from "@/types/models";
@@ -119,15 +120,19 @@ export default function MySubscriptionsPage() {
 
   const load = useCallback(async () => {
     const supabase = createClient();
+    const uid = await currentUserId();
+    if (!uid) return;
     const [{ data: subData }, { data: orderData }] = await Promise.all([
       supabase
         .from("subscriptions")
         .select("id, subscription_code, status, total_cycles, remaining_cycles, current_cycle, next_delivery_date, cutoff_date, delivery_schedule, total_prepaid_amount, grace_period_expires_at, shipping_address_snapshot, pets(name), box_types(name, baseprice), subscription_plans(name)")
+        .eq("user_id", uid)
         .order("created_at", { ascending: false }),
       supabase
         .from("orders")
         .select("id, order_code, order_type, cycle_index, status, total_amount, payment_method, payment_status, payment_expires_at, paid_at, created_at, updated_at, subscription_id")
         .not("subscription_id", "is", null)
+        .eq("user_id", uid)
         .order("created_at", { ascending: true }),
     ]);
     setSubs((subData as unknown as SubscriptionRow[]) || []);

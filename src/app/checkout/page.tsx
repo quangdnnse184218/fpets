@@ -50,6 +50,7 @@ function CheckoutFormContent() {
     createClient()
       .from("addresses")
       .select("id, recipient_name, phone, province_city, ward, street_address, is_default")
+      .eq("user_id", user.id)
       .order("is_default", { ascending: false })
       .order("created_at", { ascending: false })
       .then(({ data }) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { currentUserId } from "@/lib/supabase/currentUser";
 import { resolveImageUrl } from "@/lib/adapters";
 import type { OrderStatus } from "@/lib/orderDisplay";
 
@@ -64,13 +65,18 @@ const ORDER_SELECT = `id, order_code, order_type, status, payment_method, paymen
   order_items(id, product_id, product_name_snapshot, quantity, unit_price, total_price, box_type_id, pets(name), products(slug, images), box_types(name, images)),
   subscriptions(id, subscription_code, total_cycles, box_types(name, images), pets(name))`;
 
+// Lọc theo user_id thay vì chỉ dựa vào RLS: admin đọc được mọi đơn nên "đơn của tôi" phải lọc rõ
 export async function fetchMyOrders(): Promise<MyOrder[]> {
-  const { data } = await createClient().from("orders").select(ORDER_SELECT).order("created_at", { ascending: false });
+  const uid = await currentUserId();
+  if (!uid) return [];
+  const { data } = await createClient().from("orders").select(ORDER_SELECT).eq("user_id", uid).order("created_at", { ascending: false });
   return (data as unknown as MyOrder[]) || [];
 }
 
 export async function fetchMyOrder(id: string): Promise<MyOrder | null> {
-  const { data } = await createClient().from("orders").select(ORDER_SELECT).eq("id", id).maybeSingle();
+  const uid = await currentUserId();
+  if (!uid) return null;
+  const { data } = await createClient().from("orders").select(ORDER_SELECT).eq("id", id).eq("user_id", uid).maybeSingle();
   return (data as unknown as MyOrder) || null;
 }
 

@@ -33,8 +33,8 @@ export default function AccountShell({ children }: { children: React.ReactNode }
     if (!user.id) return;
     const supabase = createClient();
     Promise.all([
-      supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["cho_thanh_toan", "da_xac_nhan", "dang_chuan_bi", "dang_giao"]).neq("order_type", "subscription_renewal"),
-      supabase.from("subscriptions").select("id", { count: "exact", head: true }).in("status", ["dang_hoat_dong", "tam_dung", "qua_han"]),
+      supabase.from("orders").select("id", { count: "exact", head: true }).eq("user_id", user.id).in("status", ["cho_thanh_toan", "da_xac_nhan", "dang_chuan_bi", "dang_giao"]).neq("order_type", "subscription_renewal"),
+      supabase.from("subscriptions").select("id", { count: "exact", head: true }).eq("user_id", user.id).in("status", ["dang_hoat_dong", "tam_dung", "qua_han"]),
       supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("is_read", false),
     ]).then(([orders, subs, notifications]) =>
       setCounts({ orders: orders.count || 0, subscriptions: subs.count || 0, notifications: notifications.count || 0 })

@@ -72,6 +72,7 @@ export default function BoxDetailPage() {
     createClient()
       .from("subscriptions")
       .select("pet_id, remaining_cycles, subscription_plans(name)")
+      .eq("user_id", user.id)
       .in("status", ["cho_thanh_toan", "dang_hoat_dong", "tam_dung", "qua_han"])
       .then(({ data }) => {
         const map: Record<string, { planName: string; remaining: number }> = {};

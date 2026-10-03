@@ -61,11 +61,13 @@ export default function MyPetsPage() {
       supabase
         .from("orders")
         .select("order_type, order_items(pet_id, box_type_id), subscriptions(pet_id)")
+        .eq("user_id", user.id)
         .eq("status", "da_giao")
         .in("order_type", ["mystery_box", "subscription_cycle"]),
       supabase
         .from("subscriptions")
         .select("pet_id, total_cycles, remaining_cycles, status, subscription_plans(name)")
+        .eq("user_id", user.id)
         .in("status", ACTIVE_SUB_STATUSES),
     ]);
     const counts: Record<string, number> = {};

@@ -240,12 +240,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // ---------------------------------------------------------------------------
-  // PETS: dữ liệu thật từ Supabase, chỉ tồn tại khi đã đăng nhập (RLS pets_own_all).
+  // PETS: dữ liệu thật từ Supabase, chỉ tồn tại khi đã đăng nhập.
+  // Luôn lọc theo user_id: tài khoản admin được RLS cho đọc mọi hồ sơ, nếu chỉ dựa vào RLS
+  // thì admin xem cửa hàng sẽ thấy thú cưng của tất cả khách như của mình.
   // ---------------------------------------------------------------------------
   const [pets, setPets] = useState<Pet[]>([]);
-  const loadPets = async () => {
+  const loadPets = async (userId: string) => {
     const supabase = createClient();
-    const { data, error } = await supabase.from("pets").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("pets").select("*").eq("user_id", userId).order("created_at", { ascending: false });
     if (!error && data) {
       setPets(data.map(petRowToPet));
     }
@@ -450,7 +452,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCartLoading(true);
       try {
         if (isLoggedIn && user.id) {
-          await loadPets();
+          await loadPets(user.id);
           if (!prevLoggedIn.current) {
             await mergeGuestCartIntoServer(user.id);
           }

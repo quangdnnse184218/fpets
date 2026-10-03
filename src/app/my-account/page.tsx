@@ -39,6 +39,7 @@ export default function AccountOverviewPage() {
       createClient()
         .from("subscriptions")
         .select("id, subscription_code, status, remaining_cycles, total_cycles, next_delivery_date, delivery_schedule, pets(name), box_types(name)")
+        .eq("user_id", user.id)
         .in("status", ["dang_hoat_dong", "tam_dung", "qua_han"])
         .order("next_delivery_date", { ascending: true }),
       fetchMyOrders(),
