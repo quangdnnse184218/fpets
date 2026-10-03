@@ -28,7 +28,7 @@ const FILTERS = [
 ] as const;
 type FilterId = (typeof FILTERS)[number]["id"];
 
-const SIZE_LABEL: Record<string, string> = { all: "Mọi cỡ", small: "Chó dưới 10 kg", large: "Chó từ 10 kg" };
+const SIZE_LABEL: Record<string, string> = { all: "Mọi cỡ", small: "Chó nhỏ dưới 10 kg", large: "Chó lớn từ 10 kg" };
 const AGE_LABEL: Record<string, string> = { all: "Mọi độ tuổi", puppy_kitten: "Dưới 1 tuổi", adult: "Trưởng thành", senior: "Trên 7 tuổi" };
 
 const isLow = (p: ProductRow) => p.is_active && p.stock_quantity <= p.low_stock_threshold;
