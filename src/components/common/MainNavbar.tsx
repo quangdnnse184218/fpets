@@ -71,7 +71,7 @@ const ACCOUNT_LINKS = [
 ];
 
 const navItemClass = (active: boolean) =>
-  `flex items-center gap-1 h-10 px-2 xl:px-2.5 text-sm whitespace-nowrap rounded-box transition-colors ${
+  `flex items-center gap-1 h-10 px-2 xl:px-3 text-sm whitespace-nowrap rounded-box transition-colors ${
     active ? "text-pine-950 font-semibold bg-pine-50" : "font-medium text-bark-700 hover:text-pine-900 hover:bg-surface-muted"
   }`;
 
@@ -145,15 +145,15 @@ export default function MainNavbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-surface-card border-b border-surface-border">
-      {/* Desktop: lưới 3 cột 1fr / auto / 1fr để menu luôn nằm giữa dù hai bên rộng khác nhau.
-          minmax(max-content, 1fr): cột bên không bao giờ hẹp hơn nội dung nên chữ trên nút không bị xuống dòng. */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 lg:grid lg:grid-cols-[minmax(max-content,1fr)_auto_minmax(max-content,1fr)]">
-        <div className="min-w-0 lg:justify-self-start">
+      {/* Ba cụm logo / menu / hành động chia đều khoảng trống: khoảng cách logo–menu bằng khoảng cách menu–cụm nút,
+          dù cụm bên phải rộng hơn logo (không căn menu vào giữa trang vì sẽ dồn khoảng trống về bên trái). */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        <div className="min-w-0 shrink-0">
           <BrandLogo href="/" size="md" />
         </div>
 
         {/* Menu chính trên desktop */}
-        <nav aria-label="Menu chính" className="hidden lg:flex items-center gap-0.5">
+        <nav aria-label="Menu chính" className="hidden lg:flex items-center gap-0.5 xl:gap-1.5">
             {NAV_ITEMS.map((item) =>
               item.children ? (
                 <div key={item.label} className="relative" onMouseEnter={() => setOpenMenu(item.label)} onMouseLeave={() => setOpenMenu(null)}>
@@ -189,7 +189,7 @@ export default function MainNavbar() {
         </nav>
 
         {/* Cụm hành động bên phải */}
-        <div className="flex items-center gap-0.5 sm:gap-1 lg:justify-self-end">
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
           <button
             type="button"
             onClick={() => setSearchOpen((v) => !v)}
