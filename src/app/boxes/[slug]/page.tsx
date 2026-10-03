@@ -7,7 +7,8 @@ import Image from "next/image";
 import { fetchBoxTypeBySlug, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND, formatDate, formatWeight } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
-import { Check, CheckCircle2, ShieldCheck, PlusCircle, PawPrint, Truck, ChevronDown, Gift } from "lucide-react";
+import { Check, CheckCircle2, Info, ShieldCheck, PlusCircle, PawPrint, Truck, ChevronDown, Gift } from "lucide-react";
+import { ButtonLink, buttonClass } from "@/components/ui/Button";
 import { DISLIKE_POLICY, EXCHANGE_POLICY, QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
 import { DEFAULT_PLANS, PlanLite, discountSentence, freeShippingPlans } from "@/lib/planCopy";
 import { planUnitPrice } from "@/lib/pricing";
@@ -37,7 +38,7 @@ export default function BoxDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params?.slug as string;
-  const { pets, addToCart, isLoggedIn, user } = useApp();
+  const { pets, addToCart, isLoggedIn, isLoadingAuth, isCartReady, user } = useApp();
   const { show } = useToast();
 
   const [box, setBox] = useState<BoxType | null>(null);
@@ -100,6 +101,15 @@ export default function BoxDetailPage() {
 
   const selectedPet = eligiblePets.find((p) => p.id === selectedPetId);
   const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+
+  // Hồ sơ thú cưng tải cùng lúc với giỏ hàng; chưa tải xong thì chưa kết luận "không có bé phù hợp"
+  const petsReady = !isLoadingAuth && isCartReady;
+  // Lý do chưa đặt được hộp: đã đăng nhập nhưng chưa có hồ sơ bé, hoặc không bé nào đúng loài/cỡ của hộp.
+  // Khi bị chặn, trang nói rõ lý do và đưa lối đi tiếp thay vì chỉ để nút mờ.
+  const blocked: "no_pet" | "no_match" | null =
+    !isLoggedIn || !petsReady || eligiblePets.length > 0 ? null : pets.length === 0 ? "no_pet" : "no_match";
+  const tierParam = box?.slug.includes("premium") ? "premium" : "standard";
+  const petGroup = (p: { species: string; size: string }) => (p.species === "cat" ? "mèo" : p.size === "small" ? "chó nhỏ dưới 10 kg" : "chó lớn từ 10 kg");
 
   // Giá hiển thị để khách tham khảo; số tiền thật do server (subscribe_to_box) tính lại
   const unitDiscountedPrice = box && selectedPlan ? planUnitPrice(box.basePrice, selectedPlan.discountPercent) : 0;
@@ -226,13 +236,13 @@ export default function BoxDetailPage() {
 
           {/* 1. BƯỚC 1: Chọn Bé nhận Box (Bắt buộc) */}
           <div className="p-4 rounded-box bg-surface-card border border-surface-border space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-x-3">
               <label className="text-xs font-bold text-pine-950">
                 1. Hộp này dành cho bé cưng nào?
               </label>
               <Link
                 href="/quiz"
-                className="min-h-9 text-xs font-bold text-pine-900 hover:underline flex items-center gap-1"
+                className="min-h-9 text-xs font-bold text-pine-900 hover:underline flex items-center gap-1 whitespace-nowrap"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
                 <span>Thêm bé qua {QUIZ_NAME}</span>
@@ -276,13 +286,34 @@ export default function BoxDetailPage() {
                   );
                 })}
               </div>
+            ) : !petsReady ? (
+              <div className="h-16 rounded-box bg-surface-muted animate-pulse" aria-hidden="true" />
+            ) : !blocked ? (
+              <div className="text-sm text-bark-700 bg-surface-muted p-3 rounded-box">Đăng nhập để chọn bé nhận hộp.</div>
             ) : (
-              <div className="text-xs text-bark-600 bg-surface-muted p-3 rounded-box">
-                {!isLoggedIn
-                  ? "Đăng nhập để chọn bé nhận hộp."
-                  : pets.length === 0
-                  ? `Bạn chưa có hồ sơ thú cưng. Làm ${QUIZ_NAME} (${QUIZ_LENGTH}) để tạo hồ sơ trước khi đặt hộp.`
-                  : `Chưa có bé nào hợp với hộp này (dành cho ${box.sizeLabel.toLowerCase()}). Hãy chọn loại box khác hoặc thêm hồ sơ thú cưng mới.`}
+              <div role="status" className="p-3.5 rounded-box bg-honey-100 border border-honey-200 space-y-2">
+                <p className="flex items-start gap-2 text-sm font-bold text-pine-950">
+                  <Info className="w-4 h-4 mt-0.5 text-honey-700 shrink-0" aria-hidden="true" />
+                  <span>{blocked === "no_pet" ? "Chưa đặt được: bạn chưa có hồ sơ thú cưng" : "Chưa đặt được hộp này cho các bé của bạn"}</span>
+                </p>
+                {blocked === "no_pet" ? (
+                  <p className="text-sm text-bark-800 leading-relaxed">
+                    Mỗi hộp gắn với một bé để FPETS chọn đúng món và tránh thành phần bé dị ứng. Làm {QUIZ_NAME} ({QUIZ_LENGTH}) để tạo hồ sơ rồi quay lại đặt hộp.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-sm text-bark-800 leading-relaxed">
+                      Hộp này chỉ dành cho <strong>{box.sizeLabel.toLowerCase()}</strong>. Các bé của bạn: {pets.map((p) => `${p.name} (${petGroup(p)})`).join(", ")}.
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-0.5">
+                      {pets.slice(0, 4).map((p) => (
+                        <Link key={p.id} href={`/boxes?pet=${p.id}&tier=${tierParam}`} className={buttonClass("secondary", "sm", "!text-[13px]")}>
+                          Xem hộp cho bé {p.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -402,9 +433,24 @@ export default function BoxDetailPage() {
             </div>
           )}
 
-          {/* Nút Đặt hàng / Thêm vào giỏ */}
-          <div className="pt-2">
-            {purchaseMode === 'once' ? (
+          {/* Nút Đặt hàng / Thêm vào giỏ. Không đặt được thì đổi thành nút dẫn tới việc cần làm, kèm một dòng lý do. */}
+          <div className="pt-2 space-y-2">
+            {isLoggedIn && !petsReady ? (
+              <div className="w-full min-h-12 rounded-box bg-surface-muted animate-pulse" aria-hidden="true" />
+            ) : blocked === "no_pet" ? (
+              <>
+                <ButtonLink href="/quiz" size="lg" className="w-full">Làm {QUIZ_NAME} để tạo hồ sơ bé</ButtonLink>
+                <p className="text-sm text-bark-700 text-center">Cần có hồ sơ thú cưng trước khi đặt hộp.</p>
+              </>
+            ) : blocked === "no_match" ? (
+              <>
+                <ButtonLink href={`/boxes?pet=${pets[0].id}&tier=${tierParam}`} size="lg" className="w-full">Xem hộp hợp với bé {pets[0].name}</ButtonLink>
+                <p className="text-sm text-bark-700 text-center">
+                  Chưa thêm vào giỏ được vì hộp này không đúng loài hoặc cân nặng của các bé bạn đã khai.{" "}
+                  <Link href="/quiz" className="font-bold text-pine-900 underline underline-offset-2">Thêm bé khác</Link>
+                </p>
+              </>
+            ) : purchaseMode === 'once' ? (
               <button
                 type="button"
                 onClick={handleAddToCart}
