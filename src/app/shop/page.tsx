@@ -152,7 +152,7 @@ function ShopContent() {
         <div className="text-xs font-semibold text-bark-700">
           Hiển thị <strong className="text-pine-950">{filteredProducts.length}</strong> sản phẩm
           {isFiltering && (
-            <span className="text-[11px] text-bark-500 block">
+            <span className="text-xs text-bark-500 block">
               Đang lọc theo {selectedSpecies !== "all" && (selectedSpecies === "dog" ? "Chó" : "Mèo")}
               {selectedSpecies !== "all" && selectedCategory !== "all" && " · "}
               {selectedCategory !== "all" && categories.find((c) => c.id === selectedCategory)?.label}
@@ -197,7 +197,7 @@ function ShopContent() {
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="text-[11px] text-bark-600 hover:text-pine-900 flex items-center gap-1 font-semibold transition-colors"
+                  className="text-xs text-bark-600 hover:text-pine-900 flex items-center gap-1 font-semibold transition-colors"
                   title="Đặt lại tất cả bộ lọc"
                 >
                   <RotateCcw className="w-3 h-3" />
@@ -233,7 +233,7 @@ function ShopContent() {
                         <span>{sp.label}</span>
                       </div>
                       <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded-tag ${
+                        className={`text-[11px] px-1.5 py-0.5 rounded-tag ${
                           isSelected ? "bg-white/20 text-white" : "bg-surface-muted text-bark-500"
                         }`}
                       >
@@ -272,7 +272,7 @@ function ShopContent() {
                         <span>{cat.label}</span>
                       </div>
                       <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded-tag ${
+                        className={`text-[11px] px-1.5 py-0.5 rounded-tag ${
                           isSelected ? "bg-white/20 text-white" : "bg-surface-muted text-bark-500"
                         }`}
                       >
@@ -359,11 +359,11 @@ function ShopContent() {
                             sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 220px"
                           />
                           {outOfStock ? (
-                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-badge bg-bark-700 text-white text-[10px] font-bold shadow-xs z-10">
+                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-badge bg-bark-700 text-white text-[11px] font-bold shadow-xs z-10">
                               Hết hàng
                             </span>
                           ) : product.stock <= LOW_STOCK ? (
-                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-badge bg-honey-600 text-white text-[10px] font-bold shadow-xs z-10">
+                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-badge bg-honey-700 text-white text-[11px] font-bold shadow-xs z-10">
                               Chỉ còn {product.stock}
                             </span>
                           ) : null}
@@ -371,7 +371,7 @@ function ShopContent() {
                       </Link>
 
                       <div>
-                        <span className="text-[10px] font-semibold text-bark-500">
+                        <span className="text-[11px] font-semibold text-bark-500">
                           {product.categoryLabel}
                         </span>
                         <Link href={`/shop/${product.slug}`}>
@@ -389,8 +389,8 @@ function ShopContent() {
                           {formatVND(product.price)}
                         </div>
                         {product.originalPrice && product.originalPrice > product.price && (
-                          <div className="flex items-center gap-1.5 text-[11px]">
-                            <span className="text-bark-400 line-through">{formatVND(product.originalPrice)}</span>
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <span className="text-bark-500 line-through">{formatVND(product.originalPrice)}</span>
                             <span className="font-bold text-red-600">
                               -{Math.round((1 - product.price / product.originalPrice) * 100)}%
                             </span>

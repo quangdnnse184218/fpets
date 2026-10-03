@@ -245,7 +245,7 @@ function RegisterForm() {
                   <label className="block text-xs font-semibold text-bark-800 uppercase tracking-wider">
                     Số điện thoại
                   </label>
-                  <span className="text-[11px] text-bark-500">
+                  <span className="text-xs text-bark-500">
                     Khuyến khích để gộp đơn hàng cũ
                   </span>
                 </div>
@@ -362,13 +362,13 @@ function RegisterForm() {
 
             {/* Đăng nhập nhanh bằng Google */}
             <div className="mt-5 space-y-4">
-              <div className="flex items-center gap-3 text-[11px] text-bark-400">
+              <div className="flex items-center gap-3 text-xs text-bark-500">
                 <span className="flex-1 h-px bg-surface-border" />
                 <span>hoặc</span>
                 <span className="flex-1 h-px bg-surface-border" />
               </div>
               <GoogleSignInButton next={redirectUrl} label="Đăng ký bằng Google" />
-              <p className="text-[11px] text-bark-500 text-center">
+              <p className="text-xs text-bark-500 text-center">
                 Tiếp tục với Google nghĩa là bạn đồng ý với{" "}
                 <Link href="/terms" target="_blank" className="underline">Điều khoản dịch vụ</Link> và{" "}
                 <Link href="/privacy" target="_blank" className="underline">Chính sách bảo mật</Link>.

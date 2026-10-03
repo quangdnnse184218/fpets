@@ -82,7 +82,7 @@ export default function OrderTrackingPage() {
   const stepIndex = order ? timelineIndex(order.status) : 0;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6">
       <header className="space-y-1.5">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">Tra cứu đơn hàng</h1>
         <p className="text-sm text-bark-600">
@@ -90,7 +90,7 @@ export default function OrderTrackingPage() {
           {isLoggedIn && (
             <>
               {" "}Bạn đã đăng nhập, xem mọi đơn trong{" "}
-              <Link href="/my-account/orders" className="font-bold text-pine-900 underline underline-offset-2">Đơn hàng của tôi</Link>.
+              <Link href="/my-account/orders" prefetch={false} className="font-bold text-pine-900 underline underline-offset-2">Đơn hàng của tôi</Link>.
             </>
           )}
         </p>
@@ -158,7 +158,7 @@ export default function OrderTrackingPage() {
 
           <p className="p-4 sm:p-5 text-xs text-bark-600">
             Muốn đánh giá đơn hoặc yêu cầu đổi / trả?{" "}
-            <Link href="/my-account/orders" className="font-bold text-pine-900 underline underline-offset-2">Mở Đơn hàng của tôi</Link>.
+            <Link href="/my-account/orders" prefetch={false} className="font-bold text-pine-900 underline underline-offset-2">Mở Đơn hàng của tôi</Link>.
           </p>
         </section>
       )}

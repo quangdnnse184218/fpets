@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { useAdminTasks } from "../AdminTasks";
+import ImageUpload from "@/components/admin/ImageUpload";
 
 type ProductRow = Tables<"products"> & { categories: { name: string; slug: string } | null };
 type Species = "dog" | "cat" | "both";
@@ -20,6 +21,7 @@ type Species = "dog" | "cat" | "both";
 const FILTERS = [
   { id: "all", label: "Tất cả" },
   { id: "low", label: "Sắp hết hàng" },
+  { id: "no_image", label: "Chưa có ảnh" },
   { id: "retail", label: "Đang bán lẻ" },
   { id: "box_only", label: "Chỉ dùng cho hộp" },
   { id: "hidden", label: "Đã ẩn" },
@@ -30,8 +32,9 @@ const SIZE_LABEL: Record<string, string> = { all: "Mọi cỡ", small: "Chó dư
 const AGE_LABEL: Record<string, string> = { all: "Mọi độ tuổi", puppy_kitten: "Dưới 1 tuổi", adult: "Trưởng thành", senior: "Trên 7 tuổi" };
 
 const isLow = (p: ProductRow) => p.is_active && p.stock_quantity <= p.low_stock_threshold;
+const hasNoImage = (p: ProductRow) => p.is_active && !(p.images && p.images[0]);
 const matchesFilter = (p: ProductRow, f: FilterId) =>
-  f === "all" ? true : f === "low" ? isLow(p) : f === "retail" ? p.is_active && p.is_retail : f === "box_only" ? p.is_active && !p.is_retail && p.is_box_item : !p.is_active;
+  f === "all" ? true : f === "low" ? isLow(p) : f === "no_image" ? hasNoImage(p) : f === "retail" ? p.is_active && p.is_retail : f === "box_only" ? p.is_active && !p.is_retail && p.is_box_item : !p.is_active;
 
 interface FormState {
   name: string;
@@ -253,7 +256,7 @@ function ProductsContent() {
         type="button"
         disabled={busyId === p.id}
         onClick={() => updateFlag(p, { is_retail: !p.is_retail }, p.is_retail ? `Đã tắt bán lẻ "${p.name}".` : `Đã mở bán lẻ "${p.name}".`)}
-        className={`px-2 py-1 rounded-box text-[11px] font-bold border ${p.is_retail ? "bg-grass-50 text-grass-800 border-grass-200" : "bg-white text-bark-400 border-surface-border"}`}
+        className={`px-2 py-1 rounded-box text-[11px] font-bold border ${p.is_retail ? "bg-grass-50 text-grass-800 border-grass-200" : "bg-white text-bark-500 border-surface-border"}`}
         aria-pressed={p.is_retail}
       >
         Bán lẻ
@@ -262,7 +265,7 @@ function ProductsContent() {
         type="button"
         disabled={busyId === p.id}
         onClick={() => updateFlag(p, { is_box_item: !p.is_box_item }, p.is_box_item ? `"${p.name}" không còn dùng cho hộp.` : `"${p.name}" được dùng cho hộp.`)}
-        className={`px-2 py-1 rounded-box text-[11px] font-bold border ${p.is_box_item ? "bg-honey-50 text-honey-800 border-honey-200" : "bg-white text-bark-400 border-surface-border"}`}
+        className={`px-2 py-1 rounded-box text-[11px] font-bold border ${p.is_box_item ? "bg-honey-50 text-honey-800 border-honey-200" : "bg-white text-bark-500 border-surface-border"}`}
         aria-pressed={p.is_box_item}
       >
         Cho vào hộp
@@ -323,6 +326,15 @@ function ProductsContent() {
         </div>
       </div>
 
+      {!loading && products.some(hasNoImage) && filter !== "no_image" && (
+        <div className="p-3 rounded-box bg-amber-50 border border-amber-200 text-xs text-amber-900 flex flex-wrap items-center justify-between gap-2">
+          <span>
+            <strong>{products.filter(hasNoImage).length} sản phẩm chưa có ảnh.</strong> Khách thấy ô trống thay cho ảnh; bấm Sửa để tải ảnh từ máy.
+          </span>
+          <button type="button" onClick={() => setFilter("no_image")} className="font-bold underline">Xem danh sách</button>
+        </div>
+      )}
+
       {loading ? (
         <div className="py-16 text-center text-xs text-bark-500">Đang tải sản phẩm…</div>
       ) : visible.length === 0 ? (
@@ -338,6 +350,7 @@ function ProductsContent() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-pine-950 leading-snug line-clamp-2">{p.name}{!p.is_active && <span className="text-red-600"> · Đã ẩn</span>}</p>
+                    {hasNoImage(p) && <p className="text-amber-700 font-semibold">Chưa có ảnh</p>}
                     <p className="text-bark-500 mt-0.5">{p.categories?.name || "Chưa phân loại"} · {SIZE_LABEL[p.target_size] || "Mọi cỡ"}</p>
                     <p className="font-extrabold text-pine-950 mt-0.5">{formatVND(p.price)}</p>
                   </div>
@@ -373,7 +386,10 @@ function ProductsContent() {
                         </div>
                         <div className="min-w-0">
                           <div className="font-bold text-pine-950 leading-snug line-clamp-2">{p.name}{!p.is_active && <span className="text-red-600"> · Đã ẩn</span>}</div>
-                          <div className="text-[11px] text-bark-500 truncate">{p.categories?.name || "Chưa phân loại"}</div>
+                          <div className="text-[11px] text-bark-500 truncate">
+                            {p.categories?.name || "Chưa phân loại"}
+                            {hasNoImage(p) && <span className="text-amber-700 font-semibold"> · Chưa có ảnh</span>}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -383,7 +399,7 @@ function ProductsContent() {
                     </td>
                     <td className="p-3 text-right whitespace-nowrap">
                       <div className="font-bold text-pine-950 tabular-nums">{formatVND(p.price)}</div>
-                      {p.original_price && <div className="text-[11px] text-bark-400 line-through tabular-nums">{formatVND(p.original_price)}</div>}
+                      {p.original_price && <div className="text-[11px] text-bark-500 line-through tabular-nums">{formatVND(p.original_price)}</div>}
                     </td>
                     <td className="p-3">{stockControl(p)}</td>
                     <td className="p-3">{usage(p)}</td>
@@ -471,10 +487,7 @@ function ProductsContent() {
             <label className={labelCls} htmlFor="p-desc">Mô tả</label>
             <textarea id="p-desc" rows={3} className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none" value={form.description} onChange={(e) => set("description", e.target.value)} />
           </div>
-          <div>
-            <label className={labelCls} htmlFor="p-img">Đường dẫn ảnh</label>
-            <input id="p-img" className={input} value={form.image} onChange={(e) => set("image", e.target.value)} placeholder="https://… hoặc /images/…" />
-          </div>
+          <ImageUpload label="Ảnh sản phẩm" folder="products" nameHint={form.name} value={form.image} onChange={(url) => set("image", url)} />
           <fieldset className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <legend className={labelCls}>Nơi dùng *</legend>
             <label className="flex items-start gap-2.5 p-3 rounded-box border border-surface-border cursor-pointer">

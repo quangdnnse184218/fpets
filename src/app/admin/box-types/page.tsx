@@ -10,6 +10,7 @@ import { Plus, Edit2, Trash2, Check, Settings, X, AlertTriangle, CheckCircle2 } 
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 import { planUnitPrice } from "@/lib/pricing";
 import { useToast } from "@/components/ui/Toast";
+import ImageUpload from "@/components/admin/ImageUpload";
 
 type BoxTypeRow = Tables<"box_types">;
 type PlanRow = Tables<"subscription_plans">;
@@ -385,11 +386,7 @@ export default function AdminBoxTypesPage() {
                     className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none font-bold text-pine-900" />
                 </div>
               </div>
-              <div>
-                <label className="font-semibold text-bark-700 block mb-1">URL hình ảnh</label>
-                <input type="text" value={formImageUrl} onChange={(e) => setFormImageUrl(e.target.value)} placeholder="https://..."
-                  className="w-full px-3 py-2 border border-surface-border rounded-box focus:border-pine-900 focus:outline-none" />
-              </div>
+              <ImageUpload label="Ảnh loại hộp" folder="boxes" nameHint={formName} value={formImageUrl} onChange={setFormImageUrl} />
               <div>
                 <label className="font-semibold text-bark-700 block mb-1">Mô tả đặc điểm</label>
                 <textarea rows={2} value={formDescription} onChange={(e) => setFormDescription(e.target.value)}

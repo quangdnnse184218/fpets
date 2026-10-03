@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     default: "FPETS – Mystery Box cho chó mèo",
     template: "%s | FPETS",
   },
-  description: "Hộp quà bất ngờ dành riêng cho chó và mèo. Đồ ăn, đồ chơi, phụ kiện được chọn theo hồ sơ của từng bé. Mua thử 1 hộp hoặc đăng ký định kỳ.",
+  description: "Hộp quà bất ngờ dành riêng cho chó và mèo. Đồ ăn, đồ chơi, phụ kiện được chọn theo cân nặng, độ tuổi và dị ứng của từng bé. Mua thử 1 hộp hoặc đăng ký định kỳ.",
 };
 
 export default function RootLayout({

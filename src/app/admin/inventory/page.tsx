@@ -144,7 +144,7 @@ export default function AdminInventoryPage() {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <h4 className="font-bold text-pine-950 text-xs">{m.products?.name || "—"}</h4>
-                  <div className="text-[10px] text-bark-400 mt-0.5">{formatDateTime(m.created_at)}</div>
+                  <div className="text-[10px] text-bark-500 mt-0.5">{formatDateTime(m.created_at)}</div>
                 </div>
                 <div className={`text-sm font-extrabold font-display shrink-0 ${m.quantity < 0 ? "text-red-600" : "text-grass-700"}`}>
                   {m.quantity > 0 ? "+" : ""}{m.quantity}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, LayoutGrid, Lock, LogIn, LogOut, Package, PawPrint, RefreshCw, User } from "lucide-react";
@@ -41,9 +41,18 @@ export default function AccountShell({ children }: { children: React.ReactNode }
     );
   }, [user.id, pathname]);
 
+  // Chưa đăng nhập mà vào được đây (điều hướng phía client, không qua middleware): chuyển về trang đăng nhập,
+  // kèm đường dẫn để đăng nhập xong quay lại đúng trang. Vừa đăng xuất thì không chuyển (luồng đăng xuất tự về trang chủ).
+  const wasLoggedIn = useRef(false);
+  if (isLoggedIn) wasLoggedIn.current = true;
+  useEffect(() => {
+    if (isLoadingAuth || isLoggedIn || wasLoggedIn.current) return;
+    router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+  }, [isLoadingAuth, isLoggedIn, pathname, router]);
+
   if (isLoadingAuth) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-4" aria-busy="true">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4" aria-busy="true">
         <div className="h-16 rounded-container bg-surface-muted animate-pulse" />
         <div className="h-72 rounded-container bg-surface-muted animate-pulse" />
       </div>
@@ -78,8 +87,9 @@ export default function AccountShell({ children }: { children: React.ReactNode }
   const displayName = user.name || "Khách hàng FPETS";
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
-      <div className="lg:grid lg:grid-cols-[236px_1fr] lg:gap-8 lg:items-start">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 lg:py-10">
+      {/* Cùng khung với header: mép trái cột menu thẳng hàng với logo */}
+      <div className="lg:grid lg:grid-cols-[272px_minmax(0,1fr)] lg:gap-10 lg:items-start">
         <aside className="lg:sticky lg:top-20">
           <div className="flex items-center gap-3 lg:p-4 lg:rounded-t-container lg:bg-surface-card lg:border lg:border-b-0 lg:border-surface-border">
             <span className="w-11 h-11 rounded-full bg-pine-900 text-white flex items-center justify-center font-extrabold shrink-0" aria-hidden="true">
@@ -105,16 +115,16 @@ export default function AccountShell({ children }: { children: React.ReactNode }
                   key={tab.href}
                   href={tab.href}
                   aria-current={on ? "page" : undefined}
-                  className={`relative flex items-center gap-2.5 min-h-11 px-3 text-sm whitespace-nowrap transition-colors lg:rounded-box ${
+                  className={`relative flex items-center gap-2.5 min-h-11 px-3 text-sm whitespace-nowrap transition-colors lg:gap-3 lg:min-h-12 lg:px-3.5 lg:text-[15px] lg:rounded-box ${
                     on
                       ? "font-bold text-pine-950 lg:bg-pine-50 after:absolute after:left-2 after:right-2 after:bottom-0 after:h-0.5 after:bg-pine-900 lg:after:hidden"
                       : "font-medium text-bark-600 hover:text-pine-950 lg:hover:bg-surface-muted"
                   }`}
                 >
-                  <Icon className={`hidden lg:block w-4 h-4 shrink-0 ${on ? "text-pine-900" : "text-bark-400"}`} />
+                  <Icon className={`hidden lg:block w-[18px] h-[18px] shrink-0 ${on ? "text-pine-900" : "text-bark-400"}`} />
                   <span className="lg:flex-1">{tab.label}</span>
                   {n > 0 && (
-                    <span className={`min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center ${tab.key === "notifications" ? "bg-honey-600 text-white" : "bg-surface-muted text-bark-700"}`}>
+                    <span className={`min-w-5 h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${tab.key === "notifications" ? "bg-honey-700 text-white" : "bg-surface-muted text-bark-700"}`}>
                       {n}
                     </span>
                   )}
@@ -124,17 +134,17 @@ export default function AccountShell({ children }: { children: React.ReactNode }
             <button
               type="button"
               onClick={() => setConfirmLogout(true)}
-              className="hidden lg:flex items-center gap-2.5 min-h-11 px-3 mt-1 pt-1 border-t border-surface-border text-sm font-medium text-bark-600 hover:text-red-700 text-left"
+              className="hidden lg:flex items-center gap-3 min-h-12 px-3.5 mt-1 pt-1 border-t border-surface-border text-[15px] font-medium text-bark-600 hover:text-red-700 text-left"
             >
-              <LogOut className="w-4 h-4 text-bark-400" /> Đăng xuất
+              <LogOut className="w-[18px] h-[18px] text-bark-400" /> Đăng xuất
             </button>
           </nav>
         </aside>
 
-        <div className="mt-5 lg:mt-0 min-w-0 space-y-5">
+        <div className="mt-5 lg:mt-0 min-w-0 space-y-5 lg:space-y-6">
           {!isDetailPage && (
             <header className="space-y-1">
-              <h1 className="text-xl sm:text-2xl font-extrabold text-pine-950 font-display">{active.title}</h1>
+              <h1 className="text-[22px] sm:text-[24px] lg:text-[28px] font-extrabold text-pine-950 font-display leading-snug">{active.title}</h1>
               <p className="text-sm text-bark-600">{active.description}</p>
             </header>
           )}

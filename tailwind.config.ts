@@ -13,6 +13,8 @@ const config: Config = {
           50: "#F2F7F5",
           100: "#E1EDE8",
           200: "#C2DBD2",
+          300: "#9CC4B6",
+          400: "#7DB3A2",
           500: "#2D6A5B",
           700: "#235347",
           800: "#1E4239",
@@ -24,9 +26,12 @@ const config: Config = {
           100: "#FEF7E6",
           200: "#FDECC4",
           300: "#FAD893",
+          400: "#F0A04B",
           500: "#E67E22",
           600: "#C86218",
           700: "#A3470D",
+          800: "#7C350A",
+          900: "#5C2707",
         },
         butter: {
           100: "#FEF3C7",
@@ -39,11 +44,19 @@ const config: Config = {
           muted: "#F3F1EC",
           border: "#E7E3DA",
         },
+        // Chữ phụ: bark-500 trở lên đạt tương phản 4.5:1 trên mọi nền sáng của site (trắng, surface, surface-muted).
+        // bark-400 chỉ dùng cho icon, trạng thái tắt và giá gạch ngang (3:1), không dùng cho chữ cần đọc.
         bark: {
-          500: "#78716C",
+          100: "#F5F5F4",
+          200: "#E7E5E4",
+          300: "#D6D3D1",
+          400: "#8C857F",
+          500: "#6E6762",
+          600: "#57534E",
           700: "#44403C",
           800: "#292524",
           900: "#1C1917",
+          950: "#0C0A09",
         },
         grass: {
           50: "#F0FDF4",

@@ -375,7 +375,7 @@ export default function AdminVouchersPage() {
                     <option value="retail">Chỉ sản phẩm Shop bán lẻ</option>
                     <option value="box">Chỉ Mystery Box mua 1 lần</option>
                   </select>
-                  <p className="text-[11px] text-bark-500 mt-1">Gói định kỳ đã có giảm 10–15% nên không áp dụng voucher.</p>
+                  <p className="text-[11px] text-bark-500 mt-1">Gói định kỳ đã có ưu đãi riêng nên không áp dụng voucher.</p>
                 </div>
                 <div>
                   <label className="font-semibold text-bark-700 block mb-1">Tổng lượt dùng tối đa</label>

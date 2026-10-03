@@ -5,14 +5,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import {
-  Bell,
   ChevronDown,
-  Dog,
   LogOut,
   Menu,
   Package,
   Phone,
-  RefreshCw,
   Search,
   ShieldCheck,
   ShoppingCart,
@@ -35,7 +32,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Mystery Box",
     href: "/boxes",
     children: [
-      { href: "/boxes", label: "Tất cả loại hộp", desc: "Tiêu chuẩn và Premium, chọn theo hồ sơ bé" },
+      { href: "/boxes", label: "Tất cả loại hộp", desc: "Tiêu chuẩn và Premium, cho chó nhỏ, chó lớn và mèo" },
       { href: "/boxes?species=dog", label: "Hộp cho chó", desc: "Theo size chó nhỏ, chó lớn" },
       { href: "/boxes?species=cat", label: "Hộp cho mèo", desc: "Đồ ăn, đồ chơi hợp khẩu vị mèo" },
       { href: "/boxes?tier=premium", label: "Hộp Premium", desc: "Nhiều món hơn, thương hiệu cao cấp" },
@@ -66,21 +63,15 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+// Lối tắt trong menu tài khoản ở header. Gói định kỳ, Thú cưng, Thông tin & địa chỉ nằm ở cột trái
+// của trang Tài khoản; Thông báo đã có chuông riêng trên header.
 const ACCOUNT_LINKS = [
-  { href: "/my-account", label: "Tổng quan tài khoản", icon: User },
+  { href: "/my-account", label: "Tài khoản", icon: User },
   { href: "/my-account/orders", label: "Đơn hàng", icon: Package },
-  { href: "/my-account/subscriptions", label: "Gói định kỳ", icon: RefreshCw },
-  { href: "/my-account/pets", label: "Thú cưng", icon: Dog },
-  { href: "/my-account/notifications", label: "Thông báo", icon: Bell },
 ];
 
-const ROLE_LABEL: Record<string, string> = {
-  admin: "Quản trị viên",
-  customer: "Thành viên FPETS",
-};
-
 const navItemClass = (active: boolean) =>
-  `flex items-center gap-1 h-10 px-3 text-sm rounded-box transition-colors ${
+  `flex items-center gap-1 h-10 px-2 xl:px-2.5 text-sm whitespace-nowrap rounded-box transition-colors ${
     active ? "text-pine-950 font-semibold bg-pine-50" : "font-medium text-bark-700 hover:text-pine-900 hover:bg-surface-muted"
   }`;
 
@@ -154,12 +145,15 @@ export default function MainNavbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-surface-card border-b border-surface-border">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4 xl:gap-8 min-w-0">
+      {/* Desktop: lưới 3 cột 1fr / auto / 1fr để menu luôn nằm giữa dù hai bên rộng khác nhau.
+          minmax(max-content, 1fr): cột bên không bao giờ hẹp hơn nội dung nên chữ trên nút không bị xuống dòng. */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 lg:grid lg:grid-cols-[minmax(max-content,1fr)_auto_minmax(max-content,1fr)]">
+        <div className="min-w-0 lg:justify-self-start">
           <BrandLogo href="/" size="md" />
+        </div>
 
-          {/* Menu chính trên desktop */}
-          <nav aria-label="Menu chính" className="hidden lg:flex items-center gap-0.5">
+        {/* Menu chính trên desktop */}
+        <nav aria-label="Menu chính" className="hidden lg:flex items-center gap-0.5">
             {NAV_ITEMS.map((item) =>
               item.children ? (
                 <div key={item.label} className="relative" onMouseEnter={() => setOpenMenu(item.label)} onMouseLeave={() => setOpenMenu(null)}>
@@ -179,7 +173,7 @@ export default function MainNavbar() {
                         {item.children.map((c) => (
                           <Link key={c.href} href={c.href} onClick={() => setOpenMenu(null)} className="block px-3 py-2 rounded-box hover:bg-surface-muted">
                             <span className="block text-sm font-semibold text-pine-950">{c.label}</span>
-                            {c.desc && <span className="block text-[11px] text-bark-500 mt-0.5">{c.desc}</span>}
+                            {c.desc && <span className="block text-xs text-bark-500 mt-0.5">{c.desc}</span>}
                           </Link>
                         ))}
                       </div>
@@ -192,18 +186,17 @@ export default function MainNavbar() {
                 </Link>
               )
             )}
-          </nav>
-        </div>
+        </nav>
 
         {/* Cụm hành động bên phải */}
-        <div className="flex items-center gap-0.5 sm:gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1 lg:justify-self-end">
           <button
             type="button"
             onClick={() => setSearchOpen((v) => !v)}
             aria-label="Tìm sản phẩm"
             aria-expanded={searchOpen}
             title="Tìm sản phẩm"
-            className="min-w-11 min-h-11 flex items-center justify-center rounded-box text-pine-950 hover:bg-surface-muted transition-colors"
+            className="min-w-11 min-h-11 lg:min-w-10 lg:min-h-10 flex items-center justify-center rounded-box text-pine-950 hover:bg-surface-muted transition-colors"
           >
             <Search className="w-5 h-5" />
           </button>
@@ -212,13 +205,13 @@ export default function MainNavbar() {
 
           <Link
             href="/cart"
-            className="relative min-w-11 min-h-11 flex items-center justify-center rounded-box hover:bg-surface-muted transition-colors"
+            className="relative min-w-11 min-h-11 lg:min-w-10 lg:min-h-10 flex items-center justify-center rounded-box hover:bg-surface-muted transition-colors"
             title="Giỏ hàng"
             aria-label={totalCartItems > 0 ? `Giỏ hàng, ${totalCartItems} sản phẩm` : "Giỏ hàng"}
           >
             <ShoppingCart className="w-5 h-5 text-pine-950" />
             {totalCartItems > 0 && (
-              <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-honey-600 text-white text-[10px] font-extrabold flex items-center justify-center">
+              <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-honey-700 text-white text-[10px] font-extrabold flex items-center justify-center">
                 {totalCartItems}
               </span>
             )}
@@ -230,11 +223,11 @@ export default function MainNavbar() {
               {user.role === "admin" && (
                 <Link
                   href="/admin/dashboard"
-                  className="hidden lg:inline-flex items-center gap-1.5 h-10 px-3 rounded-box bg-pine-900 hover:bg-pine-850 text-white text-xs font-bold transition-colors shadow-xs"
+                  className="hidden lg:inline-flex items-center gap-1.5 h-10 px-3 rounded-box bg-pine-900 hover:bg-pine-800 text-white text-xs font-bold transition-colors shadow-xs"
                   title="Vào bảng quản trị Admin"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-honey-400" />
-                  <span>Trang quản trị</span>
+                  <span>Quản trị</span>
                 </Link>
               )}
 
@@ -244,71 +237,39 @@ export default function MainNavbar() {
                   onClick={() => setUserMenuOpen((v) => !v)}
                   aria-expanded={userMenuOpen}
                   aria-haspopup="true"
+                  aria-label={`Tài khoản ${user.name}`}
                   className={`flex items-center gap-2 h-10 pl-1 pr-2 rounded-box border border-surface-border hover:bg-surface-muted transition-colors ${userMenuOpen ? "bg-pine-50 border-pine-300" : ""}`}
                 >
                   <span className="w-8 h-8 rounded-full bg-pine-900 text-white text-xs font-bold flex items-center justify-center">
                     {user.name ? user.name.charAt(0).toUpperCase() : "U"}
                   </span>
-                  <span className="text-left hidden xl:block max-w-[120px]">
-                    <span className="block text-xs font-semibold text-bark-900 truncate">{user.name}</span>
-                    <span className="block text-[10px] text-bark-500 truncate">{ROLE_LABEL[user.role] || "Thành viên FPETS"}</span>
-                  </span>
                   <ChevronDown className="w-3.5 h-3.5 text-bark-500" />
                 </button>
 
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-72 bg-surface-card rounded-container border border-surface-border shadow-xl py-2 z-50">
-                    <div className="px-4 py-3 border-b border-surface-border">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-bold text-pine-950 truncate">{user.name}</p>
-                        {user.role === "admin" ? (
-                          <span className="px-2 py-0.5 rounded-full bg-pine-900 text-white text-[10px] font-bold shrink-0">
-                            Quản trị viên
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-surface-muted text-bark-600 text-[10px] font-medium shrink-0">
-                            Thành viên
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-bark-500 truncate mt-0.5">{user.email}</p>
+                  <div className="absolute right-0 mt-2 w-60 bg-surface-card rounded-container border border-surface-border shadow-xl py-1.5 z-50">
+                    <div className="px-4 py-2.5 border-b border-surface-border">
+                      <p className="text-sm font-bold text-pine-950 truncate">{user.name}</p>
+                      <p className="text-xs text-bark-600 truncate mt-0.5">{user.email}</p>
                     </div>
 
-                    {/* Đối với Admin: Khối lối tắt Cổng Quản Trị đặt nổi bật ngay trên đầu */}
-                    {user.role === "admin" && (
-                      <div className="p-2 border-b border-surface-border bg-pine-50/70">
+                    <div className="py-1">
+                      {user.role === "admin" && (
                         <Link
                           href="/admin/dashboard"
                           onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center justify-between p-2.5 rounded-box bg-pine-900 hover:bg-pine-850 text-white shadow-xs transition-all group"
+                          className="flex items-center gap-2.5 px-4 min-h-10 text-sm font-medium text-bark-800 hover:bg-surface-muted hover:text-pine-900 transition-colors"
                         >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                              <ShieldCheck className="w-4 h-4 text-honey-400" />
-                            </div>
-                            <div className="text-left">
-                              <span className="block text-xs font-bold leading-tight">Cổng Quản Trị Hệ Thống</span>
-                              <span className="block text-[10px] text-pine-200">Quản lý đơn hàng, kho &amp; box</span>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-pine-300 group-hover:translate-x-0.5 transition-transform" />
+                          <ShieldCheck className="w-4 h-4 text-pine-700" />
+                          <span>Trang quản trị</span>
                         </Link>
-                      </div>
-                    )}
-
-                    {/* Khu vực thông tin cá nhân của người dùng */}
-                    <div className="py-1">
-                      <div className="px-4 py-1">
-                        <span className="text-[10px] font-semibold text-bark-400 uppercase tracking-wider">
-                          Tài khoản cá nhân
-                        </span>
-                      </div>
+                      )}
                       {ACCOUNT_LINKS.map(({ href, label, icon: Icon }) => (
                         <Link
                           key={href}
                           href={href}
                           onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 min-h-9 text-xs font-medium text-bark-800 hover:bg-surface-muted hover:text-pine-900 transition-colors"
+                          className="flex items-center gap-2.5 px-4 min-h-10 text-sm font-medium text-bark-800 hover:bg-surface-muted hover:text-pine-900 transition-colors"
                         >
                           <Icon className="w-4 h-4 text-pine-700" />
                           <span>{label}</span>
@@ -320,7 +281,7 @@ export default function MainNavbar() {
                       <button
                         type="button"
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-2.5 px-4 min-h-9 text-xs font-medium text-red-700 hover:bg-red-50 transition-colors text-left"
+                        className="w-full flex items-center gap-2.5 px-4 min-h-10 text-sm font-medium text-red-700 hover:bg-red-50 transition-colors text-left"
                       >
                         <LogOut className="w-4 h-4" />
                         <span>Đăng xuất</span>
@@ -334,12 +295,12 @@ export default function MainNavbar() {
             // Đang đọc phiên đăng nhập: giữ chỗ trống, không nháy nút Đăng nhập/Đăng ký với người đã đăng nhập
             <div className="hidden md:block w-10 h-10 ml-1 rounded-box bg-surface-muted animate-pulse" aria-hidden="true" />
           ) : (
-            <div className="hidden md:flex items-center gap-2 pl-2 ml-1 border-l border-surface-border">
-              <Link href="/login" className="inline-flex items-center h-10 px-3 text-sm font-medium text-bark-700 hover:text-pine-950 rounded-box hover:bg-surface-muted transition-colors">
+            <div className="hidden md:flex items-center gap-1.5 pl-1.5 ml-1 border-l border-surface-border">
+              <Link href="/login" className="inline-flex items-center h-10 px-2.5 text-sm font-medium whitespace-nowrap text-bark-700 hover:text-pine-950 rounded-box hover:bg-surface-muted transition-colors">
                 Đăng nhập
               </Link>
               {/* Màn hình vừa (lg) chật chỗ: nút Đăng ký chỉ hiện từ xl, trang Đăng nhập vẫn có link đăng ký */}
-              <Link href="/register" className={buttonClass("primary", "md", "!min-h-10 lg:hidden xl:inline-flex")}>
+              <Link href="/register" className={buttonClass("primary", "md", "!min-h-10 whitespace-nowrap lg:hidden xl:inline-flex")}>
                 Đăng ký
               </Link>
             </div>
@@ -385,20 +346,9 @@ export default function MainNavbar() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 space-y-3">
             {isLoggedIn ? (
               <div className="p-3.5 rounded-box bg-pine-50 border border-pine-200 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-bold text-pine-950">{user.name}</p>
-                    <p className="text-xs text-pine-700">{user.email}</p>
-                  </div>
-                  {user.role === "admin" ? (
-                    <span className="px-2 py-0.5 rounded-full bg-pine-900 text-white text-[10px] font-bold">
-                      Quản trị viên
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-full bg-surface-muted text-bark-600 text-[10px] font-medium">
-                      Thành viên
-                    </span>
-                  )}
+                <div>
+                  <p className="text-sm font-bold text-pine-950">{user.name}</p>
+                  <p className="text-xs text-pine-700">{user.email}</p>
                 </div>
 
                 {user.role === "admin" && (
@@ -409,7 +359,7 @@ export default function MainNavbar() {
                   >
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-honey-400" />
-                      <span>Vào Cổng Quản Trị Hệ Thống</span>
+                      <span>Trang quản trị</span>
                     </div>
                     <ChevronRight className="w-4 h-4 text-pine-300" />
                   </Link>
@@ -421,7 +371,7 @@ export default function MainNavbar() {
                       key={href}
                       href={href}
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center min-h-9 text-xs font-medium text-pine-900 hover:underline"
+                      className="flex items-center min-h-10 text-sm font-semibold text-pine-900 hover:underline"
                     >
                       {label}
                     </Link>

@@ -86,7 +86,7 @@ export default function NotificationsPage() {
                     {!n.is_read && <span className="sr-only"> (chưa đọc)</span>}
                   </span>
                   <span className="block text-xs text-bark-600 mt-0.5 leading-relaxed">{n.message}</span>
-                  <span className="block text-[11px] text-bark-400 mt-1">{formatDateTime(n.created_at)}</span>
+                  <span className="block text-xs text-bark-500 mt-1">{formatDateTime(n.created_at)}</span>
                 </span>
               </button>
             </li>

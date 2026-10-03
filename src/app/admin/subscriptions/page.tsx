@@ -166,7 +166,7 @@ function SubscriptionsContent() {
       cancelling,
       () => createClient().rpc("cancel_subscription", { p_subscription_id: cancelling.id, p_reason: cancelReason.trim() }),
       `Đã hủy gói ${cancelling.subscription_code}.`,
-      [`Gói ${cancelling.subscription_code} đã được hủy`, `Lý do: ${cancelReason.trim()}. Hộp đã qua ngày chốt vẫn được giao.`]
+      [`Gói ${cancelling.subscription_code} đã được hủy`, `Lý do: ${cancelReason.trim()}. Các hộp bạn đã trả trước vẫn được giao đủ theo lịch.`]
     );
     if (ok) {
       setCancelling(null);
@@ -233,7 +233,7 @@ function SubscriptionsContent() {
         <div className="text-[11px] text-bark-500">Chốt hộp {formatDate(sub.cutoff_date)}</div>
       </>
     ) : (
-      <span className="text-bark-400">–</span>
+      <span className="text-bark-500">–</span>
     );
 
   return (
@@ -344,7 +344,7 @@ function SubscriptionsContent() {
       <ConfirmDialog
         open={!!cancelling}
         title={`Hủy gói ${cancelling?.subscription_code || ""}`}
-        message="Gói dừng tạo hộp từ kỳ sau. Hộp đã qua ngày chốt vẫn được giao. Khách nhận thông báo kèm lý do."
+        message="Gói ngừng nhắc gia hạn. Các hộp khách đã trả trước vẫn được giao đủ theo lịch, không hoàn tiền. Khách nhận thông báo kèm lý do."
         confirmLabel="Hủy gói"
         loading={!!cancelling && busyId === cancelling.id}
         onClose={() => {

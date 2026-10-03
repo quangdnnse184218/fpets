@@ -86,7 +86,7 @@ export default function ReviewsPage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">Đánh giá của khách hàng</h1>
           <p className="text-sm text-bark-600">Nhận xét từ khách đã nhận hàng tại FPETS.</p>
         </div>
-        <Link href="/my-account/orders" className={buttonClass("secondary", "md", "shrink-0 self-start sm:self-auto")}>
+        <Link href="/my-account/orders" prefetch={false} className={buttonClass("secondary", "md", "shrink-0 self-start sm:self-auto")}>
           Viết đánh giá cho đơn của tôi
         </Link>
       </header>
@@ -112,7 +112,7 @@ export default function ReviewsPage() {
             <legend className="text-xs font-bold text-bark-800 mb-1.5">Lọc theo số sao</legend>
             <button type="button" aria-pressed={starFilter === "all"} onClick={() => setStarFilter("all")} className={filterRow(starFilter === "all")}>
               <span className="flex-1 text-left">Tất cả</span>
-              <span className="text-[11px] text-bark-500">{reviews.length}</span>
+              <span className="text-xs text-bark-500">{reviews.length}</span>
             </button>
             {[5, 4, 3, 2, 1].map((star) => {
               const count = countOf(star);
@@ -123,7 +123,7 @@ export default function ReviewsPage() {
                   <span className="flex-1 h-1.5 rounded-full bg-surface-muted overflow-hidden" aria-hidden="true">
                     <span className="block h-full bg-honey-500 rounded-full" style={{ width: `${pct}%` }} />
                   </span>
-                  <span className="w-5 text-right text-[11px] text-bark-500 shrink-0">{count}</span>
+                  <span className="w-5 text-right text-xs text-bark-500 shrink-0">{count}</span>
                 </button>
               );
             })}
@@ -132,7 +132,7 @@ export default function ReviewsPage() {
           <label className="flex items-center gap-2.5 min-h-10 text-sm text-bark-700 cursor-pointer">
             <input type="checkbox" checked={hasPhotoOnly} onChange={(e) => setHasPhotoOnly(e.target.checked)} className="w-4 h-4 accent-pine-900" />
             <span className="flex-1">Có ảnh mở hộp</span>
-            <span className="text-[11px] text-bark-500">{photoCount}</span>
+            <span className="text-xs text-bark-500">{photoCount}</span>
           </label>
         </aside>
 

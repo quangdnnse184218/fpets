@@ -16,7 +16,9 @@ export interface AdminTaskCounts {
   orders_in_transit: number;
   feedback_new: number;
   reviews_unreplied: number;
+  reviews_low_unreplied: number;
   low_stock: number;
+  products_no_image: number;
   subs_overdue: number;
   subs_cutoff_soon: number;
   orders_today: number;
@@ -30,7 +32,9 @@ const EMPTY: AdminTaskCounts = {
   orders_in_transit: 0,
   feedback_new: 0,
   reviews_unreplied: 0,
+  reviews_low_unreplied: 0,
   low_stock: 0,
+  products_no_image: 0,
   subs_overdue: 0,
   subs_cutoff_soon: 0,
   orders_today: 0,
@@ -51,8 +55,9 @@ export const ADMIN_TASK_ITEMS: AdminTaskItem[] = [
   { key: "orders_to_prepare", label: "Đơn chờ đóng gói", href: "/admin/orders?status=da_xac_nhan", actionable: true },
   { key: "orders_to_ship", label: "Đơn chờ bàn giao vận chuyển", href: "/admin/orders?status=dang_chuan_bi", actionable: true },
   { key: "feedback_new", label: "Góp ý / liên hệ mới", href: "/admin/reviews?tab=feedback", actionable: true },
-  { key: "reviews_unreplied", label: "Đánh giá 1–3 sao chưa phản hồi", href: "/admin/reviews?filter=unreplied", actionable: true },
+  { key: "reviews_unreplied", label: "Đánh giá chưa phản hồi", href: "/admin/reviews?filter=unreplied", actionable: true },
   { key: "low_stock", label: "Sản phẩm sắp hết hàng", href: "/admin/products?filter=low", actionable: true },
+  { key: "products_no_image", label: "Sản phẩm chưa có ảnh", href: "/admin/products?filter=no_image", actionable: false },
   { key: "subs_overdue", label: "Gói hết hộp, chờ khách gia hạn", href: "/admin/subscriptions?status=qua_han", actionable: false },
   { key: "subs_cutoff_soon", label: "Gói đến ngày chốt trong 7 ngày", href: "/admin/subscriptions?filter=cutoff", actionable: false },
 ];
@@ -146,7 +151,7 @@ export function AdminNotificationBell() {
       >
         <Bell className="w-4 h-4 text-pine-950" />
         {total > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-honey-600 text-white text-[10px] font-extrabold flex items-center justify-center">
+          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-honey-700 text-white text-[10px] font-extrabold flex items-center justify-center">
             {total > 99 ? "99+" : total}
           </span>
         )}

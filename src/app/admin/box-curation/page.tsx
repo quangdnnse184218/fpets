@@ -13,7 +13,7 @@ import { formatDateTime } from "@/lib/formatters";
 import { useAdminTasks } from "../AdminTasks";
 
 const ORDER_TYPE_SHORT: Record<string, string> = { mystery_box: "Mua 1 lần", subscription_cycle: "Theo gói" };
-const sizeLabel = (pet: { species: string; size: string }) => (pet.species === "cat" ? "Mèo" : pet.size === "small" ? "Chó dưới 10 kg" : "Chó từ 10 kg");
+const sizeLabel = (pet: { species: string; size: string }) => (pet.species === "cat" ? "Mèo" : pet.size === "small" ? "Chó nhỏ dưới 10 kg" : "Chó lớn từ 10 kg");
 
 export default function AdminBoxCurationPage() {
   const [queue, setQueue] = useState<CurationQueueRow[]>([]);
@@ -147,7 +147,7 @@ export default function AdminBoxCurationPage() {
                     <div>
                       <h3 className="text-sm font-bold text-pine-950">Bé {item.pets.name}</h3>
                       <p className="text-[11px] text-bark-500">{sizeLabel(item.pets)} · {item.box_types.name}</p>
-                      {item.orders?.created_at && <p className="text-[10px] text-bark-400">Đặt lúc {formatDateTime(item.orders.created_at)}</p>}
+                      {item.orders?.created_at && <p className="text-[10px] text-bark-500">Đặt lúc {formatDateTime(item.orders.created_at)}</p>}
                     </div>
                   </div>
                   {item.pets.allergies?.length > 0 && (

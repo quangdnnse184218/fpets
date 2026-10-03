@@ -15,6 +15,8 @@ import type { CartItem } from "@/context/AppContext";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { formatShippingFee, SHIPPING_CONFIG } from "@/lib/shipping";
+import { capitalize, discountSentence, freeShippingPlans } from "@/lib/planCopy";
+import { usePlans } from "@/lib/usePlans";
 
 export default function CartPage() {
   const router = useRouter();
@@ -35,6 +37,7 @@ export default function CartPage() {
     addToCart,
   } = useApp();
   const { show } = useToast();
+  const plans = usePlans();
 
   // Xóa ngay, cho phép hoàn tác trong 5 giây
   const handleRemove = (item: CartItem) => {
@@ -83,7 +86,7 @@ export default function CartPage() {
             Giỏ hàng của bạn đang trống
           </h1>
           <p className="text-sm text-bark-600 max-w-md mx-auto">
-            Chọn một Mystery Box theo hồ sơ của bé, hoặc mua lẻ đồ ăn, đồ chơi trong cửa hàng.
+            Chọn một Mystery Box cho bé, hoặc mua lẻ đồ ăn, đồ chơi trong cửa hàng.
           </p>
         </div>
         <div className="pt-2 flex flex-col sm:flex-row justify-center gap-3">
@@ -105,7 +108,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       <div className="flex items-center justify-between pb-4 border-b border-surface-border">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
@@ -176,7 +179,7 @@ export default function CartPage() {
                       {item.type === 'box' ? 'Mystery Box' : 'Sản phẩm lẻ'}
                     </Badge>
                     {item.type === 'box' && item.petName && (
-                      <span className="px-2 py-0.5 rounded-tag bg-pine-50 text-pine-900 text-[11px] font-semibold">Bé {item.petName}</span>
+                      <span className="px-2 py-0.5 rounded-tag bg-pine-50 text-pine-900 text-xs font-semibold">Bé {item.petName}</span>
                     )}
                   </div>
 
@@ -185,7 +188,7 @@ export default function CartPage() {
                   </h3>
 
                   {conflicts.length > 0 && (
-                    <p className="flex items-start gap-1 text-[11px] text-red-700 font-semibold">
+                    <p className="flex items-start gap-1 text-xs text-red-700 font-semibold">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
                       <span>
                         Sản phẩm có thể chứa {conflicts.map((c) => `${c.allergy.toLowerCase()} (bé ${c.petName} đang khai báo dị ứng)`).join(", ")}.
@@ -196,7 +199,7 @@ export default function CartPage() {
                   {/* Cho phép đổi Pet ngay trong giỏ hàng nếu là dòng Box */}
                   {item.type === 'box' && eligiblePetsFor(item).length > 1 && (
                     <div className="pt-1 flex items-center gap-2">
-                      <label className="text-[11px] text-bark-500" htmlFor={`pet-${item.id}`}>Đổi bé nhận hộp:</label>
+                      <label className="text-xs text-bark-500" htmlFor={`pet-${item.id}`}>Đổi bé nhận hộp:</label>
                       <select
                         id={`pet-${item.id}`}
                         value={item.petId || ""}
@@ -239,7 +242,7 @@ export default function CartPage() {
                   <div className="text-sm font-extrabold text-pine-950 font-display">
                     {formatVND(item.unitPrice * item.quantity)}
                   </div>
-                  {item.quantity > 1 && <div className="text-[11px] text-bark-500">{formatVND(item.unitPrice)} / món</div>}
+                  {item.quantity > 1 && <div className="text-xs text-bark-500">{formatVND(item.unitPrice)} / món</div>}
                 </div>
 
                 <IconButton label="Xóa khỏi giỏ" className="hover:!text-red-600" onClick={() => handleRemove(item)}>
@@ -255,7 +258,7 @@ export default function CartPage() {
             <div>
               <span className="font-bold text-pine-950">Muốn nhận hộp đều đặn mỗi tháng cho bé?</span>
               <p className="text-bark-600 mt-0.5">
-                Gói 1, 3 hoặc 6 hộp, giao mỗi tháng. Gói 3 và 6 hộp giảm 10–15%, miễn phí vận chuyển.
+                Gói 1, 3 hoặc 6 hộp, giao mỗi tháng. {capitalize(discountSentence(plans))}, {freeShippingPlans(plans)} được miễn phí vận chuyển.
               </p>
             </div>
             <ButtonLink href="/subscription" variant="secondary" size="sm" className="shrink-0">
@@ -292,7 +295,7 @@ export default function CartPage() {
 
               {voucherMessage && (
                 <div
-                  className={`text-[11px] font-medium pt-1 flex items-center gap-1 ${
+                  className={`text-xs font-medium pt-1 flex items-center gap-1 ${
                     voucherDiscount > 0 ? "text-grass-700" : "text-red-600"
                   }`}
                 >
@@ -318,7 +321,7 @@ export default function CartPage() {
                 <span>{formatShippingFee(shippingFee)}</span>
               </div>
               {shippingFee === null && (
-                <p className="text-[11px] text-bark-500">
+                <p className="text-xs text-bark-500">
                   {formatVND(SHIPPING_CONFIG.hcmFee)} nội thành TP.HCM, {formatVND(SHIPPING_CONFIG.otherFee)} tỉnh khác. Tính chính xác ở bước đặt hàng.
                 </p>
               )}

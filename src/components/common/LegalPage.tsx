@@ -8,7 +8,7 @@ export interface LegalSection {
 // Khung chung cho các trang văn bản pháp lý (Điều khoản, Bảo mật)
 export default function LegalPage({ title, updated, intro, sections }: { title: string; updated: string; intro: string; sections: LegalSection[] }) {
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       <header className="space-y-2">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">{title}</h1>
         <p className="text-xs text-bark-500">Cập nhật: {updated}</p>

@@ -9,19 +9,21 @@ import { fetchBoxTypes, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { PREMIUM_ITEMS, QUIZ_LENGTH, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
 import { planUnitPrice } from "@/lib/pricing";
+import { buttonClass } from "@/components/ui/Button";
 import { useApp } from "@/context/AppContext";
 import { BoxType, SubscriptionPlan } from "@/types/models";
+import { BUSINESS } from "@/config/business";
 
 // Loài và cân nặng gộp thành 1 nhóm dạng cây: cân nặng chỉ có nghĩa với chó nên nằm dưới "Chó"
 type Audience = "all" | "dog" | "dog_small" | "dog_large" | "cat";
 type Tier = "all" | "standard" | "premium";
 type Sort = "default" | "price_asc" | "price_desc";
 
-const AUDIENCES: { value: Audience; label: string; nested?: boolean }[] = [
+const AUDIENCES: { value: Audience; label: string; hint?: string; nested?: boolean }[] = [
   { value: "all", label: "Tất cả" },
   { value: "dog", label: "Chó" },
-  { value: "dog_small", label: "Dưới 10 kg", nested: true },
-  { value: "dog_large", label: "Từ 10 kg", nested: true },
+  { value: "dog_small", label: "Chó nhỏ", hint: "dưới 10 kg", nested: true },
+  { value: "dog_large", label: "Chó lớn", hint: "từ 10 kg", nested: true },
   { value: "cat", label: "Mèo" },
 ];
 
@@ -99,7 +101,9 @@ function BoxesContent() {
     const list = boxes.filter((box) => fits(box) && matchesTier(box, tier));
     if (sort === "price_asc") return [...list].sort((a, b) => a.basePrice - b.basePrice);
     if (sort === "price_desc") return [...list].sort((a, b) => b.basePrice - a.basePrice);
-    return list;
+    // Mặc định: Tiêu chuẩn trước Premium, trong mỗi loại theo thứ tự chó nhỏ, chó lớn, mèo (khớp thứ tự của bộ lọc)
+    const rank = (b: BoxType) => (isPremium(b) ? 10 : 0) + (b.species === "cat" ? 2 : b.size === "small" ? 0 : 1);
+    return [...list].sort((a, b) => rank(a) - rank(b));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boxes, audience, tier, petId, sort, pets]);
 
@@ -115,6 +119,9 @@ function BoxesContent() {
     const prices = boxes.filter((b) => isPremium(b) === premium).map((b) => b.basePrice);
     return prices.length ? Math.min(...prices) : null;
   };
+  // Hộp bán chạy do cửa hàng khai báo; chưa khai báo thì không có nhãn nào hiện
+  const bestSeller = boxes.find((b) => b.slug === BUSINESS.bestSellerBoxSlug);
+  const bestSellerTier = bestSeller ? (isPremium(bestSeller) ? "premium" : "standard") : null;
   const minValue = (premium: boolean) => {
     const values = boxes.filter((b) => isPremium(b) === premium).map((b) => b.minRetailValue);
     return values.length ? Math.min(...values) : null;
@@ -132,7 +139,7 @@ function BoxesContent() {
               checked={petId === pet.id}
               onSelect={() => setPetId(pet.id)}
               label={`Bé ${pet.name}`}
-              hint={pet.species === "cat" ? "Mèo" : pet.size === "small" ? "Chó dưới 10 kg" : "Chó từ 10 kg"}
+              hint={pet.species === "cat" ? "Mèo" : pet.size === "small" ? "Chó nhỏ, dưới 10 kg" : "Chó lớn, từ 10 kg"}
             />
           ))}
         </FilterGroup>
@@ -147,6 +154,7 @@ function BoxesContent() {
               checked={audience === a.value}
               onSelect={() => setAudience(a.value)}
               label={a.label}
+              hint={a.hint}
               nested={a.nested}
               // Số hộp tính theo loại hộp đang chọn, để con số khớp với kết quả sẽ hiện
               count={loading ? undefined : boxes.filter((b) => matchesAudience(b, a.value) && matchesTier(b, tier)).length}
@@ -170,7 +178,7 @@ function BoxesContent() {
       </FilterGroup>
 
       {activeCount > 0 && (
-        <button type="button" onClick={reset} className="inline-flex items-center gap-1 min-h-9 text-xs font-bold text-pine-900 hover:underline">
+        <button type="button" onClick={reset} className="inline-flex items-center gap-1 min-h-9 text-sm font-bold text-pine-900 hover:underline">
           <X className="w-3.5 h-3.5" /> Xóa bộ lọc
         </button>
       )}
@@ -181,7 +189,7 @@ function BoxesContent() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6 sm:space-y-8">
       <header className="space-y-1.5 max-w-2xl">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">Mystery Box</h1>
-        <p className="text-sm text-bark-600 leading-relaxed">
+        <p className="text-sm sm:text-base text-bark-700 leading-relaxed">
           Mỗi hộp gồm đồ ăn, đồ chơi và món chăm sóc, chọn theo loài, cân nặng, độ tuổi và dị ứng của bé. Chọn hộp đúng với bé, mua thử 1 hộp hoặc đăng ký nhận hằng tháng.
         </p>
       </header>
@@ -192,11 +200,11 @@ function BoxesContent() {
             Bạn đang chọn <strong>{selectedPlan.name}</strong>
             {selectedPlan.discountPercent > 0 ? ` (giảm ${selectedPlan.discountPercent}% mỗi hộp)` : ""}. Chọn loại hộp cho bé để tiếp tục.
           </span>
-          <Link href="/subscription" className="text-xs font-bold text-pine-900 underline underline-offset-2">Đổi gói</Link>
+          <Link href="/subscription" className="text-sm font-bold text-pine-900 underline underline-offset-2">Đổi gói</Link>
         </div>
       )}
 
-      <div className="lg:grid lg:grid-cols-[232px_1fr] lg:gap-8 lg:items-start">
+      <div id="box-list" className="scroll-mt-24 lg:grid lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-8 lg:items-start">
         {/* Bộ lọc: cột trái trên desktop, khối thu gọn trên mobile */}
         <aside className="lg:sticky lg:top-20">
           <button
@@ -208,25 +216,25 @@ function BoxesContent() {
             <span className="flex items-center gap-2">
               <SlidersHorizontal className="w-4 h-4" /> Bộ lọc{activeCount > 0 ? ` (${activeCount})` : ""}
             </span>
-            <span className="text-xs font-medium text-bark-500">{filterOpen ? "Thu gọn" : "Mở"}</span>
+            <span className="text-sm font-medium text-bark-600">{filterOpen ? "Thu gọn" : "Mở"}</span>
           </button>
           <div className={`${filterOpen ? "block" : "hidden"} lg:block mt-3 lg:mt-0 p-4 rounded-container bg-surface-card border border-surface-border`}>
-            <h2 className="hidden lg:block text-sm font-bold text-pine-950 pb-3 mb-4 border-b border-surface-border">Bộ lọc</h2>
+            <h2 className="hidden lg:block text-base font-bold text-pine-950 pb-3 mb-4 border-b border-surface-border">Bộ lọc</h2>
             {filterPanel}
           </div>
         </aside>
 
         <div className="mt-4 lg:mt-0 space-y-4 min-w-0">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-bark-600" aria-live="polite">
+            <p className="text-sm text-bark-700" aria-live="polite">
               {loading ? "Đang tải…" : `${filtered.length} loại hộp${selectedPet ? ` hợp với bé ${selectedPet.name}` : ""}`}
             </p>
-            <label className="flex items-center gap-2 text-xs text-bark-600">
+            <label className="flex items-center gap-2 text-sm text-bark-700">
               <span className="hidden sm:inline">Sắp xếp</span>
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as Sort)}
-                className="min-h-9 px-2.5 rounded-box border border-surface-border bg-white text-xs font-medium text-pine-950"
+                className="min-h-10 px-2.5 rounded-box border border-surface-border bg-white text-sm font-medium text-pine-950"
               >
                 <option value="default">Mặc định</option>
                 <option value="price_asc">Giá thấp đến cao</option>
@@ -268,27 +276,29 @@ function BoxesContent() {
                           className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
                         />
                       </div>
-                      <div className="p-2.5 sm:p-3.5 sm:p-4 flex flex-col flex-1 gap-2 sm:gap-2.5 min-w-0">
+                      <div className="p-3 sm:p-4 flex flex-col flex-1 gap-2 sm:gap-2.5 min-w-0">
                         <div className="space-y-1">
-                          {/* Nhãn phân hạng dạng chữ: không icon, không huy hiệu nổi trên ảnh */}
-                          <p className={`text-[11px] font-bold uppercase tracking-[0.08em] ${premium ? "text-amber-800" : "text-bark-500"}`}>
-                            {premium ? "Premium" : "Tiêu chuẩn"}
-                            <span className="font-medium normal-case tracking-normal text-bark-500"> · {box.sizeLabel}</span>
+                          {/* Dòng phân loại dạng chữ, đậm và đủ tương phản: phân hạng + nhóm bé (không icon, không huy hiệu nổi trên ảnh) */}
+                          <p className="text-[13px] sm:text-sm leading-snug">
+                            <span className={`font-extrabold uppercase tracking-[0.05em] ${premium ? "text-honey-700" : "text-pine-700"}`}>{premium ? "Premium" : "Tiêu chuẩn"}</span>
+                            <span className="font-semibold text-bark-700"> · {box.sizeLabel}</span>
                           </p>
-                          <h3 className="text-base font-bold text-pine-950 leading-snug group-hover:text-pine-800">{box.name}</h3>
+                          <h3 className="text-base sm:text-[17px] font-bold text-pine-950 leading-snug group-hover:text-pine-800">{box.name}</h3>
+                          {/* Chỉ hiện khi cửa hàng đã khai báo hộp bán chạy trong src/config/business.ts */}
+                          {BUSINESS.bestSellerBoxSlug === box.slug && <p className="text-[13px] font-bold text-honey-700">Được chọn nhiều nhất</p>}
                         </div>
-                        <p className="text-xs text-bark-600">
+                        <p className="text-sm text-bark-700">
                           {box.itemCount} · trị giá từ {formatVND(box.minRetailValue)}
                         </p>
                         <div className="mt-auto pt-2.5 sm:pt-3 border-t border-surface-border flex items-end justify-between gap-2">
                           <div>
                             <span className="text-lg font-extrabold text-pine-950 font-display">{formatVND(planPrice ?? box.basePrice)}</span>
-                            <span className="text-xs text-bark-500"> / hộp</span>
+                            <span className="text-sm text-bark-600"> / hộp</span>
                             {planPrice !== null && planPrice < box.basePrice && (
-                              <span className="block text-[11px] text-bark-500 line-through">{formatVND(box.basePrice)}</span>
+                              <span className="block text-xs text-bark-500 line-through">{formatVND(box.basePrice)}</span>
                             )}
                           </div>
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-pine-900">
+                          <span className="inline-flex items-center gap-1 text-sm font-bold text-pine-900">
                             Xem hộp <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                           </span>
                         </div>
@@ -306,12 +316,18 @@ function BoxesContent() {
       <section aria-labelledby="compare-heading" className="space-y-3">
         <h2 id="compare-heading" className="text-lg sm:text-xl font-extrabold text-pine-950 font-display">Tiêu chuẩn hay Premium?</h2>
         <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto">
-          <table className="w-full text-xs sm:text-sm text-left">
+          <table className="w-full text-[13px] sm:text-sm text-left">
             <thead>
               <tr className="border-b border-surface-border text-pine-950">
-                <th scope="col" className="p-2.5 sm:p-3.5 w-[30%] text-xs font-bold text-bark-500 uppercase tracking-wide">So sánh</th>
-                <th scope="col" className="p-2.5 sm:p-3.5 font-bold">Box Tiêu chuẩn</th>
-                <th scope="col" className="p-2.5 sm:p-3.5 font-bold">Box Premium</th>
+                <th scope="col" className="p-2.5 sm:p-3.5 w-[26%] sm:w-[30%] text-xs font-bold text-bark-600 uppercase tracking-wide">So sánh</th>
+                <th scope="col" className="p-2.5 sm:p-3.5 text-sm sm:text-base font-bold">
+                  Box Tiêu chuẩn
+                  {bestSellerTier === "standard" && <span className="block text-[13px] font-bold text-honey-700">Được chọn nhiều nhất</span>}
+                </th>
+                <th scope="col" className="p-2.5 sm:p-3.5 text-sm sm:text-base font-bold">
+                  Box Premium
+                  {bestSellerTier === "premium" && <span className="block text-[13px] font-bold text-honey-700">Được chọn nhiều nhất</span>}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-border text-bark-700">
@@ -340,6 +356,21 @@ function BoxesContent() {
                 <td className="p-2.5 sm:p-3.5">Muốn thử trước, hoặc bổ sung bánh thưởng và đồ chơi đều đặn</td>
                 <td className="p-2.5 sm:p-3.5">Muốn nhiều món hơn trong một lần nhận</td>
               </tr>
+              <tr>
+                <td className="p-2.5 sm:p-3.5" />
+                <td className="p-2.5 sm:p-3.5">
+                  <Link href="/boxes?tier=standard#box-list" className={buttonClass("secondary", "md", "!px-2.5 sm:!px-4 text-center")}>
+                    <span className="hidden sm:inline">Xem hộp Tiêu chuẩn</span>
+                    <span className="sm:hidden">Xem hộp</span>
+                  </Link>
+                </td>
+                <td className="p-2.5 sm:p-3.5">
+                  <Link href="/boxes?tier=premium#box-list" className={buttonClass("primary", "md", "!px-2.5 sm:!px-4 text-center")}>
+                    <span className="hidden sm:inline">Xem hộp Premium</span>
+                    <span className="sm:hidden">Xem hộp</span>
+                  </Link>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -348,7 +379,7 @@ function BoxesContent() {
       <div className="p-5 sm:p-6 rounded-container bg-pine-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <h2 className="text-base sm:text-lg font-bold font-display">Chưa biết chọn hộp nào cho bé?</h2>
-          <p className="text-xs sm:text-sm text-pine-200">
+          <p className="text-sm text-pine-200">
             Trả lời {QUIZ_NAME} ({QUIZ_LENGTH}), FPETS gợi ý hộp và gói phù hợp.
           </p>
         </div>
@@ -363,7 +394,7 @@ function BoxesContent() {
 function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <fieldset className="space-y-1">
-      <legend className="text-xs font-bold text-bark-800 mb-1.5">{label}</legend>
+      <legend className="text-sm font-bold text-pine-950 mb-1.5">{label}</legend>
       {children}
     </fieldset>
   );
@@ -390,15 +421,15 @@ function FilterOption({
   return (
     <label
       className={`flex items-center gap-2.5 min-h-10 px-2.5 rounded-box cursor-pointer transition-colors ${
-        nested ? `ml-4 pl-3 text-[13px] rounded-l-none border-l-2 ${checked ? "border-pine-800" : "border-surface-border"}` : "text-sm"
+        nested ? `ml-4 pl-3 text-sm rounded-l-none border-l-2 ${checked ? "border-pine-800" : "border-surface-border"}` : "text-sm"
       } ${checked ? "bg-pine-50 text-pine-950 font-semibold" : "text-bark-700 hover:bg-surface-muted"}`}
     >
       <input type="radio" name={name} checked={checked} onChange={onSelect} className="w-4 h-4 accent-pine-900 shrink-0" />
       <span className="flex-1 min-w-0">
         {label}
-        {hint && <span className="block text-[11px] font-normal text-bark-500">{hint}</span>}
+        {hint && <span className="block text-xs font-normal text-bark-600">{hint}</span>}
       </span>
-      {count !== undefined && <span className="text-[11px] text-bark-500">{count}</span>}
+      {count !== undefined && <span className="text-xs text-bark-600 tabular-nums">{count}</span>}
     </label>
   );
 }

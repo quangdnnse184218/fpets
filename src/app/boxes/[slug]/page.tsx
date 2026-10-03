@@ -8,7 +8,8 @@ import { fetchBoxTypeBySlug, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND, formatDate, formatWeight } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
 import { Check, CheckCircle2, ShieldCheck, PlusCircle, PawPrint, Truck, ChevronDown, Gift } from "lucide-react";
-import { EXCHANGE_POLICY, QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
+import { DISLIKE_POLICY, EXCHANGE_POLICY, QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
+import { DEFAULT_PLANS, PlanLite, discountSentence, freeShippingPlans } from "@/lib/planCopy";
 import { planUnitPrice } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
@@ -16,18 +17,19 @@ import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, nextDeliveryWind
 import { BoxType, SubscriptionPlan } from "@/types/models";
 import { DELIVERY_DAYS, SHIPPING_POLICY } from "@/lib/shipping";
 
-const BOX_FAQ = [
+// Mức giảm của gói lấy từ bảng subscription_plans (cùng nguồn với trang Gói định kỳ, giỏ hàng, FAQ)
+const buildBoxFaq = (plans: PlanLite[]) => [
   {
     q: "Tôi có được chọn món trong hộp không?",
     a: "Không, món trong hộp là bất ngờ. Đội ngũ FPETS chọn sát ngày giao dựa trên hồ sơ của bé; bạn có thể cập nhật sở thích và dị ứng trong hồ sơ thú cưng bất kỳ lúc nào.",
   },
   {
     q: "Bé không thích món trong hộp thì sao?",
-    a: EXCHANGE_POLICY,
+    a: DISLIKE_POLICY,
   },
   {
     q: "Mua 1 hộp khác gì gói định kỳ?",
-    a: "Mua 1 hộp không cam kết, có thể trả COD. Gói 3 hoặc 6 hộp trả trước, giảm 10–15% mỗi hộp, freeship và giao mỗi tháng 1 hộp.",
+    a: `Mua 1 hộp không cam kết, có thể trả COD. Gói định kỳ trả trước và giao mỗi tháng 1 hộp: ${discountSentence(plans)}, ${freeShippingPlans(plans)} được miễn phí vận chuyển.`,
   },
 ];
 
@@ -144,7 +146,7 @@ export default function BoxDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-10" aria-busy="true">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10" aria-busy="true">
         <div className="h-3 w-48 rounded bg-surface-muted animate-pulse" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           <div className="lg:col-span-6 aspect-square rounded-container bg-surface-muted animate-pulse" />
@@ -170,7 +172,7 @@ export default function BoxDetailPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
       {/* Breadcrumb đơn giản */}
       <nav className="text-xs text-bark-500 flex items-center gap-1.5">
         <Link href="/" className="hover:text-bark-800">Trang chủ</Link>
@@ -216,7 +218,7 @@ export default function BoxDetailPage() {
             <p className="text-sm text-bark-600 mt-2 leading-relaxed">
               {box.description}
             </p>
-            <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold">
+            <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
               <span className="px-2.5 py-1 rounded-tag bg-surface-muted text-bark-700">{box.itemCount}</span>
               <span className="px-2.5 py-1 rounded-tag bg-grass-50 text-grass-800">Trị giá sản phẩm từ {formatVND(box.minRetailValue)}</span>
             </div>
@@ -230,7 +232,7 @@ export default function BoxDetailPage() {
               </label>
               <Link
                 href="/quiz"
-                className="min-h-9 text-[11px] font-bold text-pine-900 hover:underline flex items-center gap-1"
+                className="min-h-9 text-xs font-bold text-pine-900 hover:underline flex items-center gap-1"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
                 <span>Thêm bé qua {QUIZ_NAME}</span>
@@ -262,11 +264,11 @@ export default function BoxDetailPage() {
                         <PawPrint className="w-4 h-4 text-pine-900 shrink-0" />
                         <span className="text-sm font-bold text-pine-950">{pet.name}</span>
                       </div>
-                      <div className="text-[11px] text-bark-500 mt-1 truncate">
+                      <div className="text-xs text-bark-500 mt-1 truncate">
                         {[pet.breed, pet.weight ? formatWeight(pet.weight) : ""].filter(Boolean).join(" · ")}
                       </div>
                       {pet.allergies.length > 0 && (
-                        <div className="text-[10px] text-red-700 mt-1 truncate font-medium">
+                        <div className="text-[11px] text-red-700 mt-1 truncate font-medium">
                           Dị ứng: {pet.allergies.join(", ")}
                         </div>
                       )}
@@ -313,7 +315,7 @@ export default function BoxDetailPage() {
                 <div className="text-base font-extrabold text-pine-950 font-display mt-0.5">
                   {formatVND(box.basePrice)}
                 </div>
-                <div className="text-[11px] text-bark-500 mt-1">Không cam kết dài hạn</div>
+                <div className="text-xs text-bark-500 mt-1">Không cam kết dài hạn</div>
               </button>
 
               <button
@@ -326,14 +328,14 @@ export default function BoxDetailPage() {
                     : 'border-surface-border hover:bg-surface-muted'
                 }`}
               >
-                <span className="absolute -top-2 right-2 px-2 py-0.5 rounded-tag bg-grass-100 text-grass-800 border border-grass-200 text-[10px] font-bold">
+                <span className="absolute -top-2 right-2 px-2 py-0.5 rounded-tag bg-grass-100 text-grass-800 border border-grass-200 text-[11px] font-bold">
                   Tiết kiệm đến {maxDiscount}%
                 </span>
                 <div className="text-xs font-bold text-pine-950">{purchaseMode === 'subscription' ? "✓ " : ""}Đăng ký định kỳ</div>
                 <div className="text-base font-extrabold text-pine-950 font-display mt-0.5">
                   Từ {formatVND(planUnitPrice(box.basePrice, maxDiscount))}/hộp
                 </div>
-                <div className="text-[11px] text-grass-700 font-medium mt-1">Gói 1, 3, 6 hộp · freeship gói 3, 6</div>
+                <div className="text-xs text-grass-700 font-medium mt-1">Gói 1, 3, 6 hộp · freeship gói 3, 6</div>
               </button>
             </div>
           </div>
@@ -363,10 +365,10 @@ export default function BoxDetailPage() {
                       }`}
                     >
                       <div className="text-xs font-bold">{isPlanSelected ? "✓ " : ""}{plan.name}</div>
-                      <div className="text-[11px] text-pine-900 mt-0.5 font-bold">
+                      <div className="text-xs text-pine-900 mt-0.5 font-bold">
                         {formatVND(discountedPerBox)}
                       </div>
-                      <div className="text-[10px] text-grass-700 mt-0.5 font-medium">
+                      <div className="text-[11px] text-grass-700 mt-0.5 font-medium">
                         {plan.discountPercent > 0 ? `Giảm ${plan.discountPercent}%` : 'Giá gốc'}
                       </div>
                     </button>
@@ -374,7 +376,7 @@ export default function BoxDetailPage() {
                 })}
               </div>
 
-              <div className="text-[11px] text-bark-500 pt-1 leading-relaxed">
+              <div className="text-xs text-bark-500 pt-1 leading-relaxed">
                 * {selectedPlan?.description}
               </div>
 
@@ -393,7 +395,7 @@ export default function BoxDetailPage() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-bark-600">
+                <p className="text-xs text-bark-600">
                   Hộp đầu tiên giao {deliveryWindowLabel(firstDelivery.start, schedule)}, chốt thông tin bé ngày {formatDate(firstDelivery.cutoff)}.
                 </p>
               </div>
@@ -434,7 +436,7 @@ export default function BoxDetailPage() {
             )}
           </div>
           {!isLoggedIn && (
-            <p className="text-[11px] text-bark-500 text-center">
+            <p className="text-xs text-bark-500 text-center">
               Mystery Box cần tài khoản để gắn với hồ sơ của bé.
             </p>
           )}
@@ -457,7 +459,7 @@ export default function BoxDetailPage() {
                 </li>
               ))}
             </ul>
-            <p className="text-[11px] text-bark-500">Món thật trong hộp thay đổi theo hồ sơ của bé và các món đã gửi trước đó.</p>
+            <p className="text-xs text-bark-600">Món thật trong hộp thay đổi theo cân nặng, dị ứng của bé và các món bé đã nhận trước đó.</p>
           </section>
         )}
 
@@ -478,7 +480,7 @@ export default function BoxDetailPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-bold text-pine-950 font-display">Câu hỏi thường gặp</h2>
         <div className="rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border">
-          {BOX_FAQ.map((item) => (
+          {buildBoxFaq(plans.length > 0 ? plans : DEFAULT_PLANS).map((item) => (
             <details key={item.q} className="group p-4">
               <summary className="flex items-center justify-between gap-3 cursor-pointer list-none text-sm font-bold text-pine-950">
                 <span>{item.q}</span>

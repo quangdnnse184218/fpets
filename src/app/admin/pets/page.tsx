@@ -116,7 +116,7 @@ export default function AdminPetsPage() {
                     <h3 className="font-bold text-pine-950 text-xs">
                       {pet.name}
                     </h3>
-                    <div className="text-[10px] text-bark-400">
+                    <div className="text-[10px] text-bark-500">
                       {AGE_LABEL[pet.age_group]} · {pet.breed || (pet.species === "dog" ? "Chó" : "Mèo")}
                     </div>
                   </div>
@@ -132,12 +132,12 @@ export default function AdminPetsPage() {
 
               <div className="pt-2 border-t border-surface-border/70 text-xs space-y-1">
                 <div className="flex items-center justify-between text-bark-600">
-                  <span className="text-bark-400 text-[11px]">Chủ nuôi:</span>
+                  <span className="text-bark-500 text-[11px]">Chủ nuôi:</span>
                   <span className="font-medium text-pine-950">{pet.profiles?.full_name || "—"} ({pet.profiles?.phone || "—"})</span>
                 </div>
 
                 <div>
-                  <span className="text-bark-400 text-[11px] block">Dị ứng:</span>
+                  <span className="text-bark-500 text-[11px] block">Dị ứng:</span>
                   {pet.allergies.length > 0 ? (
                     <div className="flex flex-wrap gap-1 mt-0.5">
                       {pet.allergies.map((all, idx) => (
@@ -154,7 +154,7 @@ export default function AdminPetsPage() {
 
                 {pet.preferences.length > 0 && (
                   <div className="text-[11px] text-bark-600 pt-0.5">
-                    <span className="text-bark-400">Sở thích: </span>
+                    <span className="text-bark-500">Sở thích: </span>
                     {pet.preferences.join(", ")}
                   </div>
                 )}
@@ -202,7 +202,7 @@ export default function AdminPetsPage() {
                     <PetSpeciesIcon species={pet.species} variant="avatar" size="sm" />
                     <div>
                       <span className="font-bold text-pine-950 block">{pet.name}</span>
-                      <span className="text-[10px] text-bark-400">{AGE_LABEL[pet.age_group]}</span>
+                      <span className="text-[10px] text-bark-500">{AGE_LABEL[pet.age_group]}</span>
                     </div>
                   </div>
                 </td>
@@ -218,7 +218,7 @@ export default function AdminPetsPage() {
                 </td>
                 <td className="p-3.5">
                   <div className="font-medium text-bark-900">{pet.profiles?.full_name || "—"}</div>
-                  <div className="text-[11px] text-bark-400">{pet.profiles?.phone || "—"}</div>
+                  <div className="text-[11px] text-bark-500">{pet.profiles?.phone || "—"}</div>
                 </td>
                 <td className="p-3.5">
                   {pet.allergies.length > 0 ? (

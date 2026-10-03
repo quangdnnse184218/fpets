@@ -28,11 +28,11 @@ export default function Footer() {
           <div className="lg:col-span-4 space-y-2.5">
             <BrandLogo variant="dark" size="md" />
             <p className="text-xs text-pine-300/85 leading-relaxed max-w-sm">
-              Mystery Box cho chó mèo, chọn riêng theo hồ sơ của từng bé. Mua thử 1 hộp hoặc đăng ký nhận hằng tháng.
+              Mystery Box cho chó mèo: đồ ăn, đồ chơi và phụ kiện hợp với cân nặng, độ tuổi và dị ứng của từng bé. Mua thử 1 hộp hoặc đăng ký nhận hằng tháng.
             </p>
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
               {PAYMENT_METHODS.map((m) => (
-                <span key={m} className="px-2 py-0.5 rounded-tag bg-pine-900 border border-pine-800 text-[10px] font-bold text-pine-200">
+                <span key={m} className="px-2 py-0.5 rounded-tag bg-pine-900 border border-pine-800 text-[11px] font-bold text-pine-200">
                   {m}
                 </span>
               ))}
@@ -101,7 +101,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-6 pt-4 border-t border-pine-900/80 text-[11px] text-pine-400">
+        <div className="mt-6 pt-4 border-t border-pine-900/80 text-xs text-pine-400">
           © {new Date().getFullYear()} FPETS. Mystery Box cho chó mèo.
         </div>
       </div>

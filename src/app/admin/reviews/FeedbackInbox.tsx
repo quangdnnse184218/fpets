@@ -21,6 +21,8 @@ interface FeedbackRow {
 
 type Filter = "new" | "handled" | "all";
 
+const waitingDays = (createdAt: string) => Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000));
+
 const FILTER_LABEL: Record<Filter, string> = { new: "Chưa xử lý", handled: "Đã xử lý", all: "Tất cả" };
 
 // Hộp thư góp ý / liên hệ gửi từ trang Liên hệ
@@ -104,7 +106,12 @@ export default function FeedbackInbox({ onCountChange }: { onCountChange?: (newC
       ) : (
         <ul className="space-y-3">
           {filtered.map((row) => (
-            <li key={row.id} className="p-4 rounded-container bg-surface-card border border-surface-border space-y-3 text-xs">
+            <li
+              key={row.id}
+              className={`p-4 rounded-container bg-surface-card border border-surface-border space-y-3 text-xs ${
+                row.status === "new" ? `border-l-4 ${waitingDays(row.created_at) >= 3 ? "border-l-red-500" : waitingDays(row.created_at) >= 1 ? "border-l-amber-500" : "border-l-honey-400"}` : ""
+              }`}
+            >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="font-bold text-pine-950 text-sm">{row.subject}</p>
@@ -115,7 +122,9 @@ export default function FeedbackInbox({ onCountChange }: { onCountChange?: (newC
                 <span
                   className={`px-2 py-0.5 rounded-tag text-[10px] font-bold ${row.status === "new" ? "bg-honey-100 text-bark-800" : "bg-grass-100 text-grass-800"}`}
                 >
-                  {row.status === "new" ? "Chưa xử lý" : `Đã xử lý ${row.handled_at ? formatDateTime(row.handled_at) : ""}`}
+                  {row.status === "new"
+                    ? `Chưa xử lý · ${waitingDays(row.created_at) === 0 ? "mới hôm nay" : `chờ ${waitingDays(row.created_at)} ngày`}`
+                    : `Đã xử lý ${row.handled_at ? formatDateTime(row.handled_at) : ""}`}
                 </span>
               </div>
 

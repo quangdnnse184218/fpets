@@ -86,7 +86,7 @@ export default function MyOrdersPage() {
                 active ? "bg-pine-900 text-white border-pine-900" : "bg-surface-card text-bark-700 border-surface-border hover:bg-surface-muted"
               }`}
             >
-              {f.label} <span className={active ? "text-pine-200" : "text-bark-400"}>({count})</span>
+              {f.label} <span className={active ? "text-pine-200" : "text-bark-500"}>({count})</span>
             </button>
           );
         })}
@@ -110,11 +110,11 @@ export default function MyOrdersPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-bold text-pine-950 text-sm">{order.order_code}</span>
-                      <span className="text-[11px] text-bark-500">{ORDER_TYPE_LABEL[order.order_type] || ""}</span>
+                      <span className="text-xs text-bark-500">{ORDER_TYPE_LABEL[order.order_type] || ""}</span>
                     </div>
-                    <p className="text-[11px] text-bark-500">{formatDateTime(order.created_at)}</p>
+                    <p className="text-xs text-bark-500">{formatDateTime(order.created_at)}</p>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-tag border text-[11px] font-bold ${ORDER_STATUS_STYLE[order.status]}`}>
+                  <span className={`px-2 py-0.5 rounded-tag border text-xs font-bold ${ORDER_STATUS_STYLE[order.status]}`}>
                     {ORDER_STATUS_LABEL[order.status]}
                   </span>
                 </div>
@@ -128,13 +128,13 @@ export default function MyOrdersPage() {
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-pine-950 truncate">{cleanItemName(line.name)}</div>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          {line.petName && <span className="px-2 py-0.5 rounded-tag bg-pine-50 text-pine-900 text-[10px] font-semibold">Bé {line.petName}</span>}
+                          {line.petName && <span className="px-2 py-0.5 rounded-tag bg-pine-50 text-pine-900 text-[11px] font-semibold">Bé {line.petName}</span>}
                           <span className="text-bark-500">x{line.quantity}</span>
                         </div>
                       </div>
                     </div>
                   ))}
-                  {lines.length > 3 && <p className="text-[11px] text-bark-500">và {lines.length - 3} sản phẩm khác</p>}
+                  {lines.length > 3 && <p className="text-xs text-bark-500">và {lines.length - 3} sản phẩm khác</p>}
                 </div>
 
                 <div className="pt-3 border-t border-surface-border flex items-center justify-between gap-2 text-xs">

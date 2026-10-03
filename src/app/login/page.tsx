@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -25,7 +25,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const rawRedirect = searchParams.get("redirect");
   const redirectUrl = rawRedirect ? safeRedirect(rawRedirect, "") : "";
-  const { refreshUser } = useApp();
+  const { refreshUser, isLoggedIn, isLoadingAuth, user } = useApp();
 
   // Form states
   const [email, setEmail] = useState("");
@@ -43,6 +43,12 @@ function LoginForm() {
   const [isUnconfirmed, setIsUnconfirmed] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
+
+  // Đã đăng nhập sẵn mà mở /login (link cũ, nút Back): đi tiếp tới trang định vào thay vì hiện form
+  useEffect(() => {
+    if (isLoadingAuth || !isLoggedIn || isLoading || successMessage) return;
+    router.replace(redirectUrl || (user.role === "admin" ? "/admin/dashboard" : "/my-account"));
+  }, [isLoadingAuth, isLoggedIn, isLoading, successMessage, redirectUrl, user.role, router]);
 
   const handleResendConfirmation = async () => {
     if (!email) return;
@@ -296,7 +302,7 @@ function LoginForm() {
 
         {/* Đăng nhập nhanh bằng Google */}
         <div className="mt-5 space-y-4">
-          <div className="flex items-center gap-3 text-[11px] text-bark-400">
+          <div className="flex items-center gap-3 text-xs text-bark-500">
             <span className="flex-1 h-px bg-surface-border" />
             <span>hoặc</span>
             <span className="flex-1 h-px bg-surface-border" />

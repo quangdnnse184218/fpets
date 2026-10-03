@@ -80,7 +80,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
       >
         <Bell className="w-5 h-5 text-pine-950" />
         {unread > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-honey-600 text-white text-[10px] font-extrabold flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-honey-700 text-white text-[10px] font-extrabold flex items-center justify-center">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -94,7 +94,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
               <button
                 type="button"
                 onClick={() => markRead(items.filter((n) => !n.is_read).map((n) => n.id))}
-                className="text-[11px] font-semibold text-pine-800 hover:underline"
+                className="text-xs font-semibold text-pine-800 hover:underline"
               >
                 Đánh dấu đã đọc
               </button>
@@ -115,8 +115,8 @@ export default function NotificationBell({ userId }: { userId: string }) {
                       {!n.is_read && <span className="mt-1.5 w-2 h-2 rounded-full bg-honey-600 shrink-0" />}
                       <div className="min-w-0">
                         <div className="text-xs font-bold text-pine-950">{n.title}</div>
-                        <p className="text-[11px] text-bark-600 leading-relaxed mt-0.5">{n.message}</p>
-                        <span className="text-[10px] text-bark-400">
+                        <p className="text-xs text-bark-600 leading-relaxed mt-0.5">{n.message}</p>
+                        <span className="text-[11px] text-bark-500">
                           {formatDateTime(n.created_at)}
                         </span>
                       </div>

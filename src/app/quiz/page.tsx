@@ -301,7 +301,7 @@ export default function PetQuizPage() {
               <Image src={recommendedBox.imageUrl} alt="" fill sizes="112px" className="object-cover" />
             </div>
             <div className="min-w-0 space-y-1">
-              <p className={`text-[11px] font-bold uppercase tracking-[0.08em] ${current.tier === "premium" ? "text-amber-800" : "text-bark-500"}`}>
+              <p className={`text-xs font-bold uppercase tracking-[0.08em] ${current.tier === "premium" ? "text-amber-800" : "text-bark-500"}`}>
                 {current.tier === "premium" ? "Premium" : "Tiêu chuẩn"}
               </p>
               <h2 className="text-lg font-bold text-pine-950 leading-snug">{recommendedBox.name}</h2>
@@ -613,13 +613,13 @@ export default function PetQuizPage() {
 
         {step === 7 && (
           <>
-            <QuestionTitle ref={headingRef} title="Bạn muốn hộp như thế nào?" hint="Cả hai loại đều chọn món theo hồ sơ của bé." />
+            <QuestionTitle ref={headingRef} title="Bạn muốn hộp như thế nào?" hint="Cả hai loại đều tránh thành phần bé dị ứng và chọn đồ chơi đúng cỡ của bé." />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(["standard", "premium"] as const).map((t) => {
                 const box = boxOf(t);
                 return (
                   <button key={t} type="button" aria-pressed={tier === t} onClick={() => setTier(t)} className={optionCard(tier === t)}>
-                    <span className={`block text-[11px] font-bold uppercase tracking-[0.08em] ${t === "premium" ? "text-amber-800" : "text-bark-500"}`}>{t === "premium" ? "Premium" : "Tiêu chuẩn"}</span>
+                    <span className={`block text-xs font-bold uppercase tracking-[0.08em] ${t === "premium" ? "text-amber-800" : "text-bark-500"}`}>{t === "premium" ? "Premium" : "Tiêu chuẩn"}</span>
                     <span className="block text-base font-extrabold text-pine-950 mt-1">{box ? `${formatVND(box.basePrice)} / hộp` : "—"}</span>
                     <span className="block text-xs text-bark-600 mt-1">
                       {box ? `${box.itemCount}, trị giá từ ${formatVND(box.minRetailValue)}` : ""}

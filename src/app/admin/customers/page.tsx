@@ -142,7 +142,7 @@ export default function AdminCustomersPage() {
                     <h3 className="font-bold text-pine-950 text-xs">
                       {customer.full_name || "(Chưa đặt tên)"}
                     </h3>
-                    <div className="text-[10px] text-bark-400 mt-0.5">
+                    <div className="text-[10px] text-bark-500 mt-0.5">
                       Tham gia: {formatDate(customer.created_at)}
                     </div>
                   </div>
@@ -173,16 +173,16 @@ export default function AdminCustomersPage() {
 
                 <div className="pt-2 border-t border-surface-border/70 flex items-center justify-between gap-2 text-xs">
                   <div>
-                    <span className="text-[10px] text-bark-400 block">Thú cưng:</span>
+                    <span className="text-[10px] text-bark-500 block">Thú cưng:</span>
                     <div className="flex flex-wrap gap-1 mt-0.5">
                       {customerPets.map((p) => (
                         <PetSpeciesIcon key={p.id} species={p.species} variant="badge" size="xs" label={p.name} />
                       ))}
-                      {customerPets.length === 0 && <span className="text-bark-400 text-[11px]">Chưa có</span>}
+                      {customerPets.length === 0 && <span className="text-bark-500 text-[11px]">Chưa có</span>}
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] text-bark-400 block">Đơn / Chi tiêu:</span>
+                    <span className="text-[10px] text-bark-500 block">Đơn / Chi tiêu:</span>
                     <span className="font-semibold text-pine-900 text-xs">{stats.count} đơn</span>
                     <span className="text-[11px] font-bold text-bark-800 ml-1">({formatVND(stats.total)})</span>
                   </div>
@@ -190,7 +190,7 @@ export default function AdminCustomersPage() {
 
                 {activeSub && (
                   <div className="text-[11px]">
-                    <span className="text-bark-400">Gói: </span>
+                    <span className="text-bark-500">Gói: </span>
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-grass-100 text-grass-800">
                       {activeSub}
                     </span>
@@ -261,7 +261,7 @@ export default function AdminCustomersPage() {
                 <tr key={customer.id} className="hover:bg-surface-muted/50 transition-colors">
                   <td className="p-3.5">
                     <div className="font-bold text-pine-950 text-xs">{customer.full_name || "(Chưa đặt tên)"}</div>
-                    <div className="text-[11px] text-bark-400">Tham gia: {formatDate(customer.created_at)}</div>
+                    <div className="text-[11px] text-bark-500">Tham gia: {formatDate(customer.created_at)}</div>
                   </td>
                   <td className="p-3.5 space-y-0.5">
                     <div className="flex items-center gap-1.5 text-bark-600"><Phone className="w-3 h-3 text-bark-400" /><span>{customer.phone || "—"}</span></div>
@@ -270,14 +270,14 @@ export default function AdminCustomersPage() {
                   <td className="p-3.5">
                     <div className="flex flex-wrap gap-1">
                       {customerPets.map((p) => <PetSpeciesIcon key={p.id} species={p.species} variant="badge" size="xs" label={p.name} />)}
-                      {customerPets.length === 0 && <span className="text-bark-400 text-[11px]">Chưa có</span>}
+                      {customerPets.length === 0 && <span className="text-bark-500 text-[11px]">Chưa có</span>}
                     </div>
                   </td>
                   <td className="p-3.5">
                     {activeSub ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-grass-100 text-grass-800">{activeSub}</span>
                     ) : (
-                      <span className="text-bark-400 text-[11px]">Chưa đăng ký</span>
+                      <span className="text-bark-500 text-[11px]">Chưa đăng ký</span>
                     )}
                   </td>
                   <td className="p-3.5">

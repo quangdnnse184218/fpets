@@ -15,6 +15,7 @@ import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, nextDeliveryWind
 import { formatDate } from "@/lib/formatters";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { planUnitPrice } from "@/lib/pricing";
+import { CANCEL_POLICY, NO_AUTO_CHARGE } from "@/lib/copy";
 
 function CheckoutFormContent() {
   const router = useRouter();
@@ -220,7 +221,7 @@ function CheckoutFormContent() {
   }
 
   if (isLoadingAuth || !isLoggedIn || !isCartReady) {
-    return <div className="max-w-4xl mx-auto px-4 py-16 text-center text-sm text-bark-500" aria-busy="true">Đang tải trang thanh toán…</div>;
+    return <div className="max-w-5xl mx-auto px-4 py-16 text-center text-sm text-bark-600" aria-busy="true">Đang tải trang thanh toán…</div>;
   }
 
   if (!isSubscription && cart.length === 0 && !placed) {
@@ -237,7 +238,7 @@ function CheckoutFormContent() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       <div className="pb-4 border-b border-surface-border space-y-2">
         {/* Đăng ký gói đi thẳng từ trang Box nên quay lại trang đó, không phải giỏ hàng */}
         <Link href={isSubscription ? "/subscription" : "/cart"} className="text-xs font-semibold text-bark-600 hover:text-bark-900 inline-flex items-center gap-1">
@@ -268,7 +269,7 @@ function CheckoutFormContent() {
                     <input type="radio" name="saved-address" className="mt-0.5 accent-pine-900" checked={selectedAddressId === row.id} onChange={() => chooseAddress(row.id)} />
                     <span>
                       <span className="font-bold text-pine-950">{row.recipient_name} · {row.phone}</span>
-                      {row.is_default && <span className="ml-1.5 px-1.5 py-0.5 rounded-tag bg-pine-100 text-pine-800 text-[10px] font-bold">Mặc định</span>}
+                      {row.is_default && <span className="ml-1.5 px-1.5 py-0.5 rounded-tag bg-pine-100 text-pine-800 text-[11px] font-bold">Mặc định</span>}
                       <span className="block text-bark-600 mt-0.5">{formatAddress(rowToAddress(row))}</span>
                     </span>
                   </label>
@@ -315,7 +316,7 @@ function CheckoutFormContent() {
                     </button>
                   ))}
                 </div>
-                <p className="text-[11px] text-bark-600">
+                <p className="text-xs text-bark-600">
                   Hộp đầu tiên giao {deliveryWindowLabel(nextDeliveryWindow(deliverySchedule).start, deliverySchedule)}. Ngày chốt là 7 ngày trước mỗi đợt giao
                   (đợt đầu: {formatDate(nextDeliveryWindow(deliverySchedule).cutoff)}), sau ngày chốt mọi thay đổi áp dụng từ kỳ sau.
                 </p>
@@ -335,7 +336,7 @@ function CheckoutFormContent() {
             <h2 className="text-sm font-bold text-pine-950 flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-pine-900 text-white flex items-center justify-center text-xs font-bold">3</span>
               <span>Hình thức thanh toán</span>
-              <span className="ml-auto px-2 py-0.5 rounded-tag bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-bold">Chế độ thử nghiệm</span>
+              <span className="ml-auto px-2 py-0.5 rounded-tag bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">Chế độ thử nghiệm</span>
             </h2>
 
             <div className="space-y-2.5 text-xs">
@@ -344,7 +345,7 @@ function CheckoutFormContent() {
                   <input type="radio" name="payment" value="momo" checked={paymentMethod === 'momo'} onChange={() => setPaymentMethod('momo')} className="accent-pine-900" />
                   <div>
                     <span className="font-bold text-pine-950">Ví điện tử MoMo</span>
-                    <p className="text-[11px] text-bark-500">Quét mã QR bằng ứng dụng MoMo</p>
+                    <p className="text-xs text-bark-500">Quét mã QR bằng ứng dụng MoMo</p>
                   </div>
                 </div>
                 <Smartphone className="w-5 h-5 text-bark-600 shrink-0" />
@@ -355,7 +356,7 @@ function CheckoutFormContent() {
                   <input type="radio" name="payment" value="vnpay" checked={paymentMethod === 'vnpay'} onChange={() => setPaymentMethod('vnpay')} className="accent-pine-900" />
                   <div>
                     <span className="font-bold text-pine-950">VNPay QR / Thẻ ATM & Thẻ quốc tế</span>
-                    <p className="text-[11px] text-bark-500">QR ngân hàng, thẻ ATM, Visa / Mastercard</p>
+                    <p className="text-xs text-bark-500">QR ngân hàng, thẻ ATM, Visa / Mastercard</p>
                   </div>
                 </div>
                 <CreditCard className="w-5 h-5 text-bark-600 shrink-0" />
@@ -367,14 +368,15 @@ function CheckoutFormContent() {
                     <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="accent-pine-900" />
                     <div className="min-w-0">
                       <span className="font-bold text-pine-950">Thanh toán khi nhận hàng (COD)</span>
-                      <p className="text-[11px] text-bark-500 leading-snug whitespace-normal">Cho đơn dưới 2.000.000₫. FPETS gọi xác nhận đơn COD đầu tiên của bạn.</p>
+                      <p className="text-xs text-bark-500 leading-snug whitespace-normal">Cho đơn dưới 2.000.000₫. FPETS gọi xác nhận đơn COD đầu tiên của bạn.</p>
                     </div>
                   </div>
                   <Banknote className="w-5 h-5 text-bark-600 shrink-0" />
                 </label>
               ) : (
-                <div className="p-3 rounded-box bg-surface-muted text-[11px] text-bark-500">
-                  * Gói định kỳ áp dụng ưu đãi trả trước nên chỉ chấp nhận thanh toán online qua MoMo hoặc VNPay.
+                <div className="p-3 rounded-box bg-surface-muted text-xs text-bark-700 leading-relaxed space-y-1">
+                  <p>Gói định kỳ trả trước nên chỉ thanh toán online qua MoMo hoặc VNPay. {NO_AUTO_CHARGE}</p>
+                  <p>{CANCEL_POLICY}</p>
                 </div>
               )}
             </div>
@@ -398,9 +400,9 @@ function CheckoutFormContent() {
                 subBox ? (
                   <div className="p-3 rounded-box bg-surface-card border border-surface-border/60 space-y-1 text-xs">
                     <div className="font-bold text-pine-950">{subBox.name}</div>
-                    <div className="text-[11px] text-pine-800 font-semibold">{selectedPlan?.name}</div>
-                    <div className="text-[11px] text-bark-500">Dành cho bé: {subPet?.name}{subPet?.breed ? ` (${subPet.breed})` : ""}</div>
-                    <div className="text-[11px] text-grass-700 font-medium pt-1">
+                    <div className="text-xs text-pine-800 font-semibold">{selectedPlan?.name}</div>
+                    <div className="text-xs text-bark-500">Dành cho bé: {subPet?.name}{subPet?.breed ? ` (${subPet.breed})` : ""}</div>
+                    <div className="text-xs text-grass-700 font-medium pt-1">
                       Giao đợt: {deliverySchedule === 'dau_thang' ? 'Đầu tháng (1–5)' : 'Giữa tháng (15–20)'}
                     </div>
                   </div>
@@ -413,7 +415,7 @@ function CheckoutFormContent() {
                     <div className="truncate pr-2">
                       <span className="font-bold text-pine-950">{item.quantity}x </span>
                       <span className="text-bark-800 truncate">{item.type === 'box' ? item.boxType?.name : item.product?.name}</span>
-                      {item.type === 'box' && <span className="text-[11px] text-pine-800 block">(Bé {item.petName})</span>}
+                      {item.type === 'box' && <span className="text-xs text-pine-800 block">(Bé {item.petName})</span>}
                     </div>
                     <span className="font-semibold text-bark-900 shrink-0">{formatVND(item.unitPrice * item.quantity)}</span>
                   </div>
@@ -455,7 +457,7 @@ function CheckoutFormContent() {
 
 function PolicyNote() {
   return (
-    <p className="text-[11px] text-bark-500 text-center leading-relaxed">
+    <p className="text-xs text-bark-500 text-center leading-relaxed">
       Bấm đặt hàng nghĩa là bạn đồng ý với <Link href="/return-policy" className="underline">chính sách đổi trả</Link> và{" "}
       <Link href="/terms" className="underline">điều khoản dịch vụ</Link> của FPETS.
     </p>

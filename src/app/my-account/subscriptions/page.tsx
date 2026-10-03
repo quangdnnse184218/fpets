@@ -16,6 +16,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { planUnitPrice } from "@/lib/pricing";
+import { DEFAULT_PLANS, capitalize, discountSentence, freeShippingPlans } from "@/lib/planCopy";
 
 type SubStatus = "cho_thanh_toan" | "dang_hoat_dong" | "tam_dung" | "qua_han" | "het_han" | "da_huy";
 
@@ -172,7 +173,7 @@ export default function MySubscriptionsPage() {
         <CalendarClock className="w-10 h-10 mx-auto text-pine-800" />
         <h2 className="text-base font-bold text-pine-950">Bạn chưa có gói định kỳ</h2>
         <p className="text-sm text-bark-600 max-w-md mx-auto">
-          Trả trước 1, 3 hoặc 6 hộp, mỗi tháng bé nhận 1 hộp chọn riêng theo hồ sơ. Gói 3, 6 hộp giảm đến 15% và miễn phí ship; tạm dừng hoặc hủy bất kỳ lúc nào.
+          Trả trước 1, 3 hoặc 6 hộp, mỗi tháng bé nhận 1 hộp. {capitalize(discountSentence(plans.length > 0 ? plans : DEFAULT_PLANS))}, {freeShippingPlans(plans.length > 0 ? plans : DEFAULT_PLANS)} được miễn phí vận chuyển. Tạm dừng hoặc hủy bất kỳ lúc nào; khi hủy, hộp đã trả vẫn giao đủ và không hoàn tiền.
         </p>
         <ButtonLink href="/subscription">Chọn gói cho bé</ButtonLink>
       </div>
@@ -201,7 +202,7 @@ export default function MySubscriptionsPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-sm font-bold text-pine-950">{sub.subscription_code}</span>
-                  <span className={`px-2 py-0.5 rounded-tag text-[11px] font-bold ${STATUS_STYLE[sub.status]}`}>{STATUS_LABEL[sub.status]}</span>
+                  <span className={`px-2 py-0.5 rounded-tag text-xs font-bold ${STATUS_STYLE[sub.status]}`}>{STATUS_LABEL[sub.status]}</span>
                 </div>
                 <p className="text-sm text-bark-700 mt-1">
                   {sub.box_types?.name} · {sub.subscription_plans?.name} · bé <strong>{sub.pets?.name}</strong>
@@ -224,7 +225,7 @@ export default function MySubscriptionsPage() {
                 const bar = (
                   <>
                     <span className={`block h-2 rounded-full ${delivered ? "bg-grass-600" : order ? "bg-pine-700" : "bg-surface-border"}`} />
-                    <span className="block mt-1 text-[10px] text-bark-600 leading-tight">
+                    <span className="block mt-1 text-[11px] text-bark-600 leading-tight">
                       Kỳ {idx} {delivered && <Check className="inline w-3 h-3 text-grass-700" />}
                       <span className="block text-bark-500">{label}</span>
                     </span>
@@ -524,7 +525,7 @@ function DeliveryModal({ sub, onClose, onDone }: { sub: SubscriptionRow; onClose
           <span className="text-xs font-bold text-bark-800 block">Địa chỉ nhận các kỳ sau</span>
           <AddressFields value={addr} onChange={setAddr} idPrefix="sub-addr" showErrors={showAddrErrors} />
         </div>
-        <p className="text-[11px] text-bark-500">
+        <p className="text-xs text-bark-500">
           {new Date(`${sub.cutoff_date}T23:59:59+07:00`) >= new Date()
             ? `Lưu trước ngày chốt ${formatDate(sub.cutoff_date)} thì thay đổi áp dụng ngay cho hộp tiếp theo.`
             : `Hộp kỳ này đã qua ngày chốt (${formatDate(sub.cutoff_date)}) nên vẫn giao theo thông tin cũ; thay đổi áp dụng từ kỳ sau.`}
@@ -584,7 +585,7 @@ function RenewModal({
               className={`w-full min-h-11 p-3 rounded-box border text-left flex items-center justify-between ${selected ? "border-pine-900 bg-pine-50" : "border-surface-border hover:bg-surface-muted"}`}>
               <span>
                 <span className="block font-bold text-pine-950 text-sm">{selected ? "✓ " : ""}{plan.name}</span>
-                <span className="block text-[11px] text-bark-500">
+                <span className="block text-xs text-bark-500">
                   {formatVND(unit)}/hộp{plan.discountPercent > 0 ? ` · giảm ${plan.discountPercent}%` : ""}{plan.freeShipping ? " · miễn phí ship" : ""}
                 </span>
               </span>
@@ -600,7 +601,7 @@ function RenewModal({
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-bark-500">Số tiền cuối cùng (kể cả phí ship) được tính lại ở bước thanh toán.</p>
+        <p className="text-xs text-bark-500">Số tiền cuối cùng (kể cả phí ship) được tính lại ở bước thanh toán.</p>
       </div>
     </Modal>
   );

@@ -75,10 +75,10 @@ export default function ProductItemImage({
         </div>
         {showNote && (
           <div className="space-y-0.5 z-10">
-            <span className="inline-block text-[10px] font-bold text-pine-900 bg-white/85 px-2 py-0.5 rounded-full border border-pine-200/50 shadow-2xs">
+            <span className="inline-block text-[11px] font-bold text-pine-900 bg-white/85 px-2 py-0.5 rounded-full border border-pine-200/50 shadow-2xs">
               FPETS Tuyển Chọn
             </span>
-            <p className="text-[9px] text-bark-600 font-medium">Chờ ảnh chụp thực tế</p>
+            <p className="text-[11px] text-bark-600 font-medium">Chờ ảnh chụp thực tế</p>
           </div>
         )}
         {/* Họa tiết nền trang trí nhẹ nhàng */}

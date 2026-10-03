@@ -180,7 +180,7 @@ export default function ProfilePage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-pine-950">
                         {row.recipient_name} · {row.phone}
-                        {row.is_default && <span className="ml-1.5 px-1.5 py-0.5 rounded-tag bg-pine-100 text-pine-800 text-[10px] font-bold">Mặc định</span>}
+                        {row.is_default && <span className="ml-1.5 px-1.5 py-0.5 rounded-tag bg-pine-100 text-pine-800 text-[11px] font-bold">Mặc định</span>}
                       </p>
                       <p className="text-xs text-bark-600 mt-0.5">{formatAddress(rowToAddress(row))}</p>
                     </div>

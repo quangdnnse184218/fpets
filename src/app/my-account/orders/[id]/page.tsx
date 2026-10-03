@@ -155,7 +155,7 @@ export default function OrderDetailPage() {
         <div className="p-4 rounded-container bg-surface-card border border-surface-border space-y-2 text-sm">
           <h3 className="font-bold text-pine-950">Thanh toán</h3>
           <p className="text-bark-700 text-xs">{paymentText(order.payment_method, order.payment_status, order.order_type)}</p>
-          {order.paid_at && <p className="text-[11px] text-bark-500">Lúc {formatDateTime(order.paid_at)}</p>}
+          {order.paid_at && <p className="text-xs text-bark-500">Lúc {formatDateTime(order.paid_at)}</p>}
           {order.subscriptions && (
             <Link href="/my-account/subscriptions" className="inline-block text-xs font-bold text-pine-900 hover:underline">
               Thuộc gói {order.subscriptions.subscription_code}
@@ -174,7 +174,7 @@ export default function OrderDetailPage() {
             <div className="flex-1 min-w-0">
               <div className="font-bold text-pine-950">{cleanItemName(line.name)}</div>
               <div className="flex items-center gap-1.5 text-xs text-bark-500 mt-0.5">
-                {line.petName && <span className="px-2 py-0.5 rounded-tag bg-pine-50 text-pine-900 text-[10px] font-semibold">Bé {line.petName}</span>}
+                {line.petName && <span className="px-2 py-0.5 rounded-tag bg-pine-50 text-pine-900 text-[11px] font-semibold">Bé {line.petName}</span>}
                 <span>x{line.quantity}</span>
               </div>
             </div>

@@ -72,7 +72,7 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8" aria-busy="true">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" aria-busy="true">
         <div className="h-3 w-40 rounded bg-surface-muted animate-pulse" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="aspect-square rounded-container bg-surface-muted animate-pulse" />
@@ -90,7 +90,7 @@ export default function ProductDetailPage() {
 
   if (!product) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16 text-center space-y-4">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center space-y-4">
         <h1 className="text-xl font-bold text-pine-950">Không tìm thấy sản phẩm</h1>
         <Link href="/shop" className="text-pine-800 font-semibold text-sm hover:underline">
           Quay lại Cửa hàng
@@ -100,7 +100,7 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Breadcrumb */}
       <nav className="text-xs text-bark-500 flex items-center gap-1.5">
         <Link href="/shop" className="hover:text-bark-800 flex items-center gap-1">
@@ -175,7 +175,7 @@ export default function ProductDetailPage() {
                 {product.ingredients.map((ing, i) => (
                   <span
                     key={i}
-                    className="px-2 py-0.5 rounded-tag bg-surface-muted border border-surface-border text-bark-700 text-[11px]"
+                    className="px-2 py-0.5 rounded-tag bg-surface-muted border border-surface-border text-bark-700 text-xs"
                   >
                     {ing}
                   </span>
@@ -213,7 +213,7 @@ export default function ProductDetailPage() {
                   +
                 </button>
               </div>
-              <span className="text-[11px] text-bark-500">(Tối đa {Math.min(10, product.stock)} sản phẩm)</span>
+              <span className="text-xs text-bark-500">(Tối đa {Math.min(10, product.stock)} sản phẩm)</span>
             </div>
 
             <button

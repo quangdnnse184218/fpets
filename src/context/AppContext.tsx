@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { calcShippingFee } from "@/lib/shipping";
 import { petRowToPet, productRowToProduct, boxTypeRowToBoxType, ProductWithCategory } from "@/lib/adapters";
@@ -215,6 +216,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
+
+  // Đăng nhập / đăng xuất diễn ra mà không tải lại trang. Next.js đã tải trước (prefetch) các link
+  // tới /my-account lúc khách CHƯA đăng nhập và lưu sẵn kết quả "chuyển về /login" của middleware;
+  // không xóa bộ nhớ đệm thì đăng nhập xong bấm "Đơn hàng" vẫn bị đưa về trang đăng nhập.
+  const router = useRouter();
+  const settledAuth = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (isLoadingAuth) return;
+    if (settledAuth.current !== null && settledAuth.current !== isLoggedIn) router.refresh();
+    settledAuth.current = isLoggedIn;
+  }, [isLoadingAuth, isLoggedIn, router]);
 
   const logout = async () => {
     try {

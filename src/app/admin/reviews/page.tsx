@@ -24,6 +24,18 @@ interface ReviewRow {
   orders: { order_code: string } | null;
 }
 
+// Số ngày đánh giá / góp ý đã chờ phản hồi; chờ càng lâu màu càng đậm
+const waitingDays = (createdAt: string) => Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000));
+const waitingLabel = (days: number) => (days === 0 ? "Mới hôm nay" : `Chờ ${days} ngày`);
+const waitingTone = (days: number, lowRating: boolean) =>
+  days >= 7 || (lowRating && days >= 3)
+    ? { bar: "border-l-red-500", chip: "bg-red-50 text-red-700 border-red-200" }
+    : days >= 3 || lowRating
+      ? { bar: "border-l-amber-500", chip: "bg-amber-50 text-amber-800 border-amber-200" }
+      : { bar: "border-l-honey-400", chip: "bg-honey-50 text-honey-800 border-honey-200" };
+
+type ReplyFilter = "unreplied" | "replied" | "all";
+
 // Ảnh review chưa có Storage thật ở seed data (chỉ là path giả lập), nên ảnh
 // không hợp lệ (không phải URL tuyệt đối hoặc bắt đầu bằng "/") sẽ bị bỏ qua
 // thay vì cho next/image render và crash trang.
@@ -95,7 +107,7 @@ function ReviewsPanel({ initialUnreplied, onChanged }: { initialUnreplied: boole
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [starFilter, setStarFilter] = useState<number | "all">("all");
-  const [unrepliedOnly, setUnrepliedOnly] = useState(initialUnreplied);
+  const [replyFilter, setReplyFilter] = useState<ReplyFilter>(initialUnreplied ? "unreplied" : "all");
   const [search, setSearch] = useState("");
   const [replyingReview, setReplyingReview] = useState<ReviewRow | null>(null);
   const [replyContent, setReplyContent] = useState("");
@@ -162,8 +174,18 @@ function ReviewsPanel({ initialUnreplied, onChanged }: { initialUnreplied: boole
     loadReviews();
   };
 
-  const filtered = reviews.filter((r) => {
-    const matchStar = (starFilter === "all" || r.rating === starFilter) && (!unrepliedOnly || !r.admin_reply);
+  const unrepliedCount = reviews.filter((r) => !r.admin_reply).length;
+  const replyCounts: Record<ReplyFilter, number> = { unreplied: unrepliedCount, replied: reviews.length - unrepliedCount, all: reviews.length };
+
+  // Chưa phản hồi lên đầu, trong đó chờ lâu nhất xếp trước; đã phản hồi xếp sau, mới nhất trước
+  const sorted = [...reviews].sort((a, b) => {
+    if (!a.admin_reply !== !b.admin_reply) return a.admin_reply ? 1 : -1;
+    const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    return a.admin_reply ? -diff : diff;
+  });
+
+  const filtered = sorted.filter((r) => {
+    const matchStar = (starFilter === "all" || r.rating === starFilter) && (replyFilter === "all" || (replyFilter === "unreplied") === !r.admin_reply);
     const matchSearch =
       (r.profiles?.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
       (r.comment || "").toLowerCase().includes(search.toLowerCase());
@@ -200,21 +222,43 @@ function ReviewsPanel({ initialUnreplied, onChanged }: { initialUnreplied: boole
         </div>
       </div>
 
-      <div className="p-4 rounded-container bg-surface-card border border-surface-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="p-4 rounded-container bg-surface-card border border-surface-border space-y-3">
+        {/* Lọc theo tình trạng phản hồi, kèm số lượng */}
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar" role="tablist" aria-label="Tình trạng phản hồi">
+          {([["unreplied", "Chưa phản hồi"], ["replied", "Đã phản hồi"], ["all", "Tất cả"]] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={replyFilter === key}
+              onClick={() => setReplyFilter(key)}
+              className={`shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-semibold border transition-colors ${
+                replyFilter === key ? "bg-pine-900 border-pine-900 text-white" : "bg-white border-surface-border text-bark-700 hover:bg-surface-muted"
+              }`}
+            >
+              {label}
+              <span className={`min-w-5 h-5 px-1.5 rounded-full text-[10px] font-extrabold flex items-center justify-center ${
+                key === "unreplied" && replyCounts.unreplied > 0 ? "bg-honey-500 text-pine-950" : replyFilter === key ? "bg-white/20 text-white" : "bg-surface-muted text-bark-600"
+              }`}>
+                {replyCounts[key]}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="w-4 h-4 text-bark-400 absolute left-3 top-2.5" />
           <input type="text" placeholder="Tìm theo tên khách hoặc nội dung..." value={search} onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none" />
         </div>
         <div className="flex items-center gap-1.5 flex-wrap text-xs">
-          <button onClick={() => setUnrepliedOnly((v) => !v)} aria-pressed={unrepliedOnly} className={`px-3 py-1.5 rounded-box font-semibold transition-colors ${unrepliedOnly ? "bg-pine-900 text-white" : "bg-surface-muted text-bark-700 hover:bg-bark-200"}`}>Chưa phản hồi</button>
-          <span className="w-px h-5 bg-surface-border mx-1" aria-hidden="true" />
           <button onClick={() => setStarFilter("all")} className={`px-3 py-1.5 rounded-box font-semibold transition-colors ${starFilter === "all" ? "bg-pine-900 text-white" : "bg-surface-muted text-bark-700 hover:bg-bark-200"}`}>Tất cả sao</button>
           {[5, 4, 3, 2, 1].map((star) => (
             <button key={star} onClick={() => setStarFilter(star)} className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-box font-semibold transition-colors ${starFilter === star ? "bg-pine-900 text-white" : "bg-surface-muted text-bark-700 hover:bg-bark-200"}`}>
               <span>{star}</span><Star className="w-3 h-3 fill-honey-500 text-honey-500" />
             </button>
           ))}
+        </div>
         </div>
       </div>
 
@@ -225,14 +269,20 @@ function ReviewsPanel({ initialUnreplied, onChanged }: { initialUnreplied: boole
             Chưa có đánh giá nào phù hợp.
           </div>
         ) : (
-          filtered.map((rev) => (
-            <div key={rev.id} className="p-3.5 rounded-container bg-surface-card border border-surface-border shadow-xs space-y-2.5 text-xs">
+          filtered.map((rev) => {
+            const days = waitingDays(rev.created_at);
+            const tone = waitingTone(days, rev.rating <= 3);
+            return (
+            <div key={rev.id} className={`p-3.5 rounded-container bg-surface-card border border-surface-border shadow-xs space-y-2.5 text-xs ${!rev.admin_reply ? `border-l-4 ${tone.bar}` : ""}`}>
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="font-bold text-pine-950 text-xs">{rev.profiles?.full_name || "Khách hàng"}</div>
-                  <div className="text-[10px] text-bark-400 mt-0.5">
+                  <div className="text-[11px] text-bark-500 mt-0.5">
                     Đơn: {rev.orders?.order_code || "N/A"} · {formatDate(rev.created_at)}
                   </div>
+                  {!rev.admin_reply && (
+                    <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-tag border text-[11px] font-bold ${tone.chip}`}>Chưa phản hồi · {waitingLabel(days)}</span>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -296,7 +346,8 @@ function ReviewsPanel({ initialUnreplied, onChanged }: { initialUnreplied: boole
                 </button>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -318,11 +369,17 @@ function ReviewsPanel({ initialUnreplied, onChanged }: { initialUnreplied: boole
                 <td colSpan={5} className="p-10 text-center text-xs text-bark-500">Chưa có đánh giá nào phù hợp.</td>
               </tr>
             )}
-            {filtered.map((rev) => (
-              <tr key={rev.id} className="hover:bg-surface-muted/50 transition-colors">
-                <td className="p-3.5">
+            {filtered.map((rev) => {
+              const days = waitingDays(rev.created_at);
+              const tone = waitingTone(days, rev.rating <= 3);
+              return (
+              <tr key={rev.id} className={`hover:bg-surface-muted/50 transition-colors ${!rev.admin_reply ? "bg-honey-50/40" : ""}`}>
+                <td className={`p-3.5 ${!rev.admin_reply ? `border-l-4 ${tone.bar}` : "border-l-4 border-l-transparent"}`}>
                   <div className="font-bold text-pine-950 text-xs">{rev.profiles?.full_name || "Khách hàng"}</div>
-                  <div className="text-[10px] text-bark-400 mt-0.5">Đơn: {rev.orders?.order_code} · {formatDate(rev.created_at)}</div>
+                  <div className="text-[11px] text-bark-500 mt-0.5">Đơn: {rev.orders?.order_code} · {formatDate(rev.created_at)}</div>
+                  {!rev.admin_reply && (
+                    <span className={`inline-block mt-1.5 px-2 py-0.5 rounded-tag border text-[11px] font-bold whitespace-nowrap ${tone.chip}`}>Chưa phản hồi · {waitingLabel(days)}</span>
+                  )}
                 </td>
                 <td className="p-3.5">
                   <div className="flex text-honey-500">
@@ -358,7 +415,8 @@ function ReviewsPanel({ initialUnreplied, onChanged }: { initialUnreplied: boole
                   </button>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -7,7 +7,9 @@ import { ArrowRight, Check, Minus } from "lucide-react";
 import { formatDate, formatVND } from "@/lib/formatters";
 import { fetchBoxTypes, fetchPlanOptions } from "@/lib/catalog";
 import { QUIZ_NAME } from "@/lib/copy";
+import { BUSINESS } from "@/config/business";
 import { planUnitPrice } from "@/lib/pricing";
+import { DEFAULT_PLANS, capitalize, discountSentence, freeShippingPlans } from "@/lib/planCopy";
 import { SHIPPING_CONFIG } from "@/lib/shipping";
 import { DeliverySchedule, SCHEDULE_LABEL, cutoffOf, deliveryWindowLabel, nextDeliveryWindow } from "@/lib/deliverySchedule";
 import { useApp } from "@/context/AppContext";
@@ -71,6 +73,8 @@ export default function SubscriptionIntroPage() {
   const [tier, setTier] = useState<"standard" | "premium">("standard");
   const [prices, setPrices] = useState<{ standard: number; premium: number } | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  // Câu chữ về mức giảm dùng cùng dữ liệu với các thẻ gói bên dưới
+  const planLites = plans.length > 0 ? plans : DEFAULT_PLANS;
   const [schedule, setSchedule] = useState<DeliverySchedule>("dau_thang");
 
   useEffect(() => {
@@ -89,16 +93,16 @@ export default function SubscriptionIntroPage() {
     <div className="pb-12 sm:pb-16">
       {/* Phần đầu trang: chữ và ảnh nằm cạnh nhau từ màn hình vừa trở lên */}
       <section className="bg-surface-card border-b border-surface-border">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-14 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-14 items-center">
           <div className="space-y-5">
-            <h1 className="text-3xl sm:text-4xl lg:text-[44px] font-extrabold text-pine-950 font-display tracking-tight leading-[1.15]">
-              Mỗi tháng một hộp quà chọn riêng cho bé.
+            <h1 className="text-[30px] sm:text-[36px] lg:text-[44px] font-extrabold text-pine-950 font-display tracking-tight leading-[1.25]">
+              Mỗi tháng một hộp quà chọn riêng cho bé
             </h1>
             <p className="text-base text-bark-700 leading-relaxed">
-              Trả trước 1, 3 hoặc 6 hộp, mỗi tháng bé nhận 1 hộp vào đợt bạn chọn. Gói 3 và 6 hộp giảm 10–15% và miễn phí vận chuyển.
+              Trả trước 1, 3 hoặc 6 hộp, mỗi tháng bé nhận 1 hộp vào đợt bạn chọn. {capitalize(discountSentence(planLites))}, {freeShippingPlans(planLites)} được miễn phí vận chuyển.
             </p>
             <ul className="space-y-2 text-sm text-bark-700">
-              {["Không tự động trừ tiền, không lưu thẻ", "Tạm dừng 1–2 kỳ khi bé còn nhiều đồ", "Hủy bất kỳ lúc nào, hộp đã trả vẫn giao đủ"].map((t) => (
+              {["Không tự động trừ tiền, không lưu thẻ", "Tạm dừng 1–2 kỳ khi bé còn nhiều đồ", "Hủy bất kỳ lúc nào: hộp đã trả vẫn giao đủ, không hoàn tiền"].map((t) => (
                 <li key={t} className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-grass-700 shrink-0" />
                   <span>{t}</span>
@@ -126,7 +130,7 @@ export default function SubscriptionIntroPage() {
         </div>
       </section>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 space-y-12 sm:space-y-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 space-y-12 sm:space-y-16">
         {/* BẢNG GÓI */}
         <section id="chon-goi" className="space-y-6 scroll-mt-20">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -149,7 +153,8 @@ export default function SubscriptionIntroPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 items-stretch">
             {plans.length === 0 && [0, 1, 2].map((i) => <div key={i} className="h-80 rounded-container bg-surface-muted animate-pulse" />)}
             {plans.map((plan) => {
-              const recommended = plan.cycles === 3;
+              // Gói được làm nổi: gói bán chạy nếu cửa hàng đã khai báo, chưa có số liệu thì là gói 3 hộp do FPETS gợi ý
+              const recommended = plan.cycles === (BUSINESS.mostChosenPlanCycles ?? 3);
               const unit = basePrice !== null ? planUnitPrice(basePrice, plan.discountPercent) : null;
               const perks: [boolean, string][] = [
                 [true, plan.cycles === 1 ? "Nhận 1 hộp" : `Mỗi tháng 1 hộp, trong ${plan.cycles} tháng`],
@@ -164,7 +169,9 @@ export default function SubscriptionIntroPage() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-lg font-extrabold text-pine-950 font-display">{plan.name}</h3>
-                    {recommended && <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-pine-900">Chọn nhiều nhất</span>}
+                    {recommended && (
+                      <span className="text-xs font-bold uppercase tracking-[0.06em] text-pine-900">{BUSINESS.mostChosenPlanCycles ? "Được chọn nhiều nhất" : "FPETS gợi ý"}</span>
+                    )}
                   </div>
                   <div className="mt-4">
                     <span className="text-3xl font-extrabold text-pine-950 font-display">{unit !== null ? formatVND(unit) : "—"}</span>
@@ -186,7 +193,7 @@ export default function SubscriptionIntroPage() {
                   </p>
                   <ul className="mt-4 space-y-2 text-sm flex-1">
                     {perks.map(([on, text]) => (
-                      <li key={text} className={`flex items-start gap-2 ${on ? "text-bark-800" : "text-bark-400"}`}>
+                      <li key={text} className={`flex items-start gap-2 ${on ? "text-bark-800" : "text-bark-500"}`}>
                         {on ? <Check className="w-4 h-4 text-grass-700 shrink-0 mt-0.5" /> : <Minus className="w-4 h-4 shrink-0 mt-0.5" />}
                         <span>{text}</span>
                       </li>

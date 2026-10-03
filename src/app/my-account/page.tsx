@@ -11,6 +11,8 @@ import { ORDER_STATUS_LABEL, ORDER_STATUS_STYLE, cleanItemName } from "@/lib/ord
 import { DeliverySchedule, cutoffOf, deliveryWindowLabel } from "@/lib/deliverySchedule";
 import { AGE_LABEL } from "@/lib/petOptions";
 import { ButtonLink } from "@/components/ui/Button";
+import { capitalize, discountSentence, freeShippingPlans } from "@/lib/planCopy";
+import { usePlans } from "@/lib/usePlans";
 
 interface SubSummary {
   id: string;
@@ -29,6 +31,7 @@ const card = "rounded-container bg-surface-card border border-surface-border";
 
 export default function AccountOverviewPage() {
   const { user, pets } = useApp();
+  const plans = usePlans();
   const [subs, setSubs] = useState<SubSummary[]>([]);
   const [orders, setOrders] = useState<MyOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,7 +102,7 @@ export default function AccountOverviewPage() {
           </div>
         ) : (
           <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <p className="text-sm text-bark-600">Bạn chưa có gói định kỳ. Gói 3 và 6 hộp giảm 10–15% và miễn phí vận chuyển.</p>
+            <p className="text-sm text-bark-600">Bạn chưa có gói định kỳ. {capitalize(discountSentence(plans))}, {freeShippingPlans(plans)} được miễn phí vận chuyển.</p>
             <ButtonLink href="/subscription" variant="secondary" size="sm" className="shrink-0">Xem gói định kỳ</ButtonLink>
           </div>
         )}
@@ -132,7 +135,7 @@ export default function AccountOverviewPage() {
                         {order.order_type !== "subscription_cycle" && ` · ${formatVND(order.total_amount)}`}
                       </p>
                     </div>
-                    <span className={`px-2 py-0.5 rounded-tag border text-[11px] font-bold shrink-0 ${ORDER_STATUS_STYLE[order.status]}`}>{ORDER_STATUS_LABEL[order.status]}</span>
+                    <span className={`px-2 py-0.5 rounded-tag border text-xs font-bold shrink-0 ${ORDER_STATUS_STYLE[order.status]}`}>{ORDER_STATUS_LABEL[order.status]}</span>
                     <ChevronRight className="w-4 h-4 text-bark-400 shrink-0" aria-hidden="true" />
                   </Link>
                 </li>

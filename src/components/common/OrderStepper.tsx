@@ -26,17 +26,17 @@ export default function OrderStepper({ steps, currentIndex }: { steps: OrderStep
             )}
             <span
               className={`relative z-10 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 ${
-                done ? "bg-pine-900 border-pine-900 text-white" : "bg-white border-surface-border text-bark-400"
+                done ? "bg-pine-900 border-pine-900 text-white" : "bg-white border-surface-border text-bark-500"
               } ${current ? "ring-4 ring-pine-900/15" : ""}`}
             >
               {done ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : i + 1}
             </span>
-            <span className={`mt-2 px-0.5 text-[11px] sm:text-xs leading-tight ${done ? "font-bold text-pine-950" : "text-bark-500"}`}>
+            <span className={`mt-2 px-0.5 text-xs sm:text-xs leading-tight ${done ? "font-bold text-pine-950" : "text-bark-500"}`}>
               {step.label}
             </span>
             {/* "HH:mm · dd/MM/yyyy": giờ và ngày xuống 2 dòng; điện thoại bỏ năm (đã có ở dòng "Đặt lúc") để các cột không dính nhau */}
             {step.time && (
-              <span className="mt-0.5 px-0.5 text-[10px] sm:text-[11px] text-bark-500 leading-tight tabular-nums">
+              <span className="mt-0.5 px-0.5 text-[11px] sm:text-xs text-bark-500 leading-tight tabular-nums">
                 {step.time.split(" · ").map((part) =>
                   /^\d{2}\/\d{2}\/\d{4}$/.test(part) ? (
                     <span key={part} className="block">

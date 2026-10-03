@@ -74,7 +74,7 @@ export function boxTypeRowToBoxType(row: Tables<"box_types">): BoxType {
     species: row.species,
     size: row.size,
     // Box mèo không chia size nên không hiện nhãn cân nặng
-    sizeLabel: row.species === "cat" ? "Mọi bé mèo" : row.size === "small" ? "Chó dưới 10 kg" : "Chó từ 10 kg",
+    sizeLabel: row.species === "cat" ? "Mèo mọi cân nặng" : row.size === "small" ? "Chó nhỏ dưới 10 kg" : "Chó lớn từ 10 kg",
     itemCount: `${row.item_count_min}–${row.item_count_max} món`,
     minRetailValue: row.min_retail_value,
     basePrice: row.baseprice,

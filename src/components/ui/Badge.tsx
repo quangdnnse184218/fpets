@@ -22,7 +22,7 @@ const variantStyles: Record<BadgeVariant, string> = {
 };
 
 const sizeStyles: Record<BadgeSize, string> = {
-  sm: "text-[11px] px-2 py-0.5 rounded-tag font-medium",
+  sm: "text-xs px-2 py-0.5 rounded-tag font-medium",
   md: "text-xs px-2.5 py-1 rounded-tag font-semibold",
 };
 

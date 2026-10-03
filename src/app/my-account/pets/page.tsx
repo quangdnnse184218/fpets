@@ -547,7 +547,7 @@ function PetFormModal({
               aria-invalid={showErrors && !!nameError}
               aria-describedby={showErrors && nameError ? "pet-name-error" : undefined}
             />
-            {showErrors && nameError && <p id="pet-name-error" role="alert" className="text-[11px] text-red-600 font-semibold mt-1">{nameError}</p>}
+            {showErrors && nameError && <p id="pet-name-error" role="alert" className="text-xs text-red-600 font-semibold mt-1">{nameError}</p>}
           </div>
           <div>
             <label className={label} htmlFor="pet-breed">Giống</label>
@@ -568,7 +568,7 @@ function PetFormModal({
               aria-invalid={showErrors && !!weightError}
               aria-describedby={showErrors && weightError ? "pet-weight-error" : undefined}
             />
-            {showErrors && weightError && <p id="pet-weight-error" role="alert" className="text-[11px] text-red-600 font-semibold mt-1">{weightError}</p>}
+            {showErrors && weightError && <p id="pet-weight-error" role="alert" className="text-xs text-red-600 font-semibold mt-1">{weightError}</p>}
           </div>
           <div>
             <label className={label} htmlFor="pet-age">Độ tuổi *</label>
@@ -590,7 +590,7 @@ function PetFormModal({
           <div className="col-span-2">
             <label className={label} htmlFor="pet-birthdate">Ngày sinh</label>
             <input id="pet-birthdate" type="date" className={input} value={form.birthdate || ""} max={new Date().toISOString().slice(0, 10)} onChange={(e) => set("birthdate", e.target.value)} />
-            <p className="text-[11px] text-bark-500 mt-1">Dùng để gửi quà sinh nhật cho bé khi đăng ký gói 6 hộp.</p>
+            <p className="text-xs text-bark-500 mt-1">Dùng để gửi quà sinh nhật cho bé khi đăng ký gói 6 hộp.</p>
           </div>
         </div>
 

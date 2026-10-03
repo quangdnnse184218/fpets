@@ -59,11 +59,11 @@ function PaySimulationContent() {
         </div>
 
         <div className="p-4 rounded-box bg-surface-muted border border-dashed border-surface-border">
-          <div className="text-[11px] text-bark-500">Số tiền cần thanh toán</div>
+          <div className="text-xs text-bark-500">Số tiền cần thanh toán</div>
           <div className="text-2xl font-extrabold text-pine-950 font-display">{formatVND(amount)}</div>
         </div>
 
-        <p className="text-[11px] text-bark-500 leading-relaxed">
+        <p className="text-xs text-bark-500 leading-relaxed">
           Chế độ thử nghiệm: cổng thanh toán {method === "vnpay" ? "VNPay" : "MoMo"} thật chưa được kết nối, bạn không bị trừ tiền.
           Bấm nút dưới để mô phỏng đã thanh toán thành công.
         </p>
@@ -81,7 +81,7 @@ function PaySimulationContent() {
           {status === "processing" ? "Đang xác nhận..." : "Tôi đã thanh toán"}
         </button>
 
-        <div className="flex items-center justify-center gap-1.5 text-[11px] text-grass-700 font-semibold">
+        <div className="flex items-center justify-center gap-1.5 text-xs text-grass-700 font-semibold">
           <ShieldCheck className="w-3.5 h-3.5" />
           <span>Đơn giữ chỗ trong 30 phút, quá hạn sẽ tự hủy</span>
         </div>

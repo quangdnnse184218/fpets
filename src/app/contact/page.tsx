@@ -187,7 +187,7 @@ export default function ContactPage() {
           )}
           <p className="pt-3 border-t border-surface-border text-xs text-bark-600 leading-relaxed">
             Đổi trả đơn đã nhận: gửi yêu cầu ngay trong{" "}
-            <Link href="/my-account/orders" className="font-bold text-pine-900 underline underline-offset-2">Đơn hàng của tôi</Link> để được xử lý nhanh hơn. Xem{" "}
+            <Link href="/my-account/orders" prefetch={false} className="font-bold text-pine-900 underline underline-offset-2">Đơn hàng của tôi</Link> để được xử lý nhanh hơn. Xem{" "}
             <Link href="/return-policy" className="font-bold text-pine-900 underline underline-offset-2">chính sách đổi trả</Link>.
           </p>
         </aside>

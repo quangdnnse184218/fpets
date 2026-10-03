@@ -1,4 +1,5 @@
 import { formatVND } from "@/lib/formatters";
+import { BUSINESS } from "@/config/business";
 
 // Chính sách vận chuyển (SPEC §6) – nguồn duy nhất cho giỏ hàng, checkout và mọi câu chữ trên site.
 // Bản sao hiển thị của public.calc_shipping_fee: số tiền thật luôn do server tính lại khi tạo đơn.
@@ -14,6 +15,10 @@ export const SHIPPING_CONFIG = {
 export const SHIPPING_POLICY = `Phí ship ${formatVND(SHIPPING_CONFIG.hcmFee)} nội thành TP.HCM, ${formatVND(SHIPPING_CONFIG.otherFee)} tỉnh khác. Miễn phí cho đơn từ ${formatVND(SHIPPING_CONFIG.freeShippingThreshold)} và gói 3, 6 hộp.`;
 export const DELIVERY_DAYS = `${SHIPPING_CONFIG.deliveryDaysHcm} nội thành TP.HCM, ${SHIPPING_CONFIG.deliveryDaysOther} tỉnh khác`;
 export const DELIVERY_TIME = `Giao ${DELIVERY_DAYS}.`;
+// Nơi gửi hàng: chỉ hiện khi cửa hàng đã điền trong src/config/business.ts
+export const SHIP_FROM = BUSINESS.shipFrom ? `Hàng gửi từ ${BUSINESS.shipFrom}.` : "";
+// Câu đầy đủ về giao hàng: nơi gửi (nếu có), thời gian giao, phí ship
+export const SHIPPING_SUMMARY = [SHIP_FROM, DELIVERY_TIME, SHIPPING_POLICY].filter(Boolean).join(" ");
 
 export function isHcmProvince(province: string): boolean {
   const p = province.toLowerCase();

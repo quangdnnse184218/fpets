@@ -132,7 +132,7 @@ export default function AdminDashboardPage() {
                     <span className={`flex-1 text-xs ${n > 0 ? "font-semibold text-pine-950" : "text-bark-500"}`}>{t.label}</span>
                     <span
                       className={`min-w-8 h-6 px-2 rounded-full text-xs font-extrabold flex items-center justify-center ${
-                        n === 0 ? "bg-surface-muted text-bark-400" : t.actionable ? "bg-honey-100 text-honey-800" : "bg-pine-50 text-pine-900"
+                        n === 0 ? "bg-surface-muted text-bark-500" : t.actionable ? "bg-honey-100 text-honey-800" : "bg-pine-50 text-pine-900"
                       }`}
                     >
                       {n}
