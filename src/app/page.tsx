@@ -114,7 +114,7 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
-              <ButtonLink href="/quiz" size="lg">Làm {QUIZ_NAME} tìm hộp cho bé</ButtonLink>
+              <ButtonLink href="/quiz" size="lg">Tìm hộp cho bé</ButtonLink>
               <ButtonLink href="/boxes" size="lg" variant="secondary">Xem các loại hộp</ButtonLink>
             </div>
 

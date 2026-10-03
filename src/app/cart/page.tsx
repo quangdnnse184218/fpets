@@ -253,7 +253,7 @@ export default function CartPage() {
             );
           })}
 
-          {/* Gợi ý gói định kỳ: nút phụ để không tranh với "Tiến hành đặt hàng" */}
+          {/* Gợi ý gói định kỳ: nút phụ để không tranh với nút "Thanh toán" */}
           <div className="p-4 rounded-container bg-pine-50/70 border border-pine-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             <div>
               <span className="font-bold text-pine-950">Muốn nhận hộp đều đặn mỗi tháng cho bé?</span>
@@ -346,7 +346,7 @@ export default function CartPage() {
               onClick={() => router.push("/checkout")}
               className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center cursor-pointer"
             >
-              <span>Tiến hành đặt hàng</span>
+              <span>Thanh toán</span>
             </button>
           </div>
         </div>

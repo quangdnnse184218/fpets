@@ -363,7 +363,7 @@ export default function PetQuizPage() {
         <div className="space-y-3">
           <Button size="lg" className="w-full" onClick={handleSaveAndOrder} loading={saving} loadingText="Đang lưu hồ sơ…">
             {!isLoggedIn
-              ? "Đăng ký tài khoản để lưu hồ sơ và đặt hộp"
+              ? "Đăng ký để lưu hồ sơ và đặt hộp"
               : selectedPlan
                 ? `${existingPet ? "Cập nhật" : "Lưu"} hồ sơ và đăng ký ${selectedPlan.name}`
                 : `${existingPet ? "Cập nhật" : "Lưu"} hồ sơ và thêm hộp vào giỏ`}

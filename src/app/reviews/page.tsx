@@ -87,7 +87,7 @@ export default function ReviewsPage() {
           <p className="text-sm text-bark-600">Nhận xét từ khách đã nhận hàng tại FPETS.</p>
         </div>
         <Link href="/my-account/orders" prefetch={false} className={buttonClass("secondary", "md", "shrink-0 self-start sm:self-auto")}>
-          Viết đánh giá cho đơn của tôi
+          Viết đánh giá
         </Link>
       </header>
 

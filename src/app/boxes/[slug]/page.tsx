@@ -7,8 +7,8 @@ import Image from "next/image";
 import { fetchBoxTypeBySlug, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND, formatDate, formatWeight } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
-import { Check, CheckCircle2, Info, ShieldCheck, PlusCircle, PawPrint, Truck, ChevronDown, Gift } from "lucide-react";
-import { ButtonLink, buttonClass } from "@/components/ui/Button";
+import { Check, CheckCircle2, Info, ShieldCheck, ShoppingCart, PlusCircle, PawPrint, Truck, ChevronDown, Gift } from "lucide-react";
+import { Button, ButtonLink, buttonClass } from "@/components/ui/Button";
 import { DISLIKE_POLICY, EXCHANGE_POLICY, QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
 import { DEFAULT_PLANS, PlanLite, discountSentence, freeShippingPlans } from "@/lib/planCopy";
 import { planUnitPrice } from "@/lib/pricing";
@@ -50,7 +50,8 @@ export default function BoxDetailPage() {
   const [purchaseMode, setPurchaseMode] = useState<'once' | 'subscription'>('once');
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
-  const [adding, setAdding] = useState(false);
+  // Nút đang xử lý: "add" = thêm vào giỏ, "buy" = mua ngay
+  const [busy, setBusy] = useState<"add" | "buy" | null>(null);
   const [schedule, setSchedule] = useState<DeliverySchedule>("dau_thang");
   // Gói còn hiệu lực theo bé: cảnh báo khi mua trùng
   const [activeSubs, setActiveSubs] = useState<Record<string, { planName: string; remaining: number }>>({});
@@ -116,15 +117,15 @@ export default function BoxDetailPage() {
   const planTotalPrice = selectedPlan ? unitDiscountedPrice * selectedPlan.cycles : 0;
   const maxDiscount = plans.reduce((m, p) => Math.max(m, p.discountPercent), 0);
 
-  // Thêm vào giỏ rồi ở lại trang, khách tự chọn xem giỏ hay mua tiếp
-  const handleAddToCart = async () => {
-    if (!box) return;
+  // Đưa hộp đang xem vào giỏ. Trả về false khi chưa đủ điều kiện (chưa đăng nhập thì chuyển sang trang đăng nhập).
+  const putBoxInCart = async (mode: "add" | "buy"): Promise<boolean> => {
+    if (!box) return false;
     if (!isLoggedIn) {
       router.push(`/login?redirect=/boxes/${slug}`);
-      return;
+      return false;
     }
-    if (!selectedPet) return;
-    setAdding(true);
+    if (!selectedPet) return false;
+    setBusy(mode);
     await addToCart({
       type: "box",
       boxTypeId: box.id,
@@ -134,7 +135,18 @@ export default function BoxDetailPage() {
       quantity: 1,
       unitPrice: box.basePrice,
     });
-    setAdding(false);
+    return true;
+  };
+
+  // Mua ngay: thêm vào giỏ rồi sang thẳng trang thanh toán (giỏ có món khác thì thanh toán cùng lúc)
+  const handleBuyNow = async () => {
+    if (await putBoxInCart("buy")) router.push("/checkout");
+  };
+
+  // Thêm vào giỏ rồi ở lại trang, khách tự chọn xem giỏ hay mua tiếp
+  const handleAddToCart = async () => {
+    if (!box || !(await putBoxInCart("add")) || !selectedPet) return;
+    setBusy(null);
     show(`Đã thêm ${box.name} cho bé ${selectedPet.name} vào giỏ`, {
       actions: [
         { label: "Xem giỏ", onClick: () => router.push("/cart") },
@@ -439,7 +451,7 @@ export default function BoxDetailPage() {
               <div className="w-full min-h-12 rounded-box bg-surface-muted animate-pulse" aria-hidden="true" />
             ) : blocked === "no_pet" ? (
               <>
-                <ButtonLink href="/quiz" size="lg" className="w-full">Làm {QUIZ_NAME} để tạo hồ sơ bé</ButtonLink>
+                <ButtonLink href="/quiz" size="lg" className="w-full">Tạo hồ sơ bé</ButtonLink>
                 <p className="text-sm text-bark-700 text-center">Cần có hồ sơ thú cưng trước khi đặt hộp.</p>
               </>
             ) : blocked === "no_match" ? (
@@ -451,34 +463,22 @@ export default function BoxDetailPage() {
                 </p>
               </>
             ) : purchaseMode === 'once' ? (
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                disabled={adding || (isLoggedIn && !selectedPet)}
-                aria-busy={adding || undefined}
-                className="w-full min-h-12 py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                {adding ? (
-                  <span>Đang thêm vào giỏ…</span>
-                ) : !isLoggedIn ? (
-                  <span>Đăng nhập để đặt hộp ({formatVND(box.basePrice)})</span>
-                ) : (
-                  <span>Thêm vào giỏ hàng ({formatVND(box.basePrice)})</span>
-                )}
-              </button>
+              !isLoggedIn ? (
+                <Button size="lg" className="w-full" onClick={handleAddToCart}>Đăng nhập để mua</Button>
+              ) : (
+                <div className="grid grid-cols-2 gap-2.5">
+                  <Button variant="secondary" size="lg" className="!px-3" onClick={handleAddToCart} loading={busy === "add"} loadingText="Đang thêm…" disabled={busy !== null || !selectedPet}>
+                    <ShoppingCart className="w-4 h-4" aria-hidden="true" /> Thêm vào giỏ
+                  </Button>
+                  <Button size="lg" className="!px-3" onClick={handleBuyNow} loading={busy === "buy"} loadingText="Đang chuyển…" disabled={busy !== null || !selectedPet}>
+                    Mua ngay
+                  </Button>
+                </div>
+              )
             ) : (
-              <button
-                type="button"
-                onClick={handleSubscribeCheckout}
-                disabled={isLoggedIn && !selectedPet}
-                className="w-full min-h-12 py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-              >
-                <span>
-                  {!isLoggedIn
-                    ? `Đăng nhập để đăng ký ${selectedPlan?.name || "gói"}`
-                    : `Đăng ký ${selectedPlan?.name || "gói"} cho bé ${selectedPet?.name || ""} (${formatVND(planTotalPrice)})`}
-                </span>
-              </button>
+              <Button size="lg" className="w-full" onClick={handleSubscribeCheckout} disabled={isLoggedIn && !selectedPet}>
+                {!isLoggedIn ? "Đăng nhập để đăng ký" : `Đăng ký ${selectedPlan?.name || "gói"} · ${formatVND(planTotalPrice)}`}
+              </Button>
             )}
           </div>
           {!isLoggedIn && (

@@ -84,7 +84,7 @@ export default function ReturnPolicyPage() {
           ))}
         </ol>
         <div className="flex flex-wrap gap-2 pt-1">
-          <ButtonLink href="/my-account/orders" prefetch={false}>Mở Đơn hàng của tôi</ButtonLink>
+          <ButtonLink href="/my-account/orders" prefetch={false}>Xem đơn hàng</ButtonLink>
           <ButtonLink href="/contact" variant="secondary">Liên hệ FPETS</ButtonLink>
         </div>
       </section>

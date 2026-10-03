@@ -11,6 +11,8 @@ import { ShoppingCart, ArrowLeft, Truck, RotateCcw, AlertTriangle } from "lucide
 import { findAllergyConflicts } from "@/lib/petOptions";
 import { Product } from "@/types/models";
 import { DELIVERY_TIME, SHIPPING_POLICY } from "@/lib/shipping";
+import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 
 const SPECIES_LABEL: Record<Product["species"], string> = { dog: "Chó", cat: "Mèo", both: "Chó và mèo" };
 const SIZE_LABEL: Record<Product["targetSize"], string> = { small: "Dưới 10 kg", large: "Từ 10 kg", all: "Mọi cân nặng" };
@@ -30,13 +32,15 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
-  const [added, setAdded] = useState(false);
+  // Nút đang xử lý: "add" = thêm vào giỏ, "buy" = mua ngay
+  const [busy, setBusy] = useState<"add" | "buy" | null>(null);
+  const { show } = useToast();
   const [related, setRelated] = useState<Product[]>([]);
 
   useEffect(() => {
     setLoading(true);
     setQuantity(1);
-    setAdded(false);
+    setBusy(null);
     Promise.all([fetchProductBySlug(slug), fetchProducts()]).then(([data, all]) => {
       setProduct(data);
       if (data) {
@@ -51,23 +55,28 @@ export default function ProductDetailPage() {
     });
   }, [slug]);
 
-  const handleAdd = () => {
-    if (!product) return;
+  // Đưa sản phẩm vào giỏ theo số lượng đang chọn. Chưa đăng nhập thì chuyển sang trang đăng nhập.
+  const putInCart = async (mode: "add" | "buy"): Promise<boolean> => {
+    if (!product) return false;
     if (!isLoggedIn) {
       router.push(`/login?redirect=${encodeURIComponent(`/shop/${slug}`)}`);
-      return;
+      return false;
     }
-    addToCart({
-      type: "retail",
-      productId: product.id,
-      product: product,
-      quantity: quantity,
-      unitPrice: product.price,
-    });
-    setAdded(true);
-    setTimeout(() => {
-      router.push("/cart");
-    }, 500);
+    setBusy(mode);
+    await addToCart({ type: "retail", productId: product.id, product, quantity, unitPrice: product.price });
+    return true;
+  };
+
+  // Thêm vào giỏ rồi ở lại trang
+  const handleAdd = async () => {
+    if (!product || !(await putInCart("add"))) return;
+    setBusy(null);
+    show(`Đã thêm ${quantity > 1 ? `${quantity} × ` : ""}${product.name} vào giỏ`, { actions: [{ label: "Xem giỏ", onClick: () => router.push("/cart") }], duration: 6000 });
+  };
+
+  // Mua ngay: thêm vào giỏ rồi sang thẳng trang thanh toán (giỏ có món khác thì thanh toán cùng lúc)
+  const handleBuyNow = async () => {
+    if (await putInCart("buy")) router.push("/checkout");
   };
 
   if (loading) {
@@ -195,7 +204,7 @@ export default function ProductDetailPage() {
           {/* Chọn số lượng & Nút thêm giỏ */}
           <div className="space-y-3 pt-2">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-pine-950">Số lượng:</span>
+              <span className="text-xs font-bold text-pine-950 whitespace-nowrap">Số lượng</span>
               <div className="flex items-center border border-surface-border rounded-box bg-surface-card">
                 <button
                   type="button"
@@ -213,24 +222,26 @@ export default function ProductDetailPage() {
                   +
                 </button>
               </div>
-              <span className="text-xs text-bark-500">(Tối đa {Math.min(10, product.stock)} sản phẩm)</span>
+              <span className="text-xs text-bark-600 whitespace-nowrap">Tối đa {Math.min(10, product.stock)}</span>
             </div>
+            {quantity > 1 && (
+              <p className="text-sm text-bark-700">
+                Tạm tính <strong className="text-pine-950">{formatVND(product.price * quantity)}</strong>
+              </p>
+            )}
 
-            <button
-              type="button"
-              onClick={handleAdd}
-              disabled={added || product.stock === 0}
-              className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              <span>
-                {product.stock === 0
-                  ? "Hết hàng"
-                  : added
-                  ? "Đang chuyển đến giỏ hàng..."
-                  : `Thêm vào giỏ hàng • ${formatVND(product.price * quantity)}`}
-              </span>
-            </button>
+            {product.stock === 0 ? (
+              <Button size="lg" className="w-full" disabled>Hết hàng</Button>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5">
+                <Button variant="secondary" size="lg" className="!px-3" onClick={handleAdd} loading={busy === "add"} loadingText="Đang thêm…" disabled={busy !== null}>
+                  <ShoppingCart className="w-4 h-4" aria-hidden="true" /> Thêm vào giỏ
+                </Button>
+                <Button size="lg" className="!px-3" onClick={handleBuyNow} loading={busy === "buy"} loadingText="Đang chuyển…" disabled={busy !== null}>
+                  Mua ngay
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2 text-xs text-bark-600 pt-1">

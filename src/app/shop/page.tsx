@@ -98,6 +98,18 @@ function ShopContent() {
     })
     .sort((a, b) => (sortBy === "price_asc" ? a.price - b.price : sortBy === "price_desc" ? b.price - a.price : 0));
 
+  // Mua ngay từ thẻ sản phẩm: thêm 1 sản phẩm vào giỏ rồi sang thẳng trang thanh toán
+  const [buyingId, setBuyingId] = useState<string | null>(null);
+  const handleBuyNow = async (product: Product) => {
+    if (!isLoggedIn) {
+      router.push(`/login?redirect=${encodeURIComponent("/shop")}`);
+      return;
+    }
+    setBuyingId(product.id);
+    await addToCart({ type: "retail", productId: product.id, product, quantity: 1, unitPrice: product.price });
+    router.push("/checkout");
+  };
+
   const handleQuickAdd = (product: Product) => {
     if (!isLoggedIn) {
       router.push(`/login?redirect=${encodeURIComponent("/shop")}`);
@@ -382,8 +394,8 @@ function ShopContent() {
                       </div>
                     </div>
 
-                    {/* Giá & Nút thêm giỏ */}
-                    <div className="p-3 pt-2 border-t border-surface-border flex items-center justify-between gap-2">
+                    {/* Giá, rồi hàng nút: thêm vào giỏ (icon) và Mua ngay */}
+                    <div className="p-3 pt-2 border-t border-surface-border space-y-2">
                       <div className="min-h-[2.5rem] flex flex-col justify-center">
                         <div className="text-sm sm:text-base font-extrabold text-pine-950 font-display">
                           {formatVND(product.price)}
@@ -398,29 +410,33 @@ function ShopContent() {
                         )}
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleQuickAdd(product)}
-                        disabled={outOfStock}
-                        className={`p-2 sm:px-3 sm:py-2 rounded-box text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                          isJustAdded
-                            ? "bg-grass-600 text-white"
-                            : "bg-pine-900 hover:bg-pine-800 text-white"
-                        }`}
-                        title={outOfStock ? "Hết hàng" : "Thêm vào giỏ hàng"}
-                      >
-                        {isJustAdded ? (
-                          <>
-                            <Check className="w-4 h-4" />
-                            <span className="hidden sm:inline">Đã thêm</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShoppingCart className="w-4 h-4" />
-                            <span className="hidden sm:inline">Thêm</span>
-                          </>
-                        )}
-                      </button>
+                      {outOfStock ? (
+                        <button type="button" disabled className="w-full min-h-11 sm:min-h-10 rounded-box bg-surface-muted text-bark-500 text-sm font-bold cursor-not-allowed">
+                          Hết hàng
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleQuickAdd(product)}
+                            aria-label={isJustAdded ? `Đã thêm ${product.name} vào giỏ` : `Thêm ${product.name} vào giỏ`}
+                            title="Thêm vào giỏ"
+                            className={`w-11 h-11 sm:w-10 sm:h-10 shrink-0 rounded-box border flex items-center justify-center transition-colors ${
+                              isJustAdded ? "bg-grass-700 border-grass-700 text-white" : "bg-white border-pine-800/40 text-pine-900 hover:bg-pine-50"
+                            }`}
+                          >
+                            {isJustAdded ? <Check className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleBuyNow(product)}
+                            disabled={buyingId !== null}
+                            className="flex-1 min-h-11 sm:min-h-10 px-2 rounded-box bg-pine-900 hover:bg-pine-800 text-white text-sm font-bold transition-colors disabled:opacity-60"
+                          >
+                            {buyingId === product.id ? "Đang chuyển…" : "Mua ngay"}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
