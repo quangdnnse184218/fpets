@@ -275,7 +275,33 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 5. ĐÁNH GIÁ: chỉ hiển thị review thật đã xuất bản, ẩn cả mục nếu chưa đủ */}
+      {/* 5. MUA LẺ: phần phụ, đứng sau toàn bộ nội dung về Mystery Box */}
+      {featured.length > 0 && (
+        <section aria-labelledby="shop-heading" className={`${container} space-y-4 sm:space-y-6`}>
+          <div className="flex items-end justify-between gap-4">
+            <div className="space-y-1.5">
+              <h2 id="shop-heading" className={sectionTitle}>Mua lẻ tại cửa hàng</h2>
+              <p className="text-sm text-bark-700">Đồ ăn, đồ chơi và phụ kiện cho chó mèo, mua từng món.</p>
+            </div>
+            <Link href="/shop" className="text-sm font-bold text-pine-900 hover:underline shrink-0">Xem tất cả</Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            {featured.map((p) => (
+              <Link key={p.id} href={`/shop/${p.slug}`} className="rounded-container bg-surface-card border border-surface-border overflow-hidden hover:border-pine-800 transition-colors group">
+                <div className="relative w-full aspect-square bg-surface-muted">
+                  <ProductItemImage src={p.image} alt={p.name} category={p.category} placeholderColor={p.placeholderColor} sizes="(max-width: 768px) 50vw, 25vw" showNote={false} />
+                </div>
+                <div className="p-3 space-y-1">
+                  <h3 className="text-sm font-bold text-pine-950 line-clamp-2 leading-snug min-h-[2.5em]">{p.name}</h3>
+                  <div className="text-sm font-extrabold text-pine-950">{formatVND(p.price)}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 6. ĐÁNH GIÁ: chỉ hiển thị review thật đã xuất bản, ẩn cả mục nếu chưa đủ */}
       {topReviews.length >= 3 && (
         <section aria-labelledby="reviews-heading" className="bg-surface-muted border-y border-surface-border py-10 sm:py-14">
           <div className={`${container} space-y-6 sm:space-y-8`}>
@@ -303,7 +329,7 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* 6. FAQ rút gọn: tiêu đề và lối sang trang hỗ trợ ở cột trái, câu hỏi ở cột phải (câu đầu mở sẵn) */}
+      {/* 7. FAQ rút gọn, mục cuối trang: tiêu đề và lối sang trang hỗ trợ ở cột trái, câu hỏi ở cột phải (câu đầu mở sẵn) */}
       <section aria-labelledby="faq-heading" className={container}>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-12 items-start">
           <div className="lg:col-span-4 space-y-2 lg:space-y-3">
@@ -342,32 +368,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* 7. MUA LẺ: phần phụ, đặt cuối để mạch chính của trang là Mystery Box */}
-      {featured.length > 0 && (
-        <section aria-labelledby="shop-heading" className={`${container} space-y-4 sm:space-y-6`}>
-          <div className="flex items-end justify-between gap-4">
-            <div className="space-y-1.5">
-              <h2 id="shop-heading" className={sectionTitle}>Mua lẻ tại cửa hàng</h2>
-              <p className="text-sm text-bark-700">Đồ ăn, đồ chơi và phụ kiện cho chó mèo, mua từng món.</p>
-            </div>
-            <Link href="/shop" className="text-sm font-bold text-pine-900 hover:underline shrink-0">Xem tất cả</Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            {featured.map((p) => (
-              <Link key={p.id} href={`/shop/${p.slug}`} className="rounded-container bg-surface-card border border-surface-border overflow-hidden hover:border-pine-800 transition-colors group">
-                <div className="relative w-full aspect-square bg-surface-muted">
-                  <ProductItemImage src={p.image} alt={p.name} category={p.category} placeholderColor={p.placeholderColor} sizes="(max-width: 768px) 50vw, 25vw" showNote={false} />
-                </div>
-                <div className="p-3 space-y-1">
-                  <h3 className="text-sm font-bold text-pine-950 line-clamp-2 leading-snug min-h-[2.5em]">{p.name}</h3>
-                  <div className="text-sm font-extrabold text-pine-950">{formatVND(p.price)}</div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }
