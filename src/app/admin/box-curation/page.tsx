@@ -1,21 +1,47 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { Suspense, useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import ProductItemImage from "@/components/common/ProductItemImage";
 import { createClient } from "@/lib/supabase/client";
 import { formatVND, formatWeight } from "@/lib/formatters";
 import { fetchPendingCurations, fetchCandidateProducts, autoSuggest, CurationQueueRow, CandidateProduct } from "@/lib/curation";
 import Link from "next/link";
-import { CheckCircle2, AlertTriangle, ShieldAlert, Plus, PlusCircle, XCircle } from "lucide-react";
+import { CheckCircle2, AlertTriangle, ShieldAlert, Plus, PlusCircle, Search, XCircle } from "lucide-react";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 import { Modal } from "@/components/ui/Modal";
-import { formatDateTime } from "@/lib/formatters";
 import { useAdminTasks } from "../AdminTasks";
 
 const ORDER_TYPE_SHORT: Record<string, string> = { mystery_box: "Mua 1 lần", subscription_cycle: "Theo gói" };
-const sizeLabel = (pet: { species: string; size: string }) => (pet.species === "cat" ? "Mèo" : pet.size === "small" ? "Chó nhỏ dưới 10 kg" : "Chó lớn từ 10 kg");
+
+// Hộp đã chờ bao lâu kể từ lúc khách đặt; quá 1 ngày tô vàng, quá 2 ngày tô đỏ
+const waitingOf = (iso?: string) => {
+  if (!iso) return null;
+  const mins = Math.max(1, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+  const label = mins < 60 ? `${mins} phút` : mins < 1440 ? `${Math.floor(mins / 60)} giờ` : `${Math.floor(mins / 1440)} ngày`;
+  return { label, tone: mins >= 2880 ? "text-red-700 font-bold" : mins >= 1440 ? "text-amber-700 font-bold" : "text-bark-600" };
+};
+
+type SpeciesFilter = "all" | "dog" | "cat";
+const SPECIES_FILTERS: { id: SpeciesFilter; label: string }[] = [
+  { id: "all", label: "Tất cả" },
+  { id: "dog", label: "Chó" },
+  { id: "cat", label: "Mèo" },
+];
 
 export default function AdminBoxCurationPage() {
+  return (
+    <Suspense fallback={<div className="py-16 text-center text-xs text-bark-500">Đang tải hàng chờ tuyển chọn...</div>}>
+      <CurationContent />
+    </Suspense>
+  );
+}
+
+function CurationContent() {
+  // Mở từ trang Đơn hàng (?order=MÃ ĐƠN): chọn sẵn hộp của đơn đó
+  const orderParam = useSearchParams().get("order");
+  const [species, setSpecies] = useState<SpeciesFilter>("all");
+  const [query, setQuery] = useState("");
   const [queue, setQueue] = useState<CurationQueueRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -28,19 +54,37 @@ export default function AdminBoxCurationPage() {
   const [lastApproved, setLastApproved] = useState<string | null>(null);
   const { refresh: refreshTasks } = useAdminTasks();
 
+  // Tải lại danh sách mà không che cả trang (chỉ lần đầu mới hiện "Đang tải"), giữ hộp đang chọn nếu còn trong hàng chờ
   const loadQueue = useCallback(async () => {
-    setLoading(true);
     const rows = await fetchPendingCurations();
     setQueue(rows);
-    if (rows.length > 0) setSelectedId((prev) => prev && rows.some((r) => r.id === prev) ? prev : rows[0].id);
+    if (rows.length > 0) {
+      setSelectedId((prev) => {
+        if (prev && rows.some((r) => r.id === prev)) return prev;
+        return (orderParam && rows.find((r) => r.orders?.order_code === orderParam)?.id) || rows[0].id;
+      });
+    }
     setLoading(false);
-  }, []);
+  }, [orderParam]);
 
   useEffect(() => {
     loadQueue();
   }, [loadQueue]);
 
   const active = queue.find((q) => q.id === selectedId) || null;
+
+  // Danh sách chờ sau khi lọc theo loài và từ khóa (tên bé, mã đơn, tên hộp)
+  const visibleQueue = useMemo(() => {
+    const kw = query.trim().toLowerCase();
+    return queue.filter(
+      (item) =>
+        (species === "all" || item.pets.species === species) &&
+        (!kw || `${item.pets.name} ${item.orders?.order_code || ""} ${item.box_types.name}`.toLowerCase().includes(kw))
+    );
+  }, [queue, species, query]);
+  // Số hộp của cùng một đơn còn trong hàng chờ (đơn có nhiều hộp chỉ chuyển bước khi duyệt hết)
+  const boxesInOrder = (orderId: string) => queue.filter((q) => q.order_id === orderId).length;
+  const oldest = waitingOf(queue[0]?.orders?.created_at);
 
   useEffect(() => {
     if (!active) {
@@ -91,6 +135,10 @@ export default function AdminBoxCurationPage() {
     setLastApproved(remaining > 0 ? null : active.orders?.order_code || null);
     setTimeout(() => setNotice(null), 6000);
     refreshTasks();
+    // Duyệt xong tự chuyển sang hộp kế tiếp trong danh sách đang lọc
+    const idx = visibleQueue.findIndex((q) => q.id === active.id);
+    const next = visibleQueue[idx + 1] || visibleQueue[idx - 1];
+    setSelectedId(next ? next.id : null);
     loadQueue();
   };
 
@@ -104,8 +152,13 @@ export default function AdminBoxCurationPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold text-pine-950 font-display">Hàng chờ tuyển chọn</h1>
-        <p className="text-xs text-bark-500">
+        <p className="text-xs text-bark-600">
           Món được gợi ý theo hồ sơ bé (loài, cỡ, tuổi), loại món chứa thành phần dị ứng và đánh dấu món đã gửi hoặc bé không thích.
+          {queue.length > 0 && oldest && (
+            <>
+              {" "}Còn <strong className="text-pine-950">{queue.length} hộp</strong>, hộp cũ nhất đã chờ <span className={oldest.tone}>{oldest.label}</span>.
+            </>
+          )}
         </p>
       </div>
 
@@ -131,39 +184,75 @@ export default function AdminBoxCurationPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-4 space-y-3">
-            <span className="text-xs font-bold text-bark-700 block">Danh sách chờ ({queue.length} hộp)</span>
-            {queue.map((item) => {
-              const isSelected = item.id === active?.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setSelectedId(item.id)}
-                  className={`w-full p-4 rounded-container border text-left transition-all ${isSelected ? "border-pine-900 bg-surface-card ring-2 ring-pine-900/10 shadow-sm" : "border-surface-border bg-surface-card hover:bg-surface-muted"}`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-[11px] font-bold text-bark-600">{item.orders?.order_code}</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-tag bg-surface-muted text-bark-700">
-                      {ORDER_TYPE_SHORT[item.orders?.order_type || ""] || "Mystery Box"}{item.orders?.cycle_index ? ` · kỳ ${item.orders.cycle_index}` : ""}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2.5 mt-2">
-                    <PetSpeciesIcon species={item.pets.species} variant="avatar" size="sm" />
-                    <div>
-                      <h3 className="text-sm font-bold text-pine-950">Bé {item.pets.name}</h3>
-                      <p className="text-[11px] text-bark-500">{sizeLabel(item.pets)} · {item.box_types.name}</p>
-                      {item.orders?.created_at && <p className="text-[10px] text-bark-500">Đặt lúc {formatDateTime(item.orders.created_at)}</p>}
-                    </div>
-                  </div>
-                  {item.pets.allergies?.length > 0 && (
-                    <div className="mt-2 text-[10px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded inline-block">
-                      Dị ứng: {item.pets.allergies.join(", ")}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
+          <div className="lg:col-span-4 lg:sticky lg:top-[4.5rem] rounded-container bg-surface-card border border-surface-border overflow-hidden">
+            <div className="p-3 border-b border-surface-border space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-pine-950">
+                  Danh sách chờ <span className="text-honey-700 tabular-nums">{visibleQueue.length}</span>
+                  {visibleQueue.length !== queue.length && <span className="font-medium text-bark-600"> / {queue.length} hộp</span>}
+                </span>
+                <div role="group" aria-label="Lọc theo loài" className="inline-flex p-0.5 rounded-box bg-surface-muted text-[11px]">
+                  {SPECIES_FILTERS.map((f) => (
+                    <button key={f.id} type="button" aria-pressed={species === f.id} onClick={() => setSpecies(f.id)}
+                      className={`h-7 px-2.5 rounded-lg font-bold transition-colors ${species === f.id ? "bg-white text-pine-950 shadow-xs" : "text-bark-600"}`}>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="relative">
+                <Search className="w-4 h-4 text-bark-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Tên bé, mã đơn hoặc tên hộp"
+                  aria-label="Tìm trong danh sách chờ"
+                  className="w-full h-9 pl-9 pr-3 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Danh sách cuộn riêng để khung chọn món bên phải luôn nằm trong tầm mắt */}
+            <ul className="max-h-[22rem] lg:max-h-[calc(100vh-13.5rem)] overflow-y-auto divide-y divide-surface-border">
+              {visibleQueue.length === 0 && <li className="p-6 text-center text-xs text-bark-600">Không có hộp nào khớp bộ lọc.</li>}
+              {visibleQueue.map((item) => {
+                const isSelected = item.id === active?.id;
+                const wait = waitingOf(item.orders?.created_at);
+                const siblings = boxesInOrder(item.order_id);
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(item.id)}
+                      aria-current={isSelected ? "true" : undefined}
+                      className={`w-full flex items-start gap-2.5 px-3 py-2.5 text-left transition-colors border-l-[3px] ${
+                        isSelected ? "border-l-pine-900 bg-pine-50" : "border-l-transparent hover:bg-surface-muted/60"
+                      }`}
+                    >
+                      <PetSpeciesIcon species={item.pets.species} variant="avatar" size="sm" />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span className="text-sm font-bold text-pine-950 truncate">Bé {item.pets.name}</span>
+                          {wait && <span className={`text-[11px] shrink-0 ${wait.tone}`}>chờ {wait.label}</span>}
+                        </span>
+                        <span className="block text-[11px] text-bark-700 truncate">{item.box_types.name}</span>
+                        <span className="block text-[11px] text-bark-600 truncate">
+                          <span className="font-mono">{item.orders?.order_code}</span>
+                          {" · "}
+                          {ORDER_TYPE_SHORT[item.orders?.order_type || ""] || "Mystery Box"}
+                          {item.orders?.cycle_index ? ` kỳ ${item.orders.cycle_index}` : ""}
+                          {siblings > 1 ? ` · đơn còn ${siblings} hộp` : ""}
+                        </span>
+                        {item.pets.allergies?.length > 0 && (
+                          <span className="block text-[11px] font-bold text-red-700 truncate">Dị ứng: {item.pets.allergies.join(", ")}</span>
+                        )}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
 
           <div className="lg:col-span-8 space-y-5">
@@ -271,7 +360,8 @@ export default function AdminBoxCurationPage() {
                   </button>
                 </div>
 
-                <div className="pt-4 border-t border-surface-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {/* Dính ở đáy màn hình khi danh sách món dài, để nút duyệt luôn bấm được */}
+                <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 px-4 sm:px-6 py-3 rounded-b-container bg-surface-card border-t border-surface-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="text-xs text-bark-500">Tổng giá trị thực tế các món:</div>
                     <div className="flex items-baseline gap-2">
@@ -286,7 +376,7 @@ export default function AdminBoxCurationPage() {
                   <button type="button" onClick={handleApprove} disabled={approving || !isValueValid || hasAllergyViolation}
                     className="w-full sm:w-auto px-6 py-3 rounded-box text-xs font-bold transition-colors flex items-center justify-center gap-2 bg-pine-900 hover:bg-pine-800 text-white shadow-sm disabled:bg-surface-muted disabled:text-bark-400">
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>{approving ? "Đang xử lý..." : "Xác nhận duyệt tuyển chọn hộp"}</span>
+                    <span>{approving ? "Đang xử lý..." : visibleQueue.length > 1 ? "Duyệt và sang hộp kế tiếp" : "Duyệt hộp này"}</span>
                   </button>
                 </div>
               </div>
