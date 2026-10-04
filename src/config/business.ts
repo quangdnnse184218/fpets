@@ -9,9 +9,9 @@
 //  - Phí ship và thời gian giao: src/lib/shipping.ts (bản sao của hàm calc_shipping_fee ở server).
 
 export const BUSINESS = {
-  // Nơi gửi hàng, ví dụ: "kho FPETS tại TP.HCM". CẦN CỬA HÀNG ĐIỀN.
-  // Lưu ý: địa chỉ liên hệ hiện ghi Hà Nội nhưng phí ship đang ưu đãi cho địa chỉ tại TP.HCM (SPEC §6).
-  shipFrom: null as string | null,
+  // Nơi gửi hàng, hiện trong câu "Hàng gửi từ …". Shop ở Phường Tăng Nhơn Phú, TP. Hồ Chí Minh
+  // (địa chỉ đầy đủ ở src/lib/contactInfo.ts), khớp với mức phí ship ưu đãi cho địa chỉ tại TP.HCM (SPEC §6).
+  shipFrom: "TP. Hồ Chí Minh" as string | null,
 
   // Cam kết sản phẩm. CẦN CỬA HÀNG ĐIỀN (để null thì khối "Về sản phẩm" không hiện dòng đó).
   // Ví dụ: "Hàng chính hãng, nhập từ nhà phân phối có hóa đơn"

@@ -136,7 +136,7 @@ Mọi đơn đều cần đăng nhập: giỏ hàng lưu theo tài khoản; gi�
 
 **Checkout (1 trang, chia 4 khối)**
 
-1. Thông tin nhận hàng: chọn địa chỉ đã lưu hoặc nhập mới (họ tên, SĐT, tỉnh/thành, quận/huyện, phường/xã, số nhà), ghi chú.
+1. Thông tin nhận hàng: chọn địa chỉ đã lưu hoặc nhập mới (họ tên, SĐT, tỉnh/thành, phường/xã, số nhà), ghi chú. Địa chỉ theo địa giới hành chính từ 01/07/2025: 34 tỉnh/thành, 3.321 phường/xã/đặc khu, không còn cấp quận/huyện; ô tỉnh/thành ghi kèm tên tỉnh cũ đã nhập vào, ô phường/xã gõ để tìm.
 2. Giao hàng: tiêu chuẩn, hiện phí và ngày dự kiến.
 3. Thanh toán: MoMo, VNPay (QR/ATM/thẻ), COD.
 4. Xem lại đơn và bấm "Đặt hàng".

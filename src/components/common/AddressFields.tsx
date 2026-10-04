@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { VN_PROVINCES } from "@/lib/vnProvinces";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { VN_PROVINCES, provinceLabel } from "@/lib/vnProvinces";
+import { normalizeText } from "@/lib/petOptions";
 
 export interface AddressValue {
   recipientName: string;
@@ -65,11 +67,151 @@ function loadWards(): Promise<WardMap> {
   return wardPromise;
 }
 
-const WARD_GROUPS = [
-  { prefix: "Phường ", label: "Phường" },
-  { prefix: "Xã ", label: "Xã" },
-  { prefix: "Đặc khu ", label: "Đặc khu" },
-];
+const WARD_PREFIX = /^(Phường|Xã|Đặc khu) /;
+
+// Ô chọn phường/xã có tìm kiếm. Một tỉnh có tới hơn 100 phường/xã và tên nào cũng bắt đầu bằng "Phường"/"Xã",
+// nên ô chọn thường không dò nhanh được; ở đây khách gõ vài chữ (có dấu hoặc không dấu) để lọc danh sách.
+function WardPicker({
+  id,
+  wards,
+  value,
+  onChange,
+  disabled,
+  placeholder,
+  invalid,
+  describedBy,
+  className,
+}: {
+  id: string;
+  wards: string[];
+  value: string;
+  onChange: (ward: string) => void;
+  disabled: boolean;
+  placeholder: string;
+  invalid: boolean;
+  describedBy?: string;
+  className: string;
+}) {
+  const [open, setOpen] = useState(false);
+  // null: ô đang hiện phường/xã đã chọn; chuỗi: khách đang gõ để tìm
+  const [query, setQuery] = useState<string | null>(null);
+  const [active, setActive] = useState(0);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  const matches = useMemo(() => {
+    const q = normalizeText(query ?? "").trim();
+    return q ? wards.filter((w) => normalizeText(w).includes(q)) : wards;
+  }, [wards, query]);
+
+  useEffect(() => {
+    if (open) listRef.current?.children[active]?.scrollIntoView({ block: "nearest" });
+  }, [open, active]);
+
+  const show = () => {
+    if (open) return;
+    setActive(Math.max(0, wards.indexOf(value)));
+    setOpen(true);
+  };
+  const choose = (ward: string) => {
+    onChange(ward);
+    setQuery(null);
+    setOpen(false);
+  };
+  // Rời ô: gõ đúng tên một phường/xã thì nhận luôn, xóa trắng thì bỏ chọn, còn lại giữ lựa chọn trước đó
+  const commit = () => {
+    if (query !== null) {
+      const q = normalizeText(query).trim();
+      if (q === "") onChange("");
+      else {
+        const exact = wards.filter((w) => normalizeText(w) === q || normalizeText(w.replace(WARD_PREFIX, "")) === q);
+        if (exact.length === 1) onChange(exact[0]);
+      }
+    }
+    setQuery(null);
+    setOpen(false);
+  };
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!open) show();
+      else setActive((i) => Math.min(i + 1, matches.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && open && matches[active]) {
+      e.preventDefault();
+      choose(matches[active]);
+    } else if (e.key === "Escape" && open) {
+      // Chỉ đóng danh sách, không đóng luôn hộp thoại đang chứa form
+      e.stopPropagation();
+      setQuery(null);
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        role="combobox"
+        aria-expanded={open}
+        aria-controls={`${id}-list`}
+        aria-autocomplete="list"
+        aria-activedescendant={open && matches[active] ? `${id}-opt-${active}` : undefined}
+        aria-invalid={invalid}
+        aria-describedby={describedBy}
+        className={`${className} pr-9`}
+        autoComplete="off"
+        enterKeyHint="done"
+        maxLength={80}
+        disabled={disabled}
+        placeholder={placeholder}
+        value={query ?? value}
+        onFocus={(e) => {
+          e.target.select();
+          show();
+        }}
+        onClick={show}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setActive(0);
+          setOpen(true);
+        }}
+        onKeyDown={onKeyDown}
+        onBlur={commit}
+      />
+      <ChevronDown className="w-4 h-4 text-bark-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden="true" />
+      {open && !disabled && (
+        // Giữ con trỏ trong ô khi bấm vào danh sách, để bấm chọn không bị coi là rời ô
+        <ul
+          id={`${id}-list`}
+          ref={listRef}
+          role="listbox"
+          onMouseDown={(e) => e.preventDefault()}
+          className="absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-box border border-surface-border bg-white shadow-lg py-1 text-sm"
+        >
+          {matches.length === 0 ? (
+            <li className="px-3 py-2 text-bark-600">Không có phường/xã nào khớp “{query}”.</li>
+          ) : (
+            matches.map((w, i) => (
+              <li
+                key={w}
+                id={`${id}-opt-${i}`}
+                role="option"
+                aria-selected={w === value}
+                onClick={() => choose(w)}
+                onMouseEnter={() => setActive(i)}
+                className={`px-3 min-h-10 flex items-center cursor-pointer ${i === active ? "bg-pine-50" : ""} ${w === value ? "font-bold text-pine-950" : "text-bark-800"}`}
+              >
+                {w}
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 // Địa chỉ theo địa giới mới (không còn Quận/Huyện): Tỉnh/Thành → Phường/Xã → Số nhà, đường
 export default function AddressFields({
@@ -133,7 +275,7 @@ export default function AddressFields({
           // Đổi tỉnh thì phường/xã cũ không còn đúng
           onChange={(e) => onChange({ ...value, province: e.target.value, ward: "" })}>
           <option value="">Chọn tỉnh / thành</option>
-          {VN_PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
+          {VN_PROVINCES.map((p) => <option key={p} value={p}>{provinceLabel(p)}</option>)}
         </select>
         {message("province")}
       </div>
@@ -145,23 +287,28 @@ export default function AddressFields({
             aria-invalid={!!errors.ward} aria-describedby={describedBy("ward")}
             value={value.ward} onChange={(e) => set("ward", e.target.value)} />
         ) : (
-          <select id={`${idPrefix}-ward`} className={input(!!errors.ward)} required value={value.ward} disabled={!value.province || wards === null}
-            aria-invalid={!!errors.ward} aria-describedby={describedBy("ward")}
-            onChange={(e) => set("ward", e.target.value)}>
-            <option value="">{!value.province ? "Chọn tỉnh / thành trước" : wards === null ? "Đang tải…" : "Chọn phường / xã"}</option>
-            {legacyWard && <option value={legacyWard}>{legacyWard}</option>}
-            {WARD_GROUPS.map((g) => {
-              const items = wardList.filter((w) => w.startsWith(g.prefix));
-              return items.length > 0 ? (
-                <optgroup key={g.label} label={g.label}>
-                  {items.map((w) => <option key={w} value={w}>{w}</option>)}
-                </optgroup>
-              ) : null;
-            })}
-          </select>
+          <WardPicker
+            // Đổi tỉnh thì tạo lại ô để xóa chữ đang gõ dở
+            key={value.province}
+            id={`${idPrefix}-ward`}
+            wards={wardList}
+            value={value.ward}
+            onChange={(ward) => set("ward", ward)}
+            disabled={!value.province || wards === null}
+            placeholder={!value.province ? "Chọn tỉnh / thành trước" : wards === null ? "Đang tải…" : "Gõ để tìm phường / xã"}
+            invalid={!!errors.ward}
+            describedBy={describedBy("ward")}
+            className={input(!!errors.ward)}
+          />
         )}
         {message("ward")}
+        {legacyWard && !errors.ward && (
+          <p className="mt-1 text-xs font-semibold text-amber-700">“{legacyWard}” không có trong danh sách phường/xã mới. Chọn lại để giao hàng chính xác.</p>
+        )}
       </div>
+      <p className="sm:col-span-2 -mt-1 text-xs text-bark-600">
+        Địa chỉ theo địa giới mới từ 01/07/2025: không còn quận/huyện, nhiều phường/xã cũ đã gộp và đổi tên.
+      </p>
       <div className="sm:col-span-2">
         <label className={label} htmlFor={`${idPrefix}-street`}>Số nhà, tên đường {star}</label>
         <input id={`${idPrefix}-street`} className={input(!!errors.street)} required autoComplete="street-address" placeholder="Ví dụ: 12 Lê Lợi" maxLength={160}
