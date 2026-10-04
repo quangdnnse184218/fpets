@@ -388,7 +388,7 @@ function OrderDetail({
 
         {isReceipt && (
           <p className="p-3 rounded-box bg-surface-muted text-bark-700 leading-relaxed">
-            Đây là biên nhận thanh toán của gói định kỳ, không có hàng cần giao. Hộp của từng kỳ được tạo thành đơn &quot;Hộp theo gói&quot; vào ngày chốt.
+            Đây là biên nhận thanh toán của gói định kỳ, không có hàng cần giao. Hộp của từng kỳ là một đơn &quot;Hộp theo gói&quot; riêng: hộp đầu được tạo ngay khi khách thanh toán, các hộp sau tạo vào ngày chốt của từng kỳ.
             Tạm dừng hoặc hủy gói ở trang <Link href="/admin/subscriptions" className="font-bold text-pine-900 underline">Gói định kỳ</Link>.
           </p>
         )}
