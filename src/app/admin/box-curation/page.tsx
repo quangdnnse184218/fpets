@@ -65,7 +65,7 @@ export default function AdminBoxCurationPage() {
     setApproving(true);
     setError(null);
     const supabase = createClient();
-    const { error: rpcError } = await supabase.rpc("approve_box_curation", {
+    const { data: result, error: rpcError } = await supabase.rpc("approve_box_curation", {
       p_curation_id: active.id,
       p_product_ids: selectedIds,
     });
@@ -81,8 +81,14 @@ export default function AdminBoxCurationPage() {
       setError(key ? map[key] : rpcError.message);
       return;
     }
-    setNotice(`Đã duyệt hộp cho bé ${active.pets.name}. Đơn ${active.orders?.order_code} chuyển sang Đang chuẩn bị, tồn kho đã được trừ.`);
-    setLastApproved(active.orders?.order_code || null);
+    // Đơn có nhiều hộp chỉ chuyển sang "Đang chuẩn bị" khi hộp cuối cùng được duyệt
+    const remaining = Number((result as { remaining_pending?: number } | null)?.remaining_pending ?? 0);
+    setNotice(
+      remaining > 0
+        ? `Đã duyệt hộp cho bé ${active.pets.name}, tồn kho đã được trừ. Đơn ${active.orders?.order_code} còn ${remaining} hộp chờ tuyển chọn.`
+        : `Đã duyệt hộp cho bé ${active.pets.name}. Đơn ${active.orders?.order_code} chuyển sang Đang chuẩn bị, tồn kho đã được trừ.`
+    );
+    setLastApproved(remaining > 0 ? null : active.orders?.order_code || null);
     setTimeout(() => setNotice(null), 6000);
     refreshTasks();
     loadQueue();

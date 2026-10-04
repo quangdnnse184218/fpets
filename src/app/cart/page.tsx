@@ -61,13 +61,14 @@ export default function CartPage() {
 
   const remainingForFreeship = Math.max(0, SHIPPING_CONFIG.freeShippingThreshold - subtotal);
 
-  // Box chỉ đổi được sang bé cùng loài (chó: cùng size) — khớp ràng buộc ở server
+  // Box chỉ đổi được sang bé cùng loài (chó: cùng size) và chưa có hộp cùng loại trong giỏ — khớp ràng buộc ở server
   const eligiblePetsFor = (item: (typeof cart)[number]) =>
     pets.filter(
       (p) =>
         item.boxType &&
         p.species === item.boxType.species &&
-        (item.boxType.species !== "dog" || p.size === item.boxType.size)
+        (item.boxType.species !== "dog" || p.size === item.boxType.size) &&
+        !cart.some((other) => other.id !== item.id && other.type === "box" && other.boxTypeId === item.boxTypeId && other.petId === p.id)
     );
 
   // Giỏ hàng tài khoản tải từ server: chưa tải xong thì chưa kết luận là giỏ trống
@@ -225,7 +226,7 @@ export default function CartPage() {
               {/* Số lượng & Thành tiền */}
               <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0 border-surface-border">
                 {item.type === 'box' ? (
-                  <span className="text-xs text-bark-500" title="Mỗi đơn chỉ mua 1 Mystery Box">1 hộp</span>
+                  <span className="text-xs text-bark-600" title="Mỗi hộp được chọn món riêng cho 1 bé">1 hộp</span>
                 ) : (
                   <div className="flex items-center border border-surface-border rounded-box bg-white">
                     <IconButton label="Giảm số lượng" onClick={() => updateQuantity(item.id, -1)} disabled={item.quantity <= 1}>

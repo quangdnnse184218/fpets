@@ -38,7 +38,7 @@ export default function BoxDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params?.slug as string;
-  const { pets, addToCart, isLoggedIn, isLoadingAuth, isCartReady, user } = useApp();
+  const { pets, cart, addToCart, isLoggedIn, isLoadingAuth, isCartReady, user } = useApp();
   const { show } = useToast();
 
   const [box, setBox] = useState<BoxType | null>(null);
@@ -117,6 +117,9 @@ export default function BoxDetailPage() {
   const planTotalPrice = selectedPlan ? unitDiscountedPrice * selectedPlan.cycles : 0;
   const maxDiscount = plans.reduce((m, p) => Math.max(m, p.discountPercent), 0);
 
+  // Giỏ đã có đúng hộp này cho đúng bé đang chọn (một đơn có thể có nhiều hộp, nhưng không trùng hộp cho cùng một bé)
+  const alreadyInCart = !!box && !!selectedPet && cart.some((c) => c.type === "box" && c.boxTypeId === box.id && c.petId === selectedPet.id);
+
   // Đưa hộp đang xem vào giỏ. Trả về false khi chưa đủ điều kiện (chưa đăng nhập thì chuyển sang trang đăng nhập).
   const putBoxInCart = async (mode: "add" | "buy"): Promise<boolean> => {
     if (!box) return false;
@@ -125,6 +128,7 @@ export default function BoxDetailPage() {
       return false;
     }
     if (!selectedPet) return false;
+    if (alreadyInCart) return true;
     setBusy(mode);
     await addToCart({
       type: "box",
@@ -145,9 +149,10 @@ export default function BoxDetailPage() {
 
   // Thêm vào giỏ rồi ở lại trang, khách tự chọn xem giỏ hay mua tiếp
   const handleAddToCart = async () => {
+    const existed = alreadyInCart;
     if (!box || !(await putBoxInCart("add")) || !selectedPet) return;
     setBusy(null);
-    show(`Đã thêm ${box.name} cho bé ${selectedPet.name} vào giỏ`, {
+    show(existed ? `${box.name} cho bé ${selectedPet.name} đã có trong giỏ` : `Đã thêm ${box.name} cho bé ${selectedPet.name} vào giỏ`, {
       actions: [
         { label: "Xem giỏ", onClick: () => router.push("/cart") },
         { label: "Mua tiếp", onClick: () => router.push("/shop") },

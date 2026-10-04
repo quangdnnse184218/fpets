@@ -213,7 +213,8 @@ function CheckoutFormContent() {
     if (message.includes("ERR_VOUCHER_USER_LIMIT")) return "Bạn đã dùng hết lượt cho mã voucher này.";
     if (message.includes("ERR_VOUCHER")) return "Mã voucher không áp dụng được cho đơn này.";
     if (message.includes("ERR_PET_BOX_MISMATCH")) return "Bé được chọn không phù hợp với loại box này (khác loài hoặc khác size). Vui lòng chọn lại bé hoặc loại box.";
-    if (message.includes("ERR_ONE_BOX_PER_ORDER")) return "Mỗi đơn chỉ được mua 1 Mystery Box. Vui lòng tách thành các đơn riêng.";
+    if (message.includes("ERR_DUPLICATE_BOX")) return "Trong giỏ có 2 hộp cùng loại cho cùng một bé. Vui lòng xóa bớt một hộp.";
+    if (message.includes("ERR_BOX_QUANTITY")) return "Mỗi dòng Mystery Box là 1 hộp cho 1 bé. Muốn mua cho bé khác, hãy thêm hộp cho bé đó.";
     if (message.includes("ERR_PLAN_NOT_FOUND")) return "Gói định kỳ không còn áp dụng, vui lòng chọn lại.";
     if (message.includes("ERR_BOX_NOT_FOUND")) return "Loại box này hiện không còn bán.";
     if (message.includes("ERR_COD_NOT_ALLOWED_FOR_SUBSCRIPTION")) return "Gói định kỳ chỉ hỗ trợ thanh toán online (MoMo / VNPay).";

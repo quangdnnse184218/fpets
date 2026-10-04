@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Copy, Heart, MapPin, Minus, Star, ThumbsDown, Truck } from "lucide-react";
+import { ArrowLeft, Copy, Heart, ImagePlus, MapPin, Minus, Star, ThumbsDown, Truck, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatVND, formatDateTime } from "@/lib/formatters";
 import {
@@ -25,6 +25,7 @@ import OrderStepper from "@/components/common/OrderStepper";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { resizeImageToJpeg } from "@/lib/imageResize";
 
 type ItemRating = "like" | "neutral" | "dislike";
 
@@ -240,49 +241,141 @@ export default function OrderDetailPage() {
   );
 }
 
+// Ảnh đánh giá lưu ở bucket công khai "review-photos", trong thư mục mang mã tài khoản của khách (SPEC §8: tối đa 5 ảnh)
+const REVIEW_BUCKET = "review-photos";
+const MAX_REVIEW_PHOTOS = 5;
+
+type ReviewItem = { key: string; curationId: string; petId: string; productId: string; name: string; rating: ItemRating | null };
+type ReviewBox = { curationId: string; petName: string; boxName: string };
+type ReviewPhoto = { id: string; blob: Blob; preview: string };
+
 function ReviewModal({ order, isBoxOrder, onClose, onDone }: { order: MyOrder; isBoxOrder: boolean; onClose: () => void; onDone: () => void }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
-  const [items, setItems] = useState<{ product_id: string; name: string; rating: ItemRating | null }[]>([]);
-  const [petId, setPetId] = useState<string | null>(null);
+  const [boxes, setBoxes] = useState<ReviewBox[]>([]);
+  const [items, setItems] = useState<ReviewItem[]>([]);
+  const [photos, setPhotos] = useState<ReviewPhoto[]>([]);
+  const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  // Món FPETS đã chọn cho hộp này, để khách chấm từng món (SPEC §8)
+  // Món FPETS đã chọn cho từng hộp trong đơn (một đơn có thể có nhiều hộp), để khách chấm từng món (SPEC §8)
   useEffect(() => {
     if (!isBoxOrder) return;
     createClient()
       .from("box_curations")
-      .select("pet_id, box_curation_items(product_id, products(name))")
+      .select("id, pet_id, pets(name), box_types(name), box_curation_items(product_id, products(name))")
       .eq("order_id", order.id)
-      .maybeSingle()
+      .eq("status", "curated")
+      .order("created_at", { ascending: true })
       .then(({ data }) => {
-        if (!data) return;
-        setPetId(data.pet_id);
-        const rows = (data.box_curation_items as unknown as { product_id: string; products: { name: string } | null }[]) || [];
-        setItems(rows.map((r) => ({ product_id: r.product_id, name: r.products?.name || "Sản phẩm", rating: null })));
+        const rows = (data as unknown as {
+          id: string;
+          pet_id: string;
+          pets: { name: string } | null;
+          box_types: { name: string } | null;
+          box_curation_items: { product_id: string; products: { name: string } | null }[];
+        }[] | null) || [];
+        setBoxes(rows.map((c) => ({ curationId: c.id, petName: c.pets?.name || "", boxName: c.box_types?.name || "Mystery Box" })));
+        setItems(
+          rows.flatMap((c) =>
+            c.box_curation_items.map((it) => ({
+              key: `${c.id}-${it.product_id}`,
+              curationId: c.id,
+              petId: c.pet_id,
+              productId: it.product_id,
+              name: it.products?.name || "Sản phẩm",
+              rating: null,
+            }))
+          )
+        );
       });
   }, [isBoxOrder, order.id]);
+
+  // Giải phóng ảnh xem trước khi đóng hộp thoại
+  const photosRef = useRef<ReviewPhoto[]>([]);
+  photosRef.current = photos;
+  useEffect(() => () => photosRef.current.forEach((p) => URL.revokeObjectURL(p.preview)), []);
+
+  const addPhotos = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setError("");
+    const room = MAX_REVIEW_PHOTOS - photos.length;
+    const picked = Array.from(files).slice(0, room);
+    if (files.length > room) setError(`Chỉ đính kèm tối đa ${MAX_REVIEW_PHOTOS} ảnh.`);
+    setReading(true);
+    const added: ReviewPhoto[] = [];
+    for (const file of picked) {
+      try {
+        // Thu nhỏ ngay trên máy khách: ảnh điện thoại vài MB còn vài trăm KB
+        const blob = await resizeImageToJpeg(file);
+        added.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, blob, preview: URL.createObjectURL(blob) });
+      } catch {
+        setError("Có ảnh không đọc được. Vui lòng chọn ảnh JPG, PNG hoặc WEBP.");
+      }
+    }
+    setPhotos((prev) => [...prev, ...added].slice(0, MAX_REVIEW_PHOTOS));
+    setReading(false);
+  };
+
+  const removePhoto = (id: string) =>
+    setPhotos((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target) URL.revokeObjectURL(target.preview);
+      return prev.filter((p) => p.id !== id);
+    });
 
   const submit = async () => {
     setSaving(true);
     setError("");
     const supabase = createClient();
     const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) return;
-    const { error: err } = await supabase.from("reviews").insert({ order_id: order.id, user_id: auth.user.id, rating, comment: comment.trim() || null });
-    if (err) {
+    if (!auth.user) {
       setSaving(false);
-      setError("Không gửi được đánh giá, vui lòng thử lại.");
+      setError("Phiên đăng nhập đã hết, vui lòng đăng nhập lại.");
       return;
     }
-    const rows = items.filter((i) => i.rating && petId).map((i) => ({ pet_id: petId as string, product_id: i.product_id, rating: i.rating as ItemRating }));
+
+    // 1. Tải ảnh lên thư mục của khách, lấy đường dẫn công khai
+    const uploaded: string[] = [];
+    const urls: string[] = [];
+    for (const photo of photos) {
+      const path = `${auth.user.id}/${order.order_code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Math.random().toString(36).slice(2, 10)}.jpg`;
+      const { error: upErr } = await supabase.storage.from(REVIEW_BUCKET).upload(path, photo.blob, { contentType: "image/jpeg", cacheControl: "31536000" });
+      if (upErr) {
+        if (uploaded.length > 0) await supabase.storage.from(REVIEW_BUCKET).remove(uploaded);
+        setSaving(false);
+        setError("Không tải được ảnh lên, vui lòng thử lại.");
+        return;
+      }
+      uploaded.push(path);
+      urls.push(supabase.storage.from(REVIEW_BUCKET).getPublicUrl(path).data.publicUrl);
+    }
+
+    // 2. Lưu đánh giá (server kiểm tra lại số ảnh và nguồn ảnh)
+    const { error: err } = await supabase.from("reviews").insert({ order_id: order.id, user_id: auth.user.id, rating, comment: comment.trim() || null, images: urls });
+    if (err) {
+      if (uploaded.length > 0) await supabase.storage.from(REVIEW_BUCKET).remove(uploaded);
+      setSaving(false);
+      setError(
+        err.message.includes("ERR_TOO_MANY_PHOTOS")
+          ? `Chỉ đính kèm tối đa ${MAX_REVIEW_PHOTOS} ảnh.`
+          : err.message.includes("ERR_INVALID_PHOTO")
+          ? "Ảnh đính kèm không hợp lệ, vui lòng chọn lại ảnh."
+          : "Không gửi được đánh giá, vui lòng thử lại."
+      );
+      return;
+    }
+
+    // 3. Chấm từng món của từng hộp, gắn với đúng bé
+    const rows = items.filter((i) => i.rating).map((i) => ({ pet_id: i.petId, product_id: i.productId, box_curation_id: i.curationId, rating: i.rating as ItemRating }));
     if (rows.length > 0) await supabase.from("pet_item_feedback").insert(rows);
     setSaving(false);
     onDone();
   };
 
-  const rate = (productId: string, r: ItemRating) => setItems((prev) => prev.map((i) => (i.product_id === productId ? { ...i, rating: r } : i)));
+  const rate = (key: string, r: ItemRating) => setItems((prev) => prev.map((i) => (i.key === key ? { ...i, rating: r } : i)));
 
   return (
     <Modal
@@ -292,7 +385,7 @@ function ReviewModal({ order, isBoxOrder, onClose, onDone }: { order: MyOrder; i
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={saving}>Để sau</Button>
-          <Button onClick={submit} loading={saving}>Gửi đánh giá</Button>
+          <Button onClick={submit} loading={saving} loadingText="Đang gửi…" disabled={reading}>Gửi đánh giá</Button>
         </>
       }
     >
@@ -308,26 +401,85 @@ function ReviewModal({ order, isBoxOrder, onClose, onDone }: { order: MyOrder; i
           </div>
         </div>
         <textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} placeholder={isBoxOrder ? "Bé thích món nào nhất?" : "Sản phẩm dùng thế nào?"}
-          className="w-full p-3 rounded-box border border-surface-border text-sm" />
+          aria-label="Nhận xét" className="w-full p-3 rounded-box border border-surface-border text-sm" />
+
+        {/* Ảnh mở hộp: tối đa 5 ảnh, xem trước và bỏ từng ảnh được */}
+        <div className="space-y-2">
+          <span className="text-xs font-bold text-bark-800 block">
+            Ảnh {isBoxOrder ? "mở hộp" : "sản phẩm"} <span className="font-normal text-bark-600">(không bắt buộc, tối đa {MAX_REVIEW_PHOTOS} ảnh)</span>
+          </span>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="sr-only"
+            aria-label="Chọn ảnh đính kèm đánh giá"
+            onChange={(e) => {
+              addPhotos(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <div className="flex flex-wrap gap-2">
+            {photos.map((photo, idx) => (
+              <div key={photo.id} className="relative w-20 h-20 rounded-box overflow-hidden border border-surface-border bg-surface-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.preview} alt={`Ảnh đính kèm ${idx + 1}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removePhoto(photo.id)}
+                  disabled={saving}
+                  aria-label={`Bỏ ảnh ${idx + 1}`}
+                  className="absolute top-0.5 right-0.5 w-6 h-6 rounded-full bg-black/65 text-white flex items-center justify-center hover:bg-black/80"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+            {photos.length < MAX_REVIEW_PHOTOS && (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={saving || reading}
+                className="w-20 h-20 rounded-box border-2 border-dashed border-surface-border bg-white hover:bg-surface-muted flex flex-col items-center justify-center gap-1 text-xs font-semibold text-pine-900 disabled:opacity-60"
+              >
+                <ImagePlus className="w-5 h-5" />
+                {reading ? "Đang đọc…" : "Thêm ảnh"}
+              </button>
+            )}
+          </div>
+        </div>
+
         {items.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <span className="text-xs font-bold text-bark-800 block">Bé thích từng món thế nào?</span>
-            {items.map((item) => (
-              <div key={item.product_id} className="flex items-center justify-between gap-2 text-sm">
-                <span className="text-bark-800">{item.name}</span>
-                <div className="flex gap-1">
-                  {([["like", Heart, "Bé thích"], ["neutral", Minus, "Bình thường"], ["dislike", ThumbsDown, "Không thích"]] as const).map(([value, Icon, label]) => (
-                    <button key={value} type="button" onClick={() => rate(item.product_id, value)} aria-label={label} title={label} aria-pressed={item.rating === value}
-                      className={`min-w-10 min-h-10 rounded-box border flex items-center justify-center ${item.rating === value ? "bg-pine-50 border-pine-800 text-pine-900" : "border-surface-border text-bark-400"}`}>
-                      <Icon className="w-4 h-4" />
-                    </button>
-                  ))}
-                </div>
+            {boxes.map((box) => (
+              <div key={box.curationId} className="space-y-2">
+                {/* Đơn có nhiều hộp thì ghi rõ hộp của bé nào */}
+                {boxes.length > 1 && (
+                  <p className="text-xs font-bold text-pine-950">
+                    {box.boxName}
+                    {box.petName ? ` · bé ${box.petName}` : ""}
+                  </p>
+                )}
+                {items.filter((i) => i.curationId === box.curationId).map((item) => (
+                  <div key={item.key} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="text-bark-800">{item.name}</span>
+                    <div className="flex gap-1">
+                      {([["like", Heart, "Bé thích"], ["neutral", Minus, "Bình thường"], ["dislike", ThumbsDown, "Không thích"]] as const).map(([value, Icon, label]) => (
+                        <button key={value} type="button" onClick={() => rate(item.key, value)} aria-label={label} title={label} aria-pressed={item.rating === value}
+                          className={`min-w-10 min-h-10 rounded-box border flex items-center justify-center ${item.rating === value ? "bg-pine-50 border-pine-800 text-pine-900" : "border-surface-border text-bark-400"}`}>
+                          <Icon className="w-4 h-4" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
         )}
-        {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
+        {error && <p role="alert" className="text-xs text-red-700 font-semibold">{error}</p>}
       </div>
     </Modal>
   );

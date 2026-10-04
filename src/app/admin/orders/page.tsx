@@ -77,16 +77,21 @@ interface OrderRow {
   delivered_at: string | null;
   subscriptions: { subscription_code: string } | null;
   order_items: { id: string; product_name_snapshot: string; quantity: number; total_price: number; pets: { name: string } | null }[];
-  // order_id là unique nên API trả về 1 object (hoặc null)
+  // Một đơn có thể có nhiều hộp (mỗi bé một hộp), mỗi hộp một dòng tuyển chọn
   box_curations: BoxCurationEmbed | BoxCurationEmbed[] | null;
 }
 
-type BoxCurationEmbed = { status: string; box_curation_items: { quantity: number; products: { name: string } | null }[] };
+type BoxCurationEmbed = {
+  status: string;
+  pets: { name: string } | null;
+  box_types: { name: string } | null;
+  box_curation_items: { quantity: number; products: { name: string } | null }[];
+};
 const curationsOf = (o: OrderRow): BoxCurationEmbed[] => (o.box_curations ? ([] as BoxCurationEmbed[]).concat(o.box_curations) : []);
 const hasPendingCuration = (o: OrderRow) => curationsOf(o).some((c) => c.status === "pending_curation");
 
 const SELECT =
-  "id, order_code, order_type, cycle_index, status, payment_method, payment_status, subtotal, shipping_fee, discount_amount, total_amount, recipient_name, recipient_phone, shipping_address, ward, province_city, customer_notes, admin_notes, return_reason, return_requested_at, return_resolution, return_admin_note, cancellation_reason, tracking_code, created_at, paid_at, delivered_at, subscriptions(subscription_code), order_items(id, product_name_snapshot, quantity, total_price, pets(name)), box_curations(status, box_curation_items(quantity, products(name)))";
+  "id, order_code, order_type, cycle_index, status, payment_method, payment_status, subtotal, shipping_fee, discount_amount, total_amount, recipient_name, recipient_phone, shipping_address, ward, province_city, customer_notes, admin_notes, return_reason, return_requested_at, return_resolution, return_admin_note, cancellation_reason, tracking_code, created_at, paid_at, delivered_at, subscriptions(subscription_code), order_items(id, product_name_snapshot, quantity, total_price, pets(name)), box_curations(status, pets(name), box_types(name), box_curation_items(quantity, products(name)))";
 
 // Ký tự đặc biệt của bộ lọc PostgREST (dấu phẩy, ngoặc, %) bỏ đi để từ khóa không phá câu truy vấn
 const cleanQuery = (q: string) => q.replace(/[,()%*\\]/g, " ").trim();
@@ -434,22 +439,26 @@ function OrderDetail({
         {curationsOf(order).length > 0 && (
           <section className="space-y-1.5">
             <h4 className={label}>Món trong Mystery Box</h4>
-            {curationsOf(order).map((c, idx) =>
-              c.status === "pending_curation" ? (
+            {curationsOf(order).map((c, idx) => {
+              const boxLabel = [c.box_types?.name, c.pets?.name ? `bé ${c.pets.name}` : ""].filter(Boolean).join(" · ");
+              return c.status === "pending_curation" ? (
                 <p key={idx} className="p-2.5 rounded-box bg-amber-50 border border-amber-200 text-amber-900">
-                  Hộp chưa tuyển chọn món.{" "}
+                  {boxLabel ? <strong>{boxLabel}: </strong> : null}chưa tuyển chọn món.{" "}
                   <Link href="/admin/box-curation" className="font-bold underline">Mở hàng chờ tuyển chọn</Link>
                 </p>
               ) : c.status === "cancelled" ? (
-                <p key={idx} className="text-bark-500">Hộp đã hủy theo đơn.</p>
+                <p key={idx} className="text-bark-500">{boxLabel ? `${boxLabel}: ` : ""}hộp đã hủy theo đơn.</p>
               ) : (
-                <ul key={idx} className="p-2.5 rounded-box bg-surface-muted list-disc pl-6 space-y-0.5 text-bark-800">
-                  {c.box_curation_items.map((bi, j) => (
-                    <li key={j}>{bi.quantity} × {bi.products?.name}</li>
-                  ))}
-                </ul>
-              )
-            )}
+                <div key={idx} className="p-2.5 rounded-box bg-surface-muted text-bark-800">
+                  {boxLabel && <p className="font-bold text-pine-950 mb-1">{boxLabel}</p>}
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    {c.box_curation_items.map((bi, j) => (
+                      <li key={j}>{bi.quantity} × {bi.products?.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
           </section>
         )}
 
