@@ -87,6 +87,18 @@ Mỗi hộp có ít nhất 1 món ăn (pate/snack/hạt gói nhỏ), 1 đồ ch�
 3. Admin duyệt hoặc đổi món, hệ thống cảnh báo nếu tổng giá trị dưới mức tối thiểu.
 4. Admin xác nhận: trừ tồn kho, đơn chuyển sang "Đang chuẩn bị".
 
+Đề xuất tự động (bước 2) chọn tổ hợp món theo thứ tự ưu tiên:
+
+1. Không bao giờ có món chứa thành phần bé dị ứng; tổng giá trị đạt mức tối thiểu của loại hộp.
+2. Không dùng món bé đã chấm "không thích".
+3. Đủ 3 nhóm món (món ăn, đồ chơi, đồ chăm sóc hoặc phụ kiện) và đúng số món quy định của loại hộp.
+4. Không gửi lại đồ chơi, phụ kiện bé đã nhận.
+5. Tổng giá trị vượt mức tối thiểu không quá 20.000₫.
+6. Hạn chế gửi lại đồ ăn, đồ vệ sinh bé đã nhận.
+7. Ưu tiên món hợp sở thích đã khai, các nhóm món cân đối, rồi tới tổ hợp sát mức tối thiểu nhất.
+
+Khi kho không đủ món mới để đạt mức tối thiểu trong số món quy định, đề xuất dùng lại món bé đã nhận (ưu tiên đồ ăn, đồ vệ sinh) và ghi rõ lý do cho admin. Chỉ vượt số món quy định khi không còn cách nào khác để đạt mức tối thiểu. Nếu toàn bộ món hợp với bé trong kho vẫn không đủ mức tối thiểu thì không duyệt được, màn hình báo cần nhập thêm hàng. Admin vẫn đổi món tùy ý và có nút "Đề xuất lại".
+
 Dị ứng khai trong hồ sơ là dị ứng thực phẩm, nên chỉ xét với món bé ăn vào (danh mục Thức ăn và Bánh thưởng), so theo tên và thành phần. Đồ chơi, phụ kiện, đồ chăm sóc không bị loại hay cảnh báo dù tên hoặc chất liệu trùng chữ (ví dụ đồ chơi "Cá nhồi catnip"). Quy tắc này dùng chung cho đề xuất món trong hộp và cảnh báo khi khách mua lẻ.
 
 ## 4. Mua 1 lần: Cart và Checkout

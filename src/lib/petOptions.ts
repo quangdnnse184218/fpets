@@ -116,3 +116,31 @@ export function findAllergyConflicts(product: Pick<Product, "name" | "ingredient
   }
   return conflicts;
 }
+
+// Từ khóa nhận ra món hợp với từng sở thích khai trong hồ sơ, so trên tên món (nguyên từ, có dấu).
+// Sở thích về đồ chơi chỉ so với đồ chơi, sở thích về món ăn chỉ so với món ăn:
+// "chuông" trên vòng cổ không phải đồ chơi có tiếng kêu. Catnip so thêm cả chất liệu vì thường không nằm trong tên.
+const PREFERENCE_RULES: Record<string, { words: string[]; category?: Product["category"]; alsoIngredients?: boolean }> = {
+  "gam xuong": { words: ["xương", "gặm"] },
+  "keo co": { words: ["kéo co", "dây thừng"], category: "toy" },
+  "bong nay": { words: ["bóng"], category: "toy" },
+  "do choi co tieng keu": { words: ["phát tiếng", "tiếng kêu", "chuông"], category: "toy" },
+  "do choi tri tue": { words: ["trí tuệ", "giấu thức ăn"], category: "toy" },
+  "thit say": { words: ["sấy"], category: "food" },
+  "pate": { words: ["pate"], category: "food" },
+  "catnip": { words: ["catnip"], alsoIngredients: true },
+  "can cau long vu": { words: ["cần câu", "lông vũ"], category: "toy" },
+  "chuot do choi": { words: ["chuột"], category: "toy" },
+  "cao mong": { words: ["cào móng"] },
+  "sup thuong": { words: ["súp"], category: "food" },
+  "banh thuong gion": { words: ["bánh thưởng", "bánh quy"], category: "food" },
+};
+
+/** Món này có hợp với một sở thích bé đã khai không. Dùng để ưu tiên món khi đề xuất hộp cho admin. */
+export function productMatchesPreference(product: Pick<Product, "name" | "ingredients" | "category">, preference: string): boolean {
+  // Sở thích tự nhập không thuộc danh sách chuẩn: dò đúng cụm đó trong tên món
+  const rule = PREFERENCE_RULES[normalizeText(preference).trim()] || { words: [lowerNfc(preference).trim()] };
+  if (rule.category && rule.category !== product.category) return false;
+  const haystack = lowerNfc([product.name, ...(rule.alsoIngredients ? product.ingredients || [] : [])].join(" | "));
+  return rule.words.some((w) => w !== "" && wholeWord(w).test(haystack));
+}

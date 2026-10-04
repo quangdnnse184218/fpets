@@ -19,6 +19,11 @@ const CATEGORY_BUCKET: Record<string, { bucket: Product["category"]; color: stri
   "phu-kien-dung-cu": { bucket: "accessory", color: "#E1EDE8" },
 };
 
+// Danh mục món dùng hết rồi mua lại (đồ ăn, đồ vệ sinh), khác với đồ chơi và phụ kiện dùng lâu dài.
+// Khi buộc phải gửi lại món bé đã nhận, hộp ưu tiên lặp nhóm này.
+const CONSUMABLE_CATEGORIES = new Set(["thuc-an-dinh-duong", "banh-thuong-snack", "cham-soc-ve-sinh"]);
+export const isConsumableCategory = (slug: string | null | undefined) => !!slug && CONSUMABLE_CATEGORIES.has(slug);
+
 const FALLBACK_PRODUCT_IMAGE = "https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=800&q=80";
 
 // Dữ liệu seed hiện lưu images dạng path tương đối trong Storage bucket

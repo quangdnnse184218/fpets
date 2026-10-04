@@ -5,9 +5,10 @@ import { useSearchParams } from "next/navigation";
 import ProductItemImage from "@/components/common/ProductItemImage";
 import { createClient } from "@/lib/supabase/client";
 import { formatVND, formatWeight } from "@/lib/formatters";
-import { fetchPendingCurations, fetchCandidateProducts, autoSuggest, CurationQueueRow, CandidateProduct } from "@/lib/curation";
+import { fetchPendingCurations, fetchCandidateProducts, CurationQueueRow, CandidateProduct } from "@/lib/curation";
+import { suggestBoxItems, SUGGEST_TOLERANCE, BoxRule } from "@/lib/boxSuggestion";
 import Link from "next/link";
-import { CheckCircle2, AlertTriangle, ShieldAlert, Plus, PlusCircle, Search, XCircle } from "lucide-react";
+import { CheckCircle2, AlertTriangle, ShieldAlert, Plus, PlusCircle, RotateCcw, Search, XCircle } from "lucide-react";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 import { Modal } from "@/components/ui/Modal";
 import { useAdminTasks } from "../AdminTasks";
@@ -21,6 +22,26 @@ const waitingOf = (iso?: string) => {
   const label = mins < 60 ? `${mins} phút` : mins < 1440 ? `${Math.floor(mins / 60)} giờ` : `${Math.floor(mins / 1440)} ngày`;
   return { label, tone: mins >= 2880 ? "text-red-700 font-bold" : mins >= 1440 ? "text-amber-700 font-bold" : "text-bark-600" };
 };
+
+const ruleOf = (row: CurationQueueRow): BoxRule => ({
+  minRetailValue: row.box_types.min_retail_value,
+  itemCountMin: row.box_types.item_count_min,
+  itemCountMax: row.box_types.item_count_max,
+});
+const GROUP_ORDER: CandidateProduct["category"][] = ["food", "toy", "accessory"];
+const sumPrice = (items: CandidateProduct[]) => items.reduce((s, p) => s + p.price, 0);
+
+// Nhãn đi kèm từng món để admin xem nhanh món đó có hợp với bé không
+function ItemFlags({ prod }: { prod: CandidateProduct }) {
+  return (
+    <>
+      {prod.isAllergic && <span className="text-red-600 font-bold">· Chứa dị ứng!</span>}
+      {prod.wasDisliked && <span className="text-red-600 font-bold">· Bé không thích</span>}
+      {prod.wasSentBefore && <span className="text-amber-700 font-bold">· Đã gửi trước</span>}
+      {prod.matchedPreferences.length > 0 && <span className="text-grass-700 font-bold">· Hợp sở thích: {prod.matchedPreferences.join(", ")}</span>}
+    </>
+  );
+}
 
 type SpeciesFilter = "all" | "dog" | "cat";
 const SPECIES_FILTERS: { id: SpeciesFilter; label: string }[] = [
@@ -86,23 +107,59 @@ function CurationContent() {
   const boxesInOrder = (orderId: string) => queue.filter((q) => q.order_id === orderId).length;
   const oldest = waitingOf(queue[0]?.orders?.created_at);
 
+  // Đổi sang hộp khác thì tải món phù hợp với bé và đề xuất sẵn. Chỉ chạy lại khi đổi hộp,
+  // không chạy khi danh sách chờ tự tải lại, để không xóa các món admin vừa chỉnh tay.
+  const activeId = active?.id;
   useEffect(() => {
     if (!active) {
       setCandidates([]);
       setSelectedIds([]);
       return;
     }
+    let cancelled = false;
+    setCandidates([]);
+    setSelectedIds([]);
     fetchCandidateProducts(active.pets).then((list) => {
+      if (cancelled) return;
       setCandidates(list);
-      const suggested = autoSuggest(list, active.box_types.min_retail_value);
-      setSelectedIds(suggested.map((s) => s.id));
+      setSelectedIds(suggestBoxItems(list, ruleOf(active)).map((item) => item.id));
     });
-  }, [active]);
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId]);
 
-  const selectedProducts = candidates.filter((c) => selectedIds.includes(c.id));
-  const totalValue = selectedProducts.reduce((s, p) => s + p.price, 0);
-  const isValueValid = totalValue >= (active?.box_types.min_retail_value || 0);
+  const rule = active ? ruleOf(active) : null;
+  const minValue = rule?.minRetailValue || 0;
+  // Hiện theo nhóm (ăn, chơi, chăm sóc/phụ kiện), giá cao trước để dễ xem lướt
+  const selectedProducts = candidates
+    .filter((c) => selectedIds.includes(c.id))
+    .sort((a, b) => GROUP_ORDER.indexOf(a.category) - GROUP_ORDER.indexOf(b.category) || b.price - a.price);
+  const totalValue = sumPrice(selectedProducts);
+  const isValueValid = totalValue >= minValue;
+  const overValue = totalValue - minValue;
   const hasAllergyViolation = selectedProducts.some((p) => p.isAllergic);
+
+  // Số liệu để giải thích vì sao đề xuất phải lệch quy định (kho thiếu món mới, thiếu món giá trị cao...)
+  const usable = candidates.filter((c) => !c.isAllergic);
+  const usableValue = sumPrice(usable);
+  // Giá trị cao nhất đạt được nếu chỉ dùng món bé chưa nhận, trong giới hạn số món của hộp
+  const freshTopValue = sumPrice(
+    usable.filter((c) => !c.wasSentBefore && !c.wasDisliked).sort((a, b) => b.price - a.price).slice(0, rule?.itemCountMax || 0)
+  );
+  const repeated = selectedProducts.filter((p) => p.wasSentBefore);
+  const dislikedPicked = selectedProducts.filter((p) => p.wasDisliked);
+  const missingGroups = GROUP_ORDER.filter((g) => usable.some((c) => c.category === g) && !selectedProducts.some((p) => p.category === g));
+  const GROUP_NAME: Record<CandidateProduct["category"], string> = { food: "món ăn", toy: "đồ chơi", accessory: "đồ chăm sóc hoặc phụ kiện" };
+
+  // Cửa sổ thêm món: món nên chọn lên đầu (hợp sở thích, chưa gửi), món không nên chọn xuống cuối
+  const pickRank = (c: CandidateProduct) =>
+    (c.isAllergic ? 8 : 0) + (c.wasDisliked ? 4 : 0) + (c.wasSentBefore ? 2 : 0) + (c.matchedPreferences.length > 0 ? 0 : 1);
+  const pickerItems = candidates.filter((c) => !selectedIds.includes(c.id)).sort((a, b) => pickRank(a) - pickRank(b) || b.price - a.price);
+
+  const resuggest = () => {
+    if (active) setSelectedIds(suggestBoxItems(candidates, ruleOf(active)).map((item) => item.id));
+  };
 
   const handleApprove = async () => {
     if (!active) return;
@@ -153,7 +210,7 @@ function CurationContent() {
       <div>
         <h1 className="text-2xl font-extrabold text-pine-950 font-display">Hàng chờ tuyển chọn</h1>
         <p className="text-xs text-bark-600">
-          Món được gợi ý theo hồ sơ bé (loài, cỡ, tuổi), loại món chứa thành phần dị ứng và đánh dấu món đã gửi hoặc bé không thích.
+          Mỗi hộp đã có sẵn món đề xuất theo hồ sơ bé (loài, cỡ, tuổi, dị ứng, sở thích) và sát giá trị tối thiểu; xem lại rồi duyệt.
           {queue.length > 0 && oldest && (
             <>
               {" "}Còn <strong className="text-pine-950">{queue.length} hộp</strong>, hộp cũ nhất đã chờ <span className={oldest.tone}>{oldest.label}</span>.
@@ -299,19 +356,23 @@ function CurationContent() {
                 </div>
 
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-pine-950">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-bold text-pine-950">
                     <span>
-                      Món đã chọn ({selectedProducts.length}; quy định {active.box_types.item_count_min}–{active.box_types.item_count_max} món):
-                      {selectedProducts.length > active.box_types.item_count_max && (
-                        <span className="block text-[11px] font-medium text-amber-700">
-                          Vượt số món quy định vì các món phù hợp hiện có chưa đủ giá trị tối thiểu. Nên nhập thêm món giá trị cao.
-                        </span>
-                      )}
+                      Món đề xuất ({selectedProducts.length} món; quy định {active.box_types.item_count_min}–{active.box_types.item_count_max} món)
                     </span>
-                    <span className="text-bark-500 font-normal">
-                      Cam kết tối thiểu: <strong>{formatVND(active.box_types.min_retail_value)}</strong>
+                    <span className="flex items-center gap-3">
+                      <span className="text-bark-600 font-normal">
+                        Cam kết tối thiểu: <strong>{formatVND(minValue)}</strong>
+                      </span>
+                      <button type="button" onClick={resuggest} className="inline-flex items-center gap-1 text-pine-900 hover:underline">
+                        <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                        <span>Đề xuất lại</span>
+                      </button>
                     </span>
                   </div>
+                  <p className="text-[11px] text-bark-600">
+                    Hệ thống chọn tổ hợp món đạt mức tối thiểu và vượt không quá {formatVND(SUGGEST_TOLERANCE)}, đủ món ăn, đồ chơi, đồ chăm sóc, ưu tiên món hợp sở thích và món bé chưa nhận.
+                  </p>
 
                   {hasAllergyViolation ? (
                     <div className="p-3 rounded-box bg-red-50 border border-red-200 text-red-800 text-xs font-bold flex items-center gap-2">
@@ -324,6 +385,45 @@ function CurationContent() {
                       <span>Không có món nào chứa thành phần dị ứng đã khai báo.</span>
                     </div>
                   )}
+
+                  {/* Kho không đủ món để đạt cam kết: không duyệt được cho tới khi nhập thêm hàng */}
+                  {candidates.length > 0 && usableValue < minValue && (
+                    <div className="p-3 rounded-box bg-red-50 border border-red-200 text-red-800 text-xs font-semibold flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                      <span>
+                        Kho chỉ còn {formatVND(usableValue)} món hợp với bé {active.pets.name} (đã loại món dị ứng), chưa đủ mức tối thiểu {formatVND(minValue)}. Cần nhập thêm hàng trước khi duyệt hộp này.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Những chỗ đề xuất phải lệch quy định, kèm lý do, để admin cân nhắc trước khi duyệt */}
+                  {(selectedProducts.length > active.box_types.item_count_max ||
+                    (selectedProducts.length > 0 && selectedProducts.length < active.box_types.item_count_min) ||
+                    repeated.length > 0 || dislikedPicked.length > 0 || (selectedProducts.length > 0 && missingGroups.length > 0)) && (
+                    <ul className="p-3 rounded-box bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1.5">
+                      {selectedProducts.length > active.box_types.item_count_max && (
+                        <li>
+                          <strong>Nhiều hơn quy định {selectedProducts.length - active.box_types.item_count_max} món.</strong>{" "}
+                          Các món hợp với bé còn trong kho không đạt {formatVND(minValue)} nếu chỉ lấy {active.box_types.item_count_max} món. Nên nhập thêm món giá trị cao.
+                        </li>
+                      )}
+                      {selectedProducts.length > 0 && selectedProducts.length < active.box_types.item_count_min && (
+                        <li><strong>Ít hơn quy định {active.box_types.item_count_min - selectedProducts.length} món.</strong></li>
+                      )}
+                      {repeated.length > 0 && (
+                        <li>
+                          <strong>{repeated.length} món bé đã nhận ở hộp trước:</strong> {repeated.map((p) => p.name).join(", ")}.
+                          {freshTopValue < minValue && ` Món bé chưa nhận chỉ đạt tối đa ${formatVND(freshTopValue)} trong ${active.box_types.item_count_max} món nên phải dùng lại món đã gửi. Nên nhập thêm món mới.`}
+                        </li>
+                      )}
+                      {dislikedPicked.length > 0 && (
+                        <li><strong>{dislikedPicked.length} món bé từng chấm không thích:</strong> {dislikedPicked.map((p) => p.name).join(", ")}.</li>
+                      )}
+                      {selectedProducts.length > 0 && missingGroups.length > 0 && (
+                        <li><strong>Hộp chưa có {missingGroups.map((g) => GROUP_NAME[g]).join(", ")}.</strong> Mỗi hộp cần ít nhất 1 món ăn, 1 đồ chơi và 1 đồ chăm sóc hoặc phụ kiện.</li>
+                      )}
+                    </ul>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -335,17 +435,15 @@ function CurationContent() {
                         </div>
                         <div className="min-w-0">
                           <span className="font-bold text-pine-950 truncate block">{prod.name}</span>
-                          <span className="text-[10px] text-bark-500 flex items-center gap-1.5">
+                          <span className="text-[11px] text-bark-600 flex flex-wrap items-center gap-x-1.5">
                             {prod.categoryLabel} · Tồn kho: {prod.stock}
-                            {prod.isAllergic && <span className="text-red-600 font-bold">· Chứa dị ứng!</span>}
-                            {prod.wasSentBefore && <span className="text-amber-600 font-bold">· Đã gửi trước</span>}
-                            {prod.wasDisliked && <span className="text-amber-600 font-bold">· Bé không thích</span>}
+                            <ItemFlags prod={prod} />
                           </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         <span className="font-bold text-pine-950">{formatVND(prod.price)}</span>
-                        <button type="button" onClick={() => setSelectedIds((prev) => prev.filter((id) => id !== prod.id))}
+                        <button type="button" aria-label={`Bỏ ${prod.name} khỏi hộp`} onClick={() => setSelectedIds((prev) => prev.filter((id) => id !== prod.id))}
                           className="p-1.5 rounded text-bark-400 hover:text-red-600">
                           <XCircle className="w-4 h-4" />
                         </button>
@@ -366,10 +464,14 @@ function CurationContent() {
                     <div className="text-xs text-bark-500">Tổng giá trị thực tế các món:</div>
                     <div className="flex items-baseline gap-2">
                       <span className="text-2xl font-extrabold text-pine-950 font-display">{formatVND(totalValue)}</span>
-                      {isValueValid ? (
-                        <span className="text-xs font-bold text-grass-700">(Đạt chuẩn)</span>
+                      {!isValueValid ? (
+                        <span className="text-xs font-bold text-red-600">(Thiếu {formatVND(-overValue)} so với tối thiểu {formatVND(minValue)})</span>
+                      ) : overValue === 0 ? (
+                        <span className="text-xs font-bold text-grass-700">(Đạt, đúng mức tối thiểu)</span>
+                      ) : overValue <= SUGGEST_TOLERANCE ? (
+                        <span className="text-xs font-bold text-grass-700">(Đạt, vượt tối thiểu {formatVND(overValue)})</span>
                       ) : (
-                        <span className="text-xs font-bold text-red-600">(Chưa đạt tối thiểu {formatVND(active.box_types.min_retail_value)})</span>
+                        <span className="text-xs font-bold text-amber-700">(Đạt, vượt tối thiểu {formatVND(overValue)})</span>
                       )}
                     </div>
                   </div>
@@ -388,10 +490,10 @@ function CurationContent() {
       {active && (
         <Modal open={pickerOpen} onClose={() => setPickerOpen(false)} title={`Thêm món cho hộp bé ${active.pets.name}`} maxWidth="max-w-lg">
             <div className="space-y-2 text-xs">
-              {candidates.filter((c) => !selectedIds.includes(c.id)).length === 0 && (
+              {pickerItems.length === 0 && (
                 <p className="py-6 text-center text-bark-500">Không còn món phù hợp nào trong kho.</p>
               )}
-              {candidates.filter((c) => !selectedIds.includes(c.id)).map((prod) => (
+              {pickerItems.map((prod) => (
                 <div key={prod.id} className="p-3 rounded-box border border-surface-border hover:bg-surface-muted flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <div className="w-10 h-10 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
@@ -399,11 +501,9 @@ function CurationContent() {
                     </div>
                     <div className="min-w-0">
                       <span className="font-bold text-pine-950 block truncate">{prod.name}</span>
-                      <span className="text-[11px] text-bark-500 flex items-center gap-1.5">
+                      <span className="text-[11px] text-bark-600 flex flex-wrap items-center gap-x-1.5">
                         {prod.categoryLabel} · Tồn: {prod.stock}
-                        {prod.isAllergic && <span className="text-red-600 font-bold">Dị ứng!</span>}
-                        {prod.wasSentBefore && <span className="text-amber-600 font-bold">Đã gửi</span>}
-                        {prod.wasDisliked && <span className="text-amber-600 font-bold">Không thích</span>}
+                        <ItemFlags prod={prod} />
                       </span>
                     </div>
                   </div>
