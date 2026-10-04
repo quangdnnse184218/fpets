@@ -87,6 +87,8 @@ Mỗi hộp có ít nhất 1 món ăn (pate/snack/hạt gói nhỏ), 1 đồ ch�
 3. Admin duyệt hoặc đổi món, hệ thống cảnh báo nếu tổng giá trị dưới mức tối thiểu.
 4. Admin xác nhận: trừ tồn kho, đơn chuyển sang "Đang chuẩn bị".
 
+Dị ứng khai trong hồ sơ là dị ứng thực phẩm, nên chỉ xét với món bé ăn vào (danh mục Thức ăn và Bánh thưởng), so theo tên và thành phần. Đồ chơi, phụ kiện, đồ chăm sóc không bị loại hay cảnh báo dù tên hoặc chất liệu trùng chữ (ví dụ đồ chơi "Cá nhồi catnip"). Quy tắc này dùng chung cho đề xuất món trong hộp và cảnh báo khi khách mua lẻ.
+
 ## 4. Mua 1 lần: Cart và Checkout
 
 Mua 1 lần đi qua giỏ hàng; box và sản phẩm lẻ được mua chung một giỏ, còn gói định kỳ có checkout riêng (mục 5).

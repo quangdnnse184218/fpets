@@ -14,6 +14,12 @@ import { DELIVERY_TIME, SHIPPING_POLICY } from "@/lib/shipping";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 
+// Bố cục 2 cột: cột ảnh hẹp và cố định, cột thông tin rộng hơn. Khung chờ tải dùng chung để trang không giật khi dữ liệu về.
+const LAYOUT_GRID =
+  "grid grid-cols-1 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-cols-[360px_minmax(0,1fr)] gap-6 md:gap-8 lg:gap-12 items-start";
+// Trên điện thoại ảnh thu nhỏ và canh giữa để tên, giá, nút mua nằm ngay trong màn hình đầu
+const IMAGE_FRAME = "w-full max-w-[15rem] sm:max-w-[18rem] md:max-w-none mx-auto";
+
 const SPECIES_LABEL: Record<Product["species"], string> = { dog: "Chó", cat: "Mèo", both: "Chó và mèo" };
 const SIZE_LABEL: Record<Product["targetSize"], string> = { small: "Dưới 10 kg", large: "Từ 10 kg", all: "Mọi cân nặng" };
 const AGE_LABEL: Record<Product["targetAge"], string> = {
@@ -83,8 +89,10 @@ export default function ProductDetailPage() {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" aria-busy="true">
         <div className="h-3 w-40 rounded bg-surface-muted animate-pulse" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="aspect-square rounded-container bg-surface-muted animate-pulse" />
+        <div className={LAYOUT_GRID}>
+          <div className={IMAGE_FRAME}>
+            <div className="aspect-square rounded-container bg-surface-muted animate-pulse" />
+          </div>
           <div className="space-y-4">
             <div className="h-3 w-24 rounded bg-surface-muted animate-pulse" />
             <div className="h-7 w-3/4 rounded bg-surface-muted animate-pulse" />
@@ -108,127 +116,102 @@ export default function ProductDetailPage() {
     );
   }
 
+  const allergyConflicts = findAllergyConflicts(product, pets);
+  const specs: [string, string][] = [
+    ["Dành cho", SPECIES_LABEL[product.species]],
+    ["Cân nặng phù hợp", SIZE_LABEL[product.targetSize]],
+    ["Độ tuổi", AGE_LABEL[product.targetAge]],
+    ["Danh mục", product.categoryLabel],
+  ];
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Breadcrumb */}
-      <nav className="text-xs text-bark-500 flex items-center gap-1.5">
-        <Link href="/shop" className="hover:text-bark-800 flex items-center gap-1">
+      <nav className="text-xs text-bark-500 flex items-center gap-1.5 min-w-0">
+        <Link href="/shop" className="hover:text-bark-800 flex items-center gap-1 shrink-0 whitespace-nowrap">
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Quay lại Cửa hàng</span>
         </Link>
         <span>/</span>
-        <span className="text-pine-950 font-semibold truncate">{product.name}</span>
+        <span className="text-pine-950 font-semibold truncate min-w-0">{product.name}</span>
       </nav>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+      <div className={LAYOUT_GRID}>
         {/* Ảnh sản phẩm thật */}
-        <div className="w-full aspect-square rounded-container overflow-hidden border border-surface-border relative bg-surface-muted shadow-sm">
-          <ProductItemImage
-            src={product.image}
-            alt={`Ảnh chụp sản phẩm ${product.name}`}
-            category={product.category}
-            placeholderColor={product.placeholderColor}
-            sizes="(max-width: 768px) 100vw, 50vw"
-            priority
-          />
+        <div className={`${IMAGE_FRAME} md:sticky md:top-24`}>
+          <div className="aspect-square rounded-container overflow-hidden border border-surface-border relative bg-surface-muted">
+            <ProductItemImage
+              src={product.image}
+              alt={`Ảnh chụp sản phẩm ${product.name}`}
+              category={product.category}
+              placeholderColor={product.placeholderColor}
+              sizes="(max-width: 639px) 240px, (max-width: 767px) 288px, (max-width: 1023px) 40vw, 360px"
+              priority
+            />
+          </div>
         </div>
 
-        {/* Thông tin sản phẩm */}
-        <div className="space-y-5">
+        {/* Tên, giá và mua hàng */}
+        <div className="min-w-0 space-y-5">
           <div>
-            <span className="text-xs font-semibold text-pine-700">
-              {product.categoryLabel}
-            </span>
-            <h1 className="text-2xl font-extrabold text-pine-950 font-display mt-1 leading-snug">
+            <span className="text-xs font-semibold text-pine-700">{product.categoryLabel}</span>
+            <h1 className="text-[22px] sm:text-2xl lg:text-[28px] font-extrabold text-pine-950 font-display mt-1 leading-snug">
               {product.name}
             </h1>
-            <div className="flex items-center gap-2 mt-2 text-xs text-bark-500">
-              <span className={product.stock > 0 ? "text-grass-700 font-medium" : "text-red-600 font-medium"}>
-                {product.stock > 0 ? `Còn ${product.stock} sản phẩm` : "Hết hàng"}
-              </span>
-            </div>
           </div>
 
-          <div className="flex items-baseline gap-3 pt-2">
-            <span className="text-3xl font-extrabold text-pine-950 font-display">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
+            <span className="text-[28px] lg:text-[32px] leading-none font-extrabold text-pine-950 font-display">
               {formatVND(product.price)}
             </span>
             {product.originalPrice && product.originalPrice > product.price && (
-              <span className="text-sm text-bark-500 line-through">
-                {formatVND(product.originalPrice)}
-              </span>
+              <span className="text-sm text-bark-500 line-through">{formatVND(product.originalPrice)}</span>
             )}
+            <span className={`text-xs font-semibold ${product.stock > 0 ? "text-grass-700" : "text-red-600"}`}>
+              {product.stock > 0 ? `Còn ${product.stock} sản phẩm` : "Hết hàng"}
+            </span>
           </div>
 
-          <div className="text-sm text-bark-700 leading-relaxed border-t border-surface-border pt-3">
-            {product.description}
-          </div>
+          <p className="text-sm text-bark-700 leading-relaxed">{product.description}</p>
 
-          {/* Thông số lấy từ thuộc tính sản phẩm trong DB (SPEC §9: loài, size, độ tuổi, thành phần) */}
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs border-b border-surface-border pb-3">
-            <dt className="text-bark-500">Dành cho</dt>
-            <dd className="font-semibold text-pine-950">{SPECIES_LABEL[product.species]}</dd>
-            <dt className="text-bark-500">Cân nặng phù hợp</dt>
-            <dd className="font-semibold text-pine-950">{SIZE_LABEL[product.targetSize]}</dd>
-            <dt className="text-bark-500">Độ tuổi</dt>
-            <dd className="font-semibold text-pine-950">{AGE_LABEL[product.targetAge]}</dd>
-            <dt className="text-bark-500">Danh mục</dt>
-            <dd className="font-semibold text-pine-950">{product.categoryLabel}</dd>
-          </dl>
-
-          {/* Thành phần dinh dưỡng */}
-          {product.ingredients.length > 0 && (
-            <div className="space-y-1.5 text-xs">
-              <span className="font-bold text-pine-950">Thành phần chính:</span>
-              <div className="flex flex-wrap gap-1.5 pt-0.5">
-                {product.ingredients.map((ing, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-0.5 rounded-tag bg-surface-muted border border-surface-border text-bark-700 text-xs"
-                  >
-                    {ing}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Cảnh báo dị ứng theo hồ sơ thú cưng (vẫn cho mua) */}
-          {findAllergyConflicts(product, pets).map((c) => (
+          {/* Cảnh báo dị ứng theo hồ sơ thú cưng (vẫn cho mua). Chỉ áp dụng cho món bé ăn vào. */}
+          {allergyConflicts.map((c) => (
             <div key={`${c.petName}-${c.allergy}`} className="flex items-start gap-2 p-3 rounded-box bg-red-50 border border-red-200 text-xs text-red-800">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>Sản phẩm có thể chứa <strong>{c.allergy.toLowerCase()}</strong>, bé {c.petName} đang khai báo dị ứng thành phần này.</span>
             </div>
           ))}
 
-          {/* Chọn số lượng & Nút thêm giỏ */}
-          <div className="space-y-3 pt-2">
+          {/* Chọn số lượng và mua */}
+          <div className="space-y-3 border-t border-surface-border pt-5">
             <div className="flex items-center gap-3">
               <span className="text-xs font-bold text-pine-950 whitespace-nowrap">Số lượng</span>
               <div className="flex items-center border border-surface-border rounded-box bg-surface-card">
                 <button
                   type="button"
+                  aria-label="Giảm số lượng"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-3 py-1.5 text-bark-700 hover:bg-surface-muted text-sm font-bold"
+                  className="w-10 h-10 text-bark-700 hover:bg-surface-muted text-sm font-bold rounded-l-box"
                 >
                   −
                 </button>
-                <span className="px-3 text-xs font-bold text-pine-950">{quantity}</span>
+                <span className="w-8 text-center text-sm font-bold text-pine-950 tabular-nums" aria-live="polite">{quantity}</span>
                 <button
                   type="button"
+                  aria-label="Tăng số lượng"
                   onClick={() => setQuantity(Math.min(10, product.stock, quantity + 1))}
-                  className="px-3 py-1.5 text-bark-700 hover:bg-surface-muted text-sm font-bold"
+                  className="w-10 h-10 text-bark-700 hover:bg-surface-muted text-sm font-bold rounded-r-box"
                 >
                   +
                 </button>
               </div>
-              <span className="text-xs text-bark-600 whitespace-nowrap">Tối đa {Math.min(10, product.stock)}</span>
+              {product.stock > 0 && <span className="text-xs text-bark-600 whitespace-nowrap">Tối đa {Math.min(10, product.stock)}</span>}
+              {quantity > 1 && (
+                <span className="ml-auto text-sm text-bark-700 whitespace-nowrap">
+                  Tạm tính <strong className="text-pine-950">{formatVND(product.price * quantity)}</strong>
+                </span>
+              )}
             </div>
-            {quantity > 1 && (
-              <p className="text-sm text-bark-700">
-                Tạm tính <strong className="text-pine-950">{formatVND(product.price * quantity)}</strong>
-              </p>
-            )}
 
             {product.stock === 0 ? (
               <Button size="lg" className="w-full" disabled>Hết hàng</Button>
@@ -244,18 +227,47 @@ export default function ProductDetailPage() {
             )}
           </div>
 
-          <div className="space-y-2 text-xs text-bark-600 pt-1">
-            <div className="flex items-start gap-2">
-              <Truck className="w-4 h-4 text-pine-800 shrink-0" />
+          <ul className="space-y-2 text-xs text-bark-600">
+            <li className="flex items-start gap-2">
+              <Truck className="w-4 h-4 text-pine-800 shrink-0" aria-hidden="true" />
               <span>{DELIVERY_TIME} {SHIPPING_POLICY}</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <RotateCcw className="w-4 h-4 text-pine-800 shrink-0" />
+            </li>
+            <li className="flex items-start gap-2">
+              <RotateCcw className="w-4 h-4 text-pine-800 shrink-0" aria-hidden="true" />
               <span>Đổi trả trong 7 ngày nếu còn nguyên seal (khách chịu phí ship).</span>
-            </div>
-          </div>
+            </li>
+          </ul>
         </div>
       </div>
+
+      {/* Thông số lấy từ thuộc tính sản phẩm trong DB (SPEC §9: loài, size, độ tuổi, thành phần) */}
+      <section className="rounded-container bg-surface-card border border-surface-border p-5 sm:p-6">
+        <h2 className="text-base font-bold text-pine-950 font-display">Thông tin sản phẩm</h2>
+        <div className={`mt-4 grid grid-cols-1 gap-6 ${product.ingredients.length > 0 ? "md:grid-cols-2 md:gap-10" : ""}`}>
+          <dl className="text-sm divide-y divide-surface-border">
+            {specs.map(([label, value]) => (
+              <div key={label} className="flex items-baseline justify-between gap-4 py-2.5 first:pt-0 last:pb-0">
+                <dt className="text-bark-600">{label}</dt>
+                <dd className="font-semibold text-pine-950 text-right">{value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          {product.ingredients.length > 0 && (
+            <div>
+              {/* Đồ chơi, phụ kiện không có "thành phần" để ăn: ghi là chất liệu */}
+              <h3 className="text-sm font-bold text-pine-950">{product.isEdible ? "Thành phần chính" : "Chất liệu, thành phần"}</h3>
+              <ul className="mt-2.5 flex flex-wrap gap-1.5">
+                {product.ingredients.map((ing, i) => (
+                  <li key={i} className="px-2.5 py-1 rounded-tag bg-surface-muted border border-surface-border text-bark-700 text-xs">
+                    {ing}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </section>
 
       {related.length > 0 && (
         <section className="space-y-4 pt-4 border-t border-surface-border">

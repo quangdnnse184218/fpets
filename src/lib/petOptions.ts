@@ -57,39 +57,56 @@ const ALLERGEN_KEYWORDS: Record<string, string[]> = {
   "dau nanh": ["đậu nành", "soy"],
 };
 
+// Cụm từ có chứa từ khóa nhưng là thứ khác hẳn: "sữa bò" là sữa chứ không phải thịt bò,
+// "bắp cải" là rau, "bắp bò" là thịt bò chứ không phải bắp (ngô). Bỏ các cụm này trước khi dò nhóm tương ứng.
+const NOT_THIS_ALLERGEN: Record<string, string[]> = {
+  "thit bo": ["sữa bò"],
+  "bap / ngo": ["bắp cải", "bắp bò"],
+};
+
 const lowerNfc = (text: string) => text.normalize("NFC").toLowerCase();
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // Nguyên từ theo chữ cái Unicode (có dấu), không dùng \b vì \b chỉ hiểu chữ không dấu
 const wholeWord = (word: string) => new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(word)}(?![\\p{L}\\p{N}])`, "u");
 
-function keywordsFor(allergy: string): string[] {
+type AllergenRule = { words: string[]; ignore: string[] };
+
+function ruleFor(allergy: string): AllergenRule {
   const key = normalizeText(allergy).trim();
-  if (ALLERGEN_KEYWORDS[key]) return ALLERGEN_KEYWORDS[key];
+  if (ALLERGEN_KEYWORDS[key]) return { words: ALLERGEN_KEYWORDS[key], ignore: NOT_THIS_ALLERGEN[key] || [] };
   // Nhãn cũ từ Quiz ("Gà", "Hải sản", "Sữa bò"...) hoặc tự nhập: chọn nhóm có từ khóa khớp dài nhất
   // ("sữa bò" là dị ứng sữa chứ không phải thịt bò)
   const label = lowerNfc(allergy);
-  let best: { words: string[]; len: number } | null = null;
-  for (const words of Object.values(ALLERGEN_KEYWORDS)) {
+  let best: { group: string; len: number } | null = null;
+  for (const [group, words] of Object.entries(ALLERGEN_KEYWORDS)) {
     for (const w of words) {
-      if (wholeWord(w).test(label) && (!best || w.length > best.len)) best = { words, len: w.length };
+      if (wholeWord(w).test(label) && (!best || w.length > best.len)) best = { group, len: w.length };
     }
   }
+  if (best) return { words: ALLERGEN_KEYWORDS[best.group], ignore: NOT_THIS_ALLERGEN[best.group] || [] };
   // Dị ứng tự nhập không thuộc nhóm nào ("Thịt vịt"): dò đúng từ đó, bỏ chữ "thịt" ở đầu
-  return best ? best.words : [label.trim().replace(/^thịt\s+/, "")];
+  return { words: [label.trim().replace(/^thịt\s+/, "")], ignore: [] };
 }
 
 /**
  * Sản phẩm có chứa nhóm dị ứng này không (so theo tên + thành phần, nguyên từ, có dấu).
  * Dùng chung cho cảnh báo khách khi mua và cho màn hình tuyển chọn hộp của admin.
  * Dựa trên tên + thành phần sản phẩm vì DB chưa có cột allergens chuẩn hóa.
+ *
+ * Dị ứng khai trong hồ sơ bé là dị ứng thực phẩm nên chỉ xét món bé ăn vào (thức ăn, bánh thưởng).
+ * Đồ chơi, phụ kiện, đồ chăm sóc không xét: tên và chất liệu của chúng hay trùng chữ với thực phẩm
+ * ("Cá nhồi catnip" là đồ chơi hình con cá, "Lông gà rừng" là chất liệu cần câu) nhưng bé không ăn.
  */
-export function productHasAllergen(product: { name: string; ingredients: string[] | null }, allergy: string): boolean {
-  const haystack = lowerNfc([product.name, ...(product.ingredients || [])].join(" | "));
-  return keywordsFor(allergy).some((w) => w !== "" && wholeWord(w).test(haystack));
+export function productHasAllergen(product: Pick<Product, "name" | "ingredients" | "isEdible">, allergy: string): boolean {
+  if (!product.isEdible) return false;
+  const { words, ignore } = ruleFor(allergy);
+  let haystack = lowerNfc([product.name, ...(product.ingredients || [])].join(" | "));
+  for (const phrase of ignore) haystack = haystack.replace(new RegExp(wholeWord(phrase).source, "gu"), " ");
+  return words.some((w) => w !== "" && wholeWord(w).test(haystack));
 }
 
 /** Các cặp (bé, dị ứng) khớp với sản phẩm. Chỉ để cảnh báo khách, vẫn cho mua. */
-export function findAllergyConflicts(product: Pick<Product, "name" | "ingredients" | "species">, pets: Pet[]) {
+export function findAllergyConflicts(product: Pick<Product, "name" | "ingredients" | "species" | "isEdible">, pets: Pet[]) {
   const conflicts: { petName: string; allergy: string }[] = [];
   for (const pet of pets) {
     if (product.species !== "both" && product.species !== pet.species) continue;

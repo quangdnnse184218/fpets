@@ -5,6 +5,8 @@ export interface Product {
   name: string;
   slug: string;
   category: "food" | "toy" | "accessory";
+  // Món bé ăn vào (thức ăn, bánh thưởng). Chỉ nhóm này mới xét dị ứng thực phẩm.
+  isEdible: boolean;
   categoryLabel: string;
   price: number;
   originalPrice?: number;

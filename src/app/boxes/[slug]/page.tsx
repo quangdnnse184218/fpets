@@ -34,6 +34,23 @@ const buildBoxFaq = (plans: PlanLite[]) => [
   },
 ];
 
+// Bố cục 2 cột: cột ảnh hẹp, cột đặt hộp rộng hơn. Khung chờ tải dùng chung để trang không giật khi dữ liệu về.
+const LAYOUT_GRID = "grid grid-cols-1 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-6 md:gap-8 lg:gap-12 items-start";
+// Ảnh hộp gốc tỉ lệ 4:3 nên hiện đủ khung thay vì cắt thành ô vuông; điện thoại thấp hơn một chút (3:2)
+const IMAGE_FRAME = "relative w-full aspect-[3/2] md:aspect-[4/3] rounded-container overflow-hidden border border-surface-border bg-surface-muted";
+
+function ExchangePolicyCard({ className = "" }: { className?: string }) {
+  return (
+    <div className={`p-4 rounded-box bg-surface-card border border-surface-border text-xs space-y-2 ${className}`}>
+      <div className="font-bold text-pine-950 flex items-center gap-1.5">
+        <ShieldCheck className="w-4 h-4 text-grass-700" aria-hidden="true" />
+        <span>Chính sách đổi món</span>
+      </div>
+      <p className="text-bark-600 leading-relaxed">{EXCHANGE_POLICY}</p>
+    </div>
+  );
+}
+
 export default function BoxDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -177,9 +194,9 @@ export default function BoxDetailPage() {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10" aria-busy="true">
         <div className="h-3 w-48 rounded bg-surface-muted animate-pulse" />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-          <div className="lg:col-span-6 aspect-square rounded-container bg-surface-muted animate-pulse" />
-          <div className="lg:col-span-6 space-y-4">
+        <div className={LAYOUT_GRID}>
+          <div className={`${IMAGE_FRAME} animate-pulse`} />
+          <div className="space-y-4">
             <div className="h-5 w-24 rounded bg-surface-muted animate-pulse" />
             <div className="h-8 w-3/4 rounded bg-surface-muted animate-pulse" />
             <div className="h-16 rounded bg-surface-muted animate-pulse" />
@@ -212,31 +229,24 @@ export default function BoxDetailPage() {
       </nav>
 
       {/* Khối Thông tin chính */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-        {/* Cột Trái: Minh họa hộp */}
-        <div className="lg:col-span-6 space-y-4">
-          <div className="w-full aspect-square rounded-container overflow-hidden border border-surface-border relative bg-surface-muted shadow-sm">
+      <div className={LAYOUT_GRID}>
+        {/* Cột trái: ảnh hộp, giữ nguyên vị trí khi cuộn phần đặt hộp bên phải */}
+        <div className="space-y-4 md:sticky md:top-24">
+          <div className={IMAGE_FRAME}>
             <Image
               src={box.imageUrl}
               alt={box.name}
               fill
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              sizes="(max-width: 767px) 100vw, (max-width: 1023px) 40vw, 380px"
               className="object-cover"
               priority
             />
           </div>
-
-          <div className="p-4 rounded-box bg-surface-card border border-surface-border text-xs space-y-2">
-            <div className="font-bold text-pine-950 flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-grass-700" />
-              <span>Chính sách đổi món</span>
-            </div>
-            <p className="text-bark-600 leading-relaxed">{EXCHANGE_POLICY}</p>
-          </div>
+          <ExchangePolicyCard className="hidden md:block" />
         </div>
 
-        {/* Cột Phải: Cấu hình mua & Chọn Pet */}
-        <div className="lg:col-span-6 space-y-6">
+        {/* Cột phải: chọn bé, hình thức đặt và nút mua */}
+        <div className="min-w-0 space-y-6">
           <div>
             <span className="inline-block text-xs font-semibold text-pine-900 bg-pine-50 px-2.5 py-1 rounded-tag border border-pine-200">
               {box.sizeLabel}
@@ -496,6 +506,8 @@ export default function BoxDetailPage() {
               Mystery Box cần tài khoản để gắn với hồ sơ của bé.
             </p>
           )}
+          {/* Điện thoại: chính sách nằm sau nút mua để tên hộp và giá hiện ngay dưới ảnh */}
+          <ExchangePolicyCard className="md:hidden" />
         </div>
       </div>
 

@@ -80,7 +80,8 @@ export async function fetchCandidateProducts(
   return matched.map((row) => {
     const product = productRowToProduct(row);
     // Cùng bộ so khớp với cảnh báo phía khách: "Thịt gà" chặn cả "Snack ức gà", "chicken"...
-    const isAllergic = (pet.allergies || []).some((allergy) => productHasAllergen(row, allergy));
+    // Chỉ chặn món bé ăn vào; đồ chơi, phụ kiện không bị chặn vì trùng chữ trong tên hay chất liệu.
+    const isAllergic = (pet.allergies || []).some((allergy) => productHasAllergen(product, allergy));
     return {
       ...product,
       isAllergic,

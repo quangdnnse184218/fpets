@@ -52,6 +52,8 @@ export function productRowToProduct(row: ProductWithCategory): Product {
     name: row.name,
     slug: row.slug,
     category: catInfo?.bucket || "accessory",
+    // Chưa xếp danh mục thì coi như ăn được để vẫn xét dị ứng, tránh bỏ sót
+    isEdible: catInfo ? catInfo.bucket === "food" : true,
     categoryLabel: CATEGORY_LABEL[catInfo?.bucket || "accessory"],
     price: row.price,
     originalPrice: row.original_price || undefined,
