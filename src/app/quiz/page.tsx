@@ -10,6 +10,7 @@ import { fetchBoxTypes, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND, formatWeight } from "@/lib/formatters";
 import { planUnitPrice } from "@/lib/pricing";
 import { calcShippingFee } from "@/lib/shipping";
+import { BUSINESS } from "@/config/business";
 import { AGE_LABEL, ALLERGY_OPTIONS, BREED_SUGGESTIONS, PREFERENCE_OPTIONS, normalizeText, sizeFromWeight, weightRange } from "@/lib/petOptions";
 import { Button } from "@/components/ui/Button";
 import { BoxType, Pet, SubscriptionPlan } from "@/types/models";
@@ -471,7 +472,7 @@ export default function PetQuizPage() {
 
         {step === 2 && (
           <>
-            <QuestionTitle ref={headingRef} title="Bé tên gì?" hint="Tên bé được in trên thiệp trong hộp." />
+            <QuestionTitle ref={headingRef} title="Bé tên gì?" hint={BUSINESS.nameCard ? "Tên bé được in trên thiệp trong hộp." : "FPETS dùng tên bé trên hồ sơ, đơn hàng và khi chọn món cho bé."} />
             <div>
               <label htmlFor="quiz-name" className="text-xs font-bold text-bark-800 block mb-1">Tên của bé <span className="text-red-600">*</span></label>
               <input

@@ -1,7 +1,7 @@
 import React from "react";
 import Image from "next/image";
 import { Cookie, MailOpen, SprayCan, Volleyball } from "lucide-react";
-import { productAssurances } from "@/config/business";
+import { BUSINESS, productAssurances } from "@/config/business";
 import { ButtonLink } from "@/components/ui/Button";
 import { CONTACT_INFO } from "@/lib/contactInfo";
 import { PREMIUM_ITEMS, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
@@ -34,7 +34,8 @@ const BOX_CONTENTS = [
   { icon: Cookie, title: "Đồ ăn, bánh thưởng", text: "Thịt sấy, pate, hạt hoặc bánh quy, theo loài và độ tuổi của bé." },
   { icon: Volleyball, title: "Đồ chơi", text: "Đồ chơi vận động hoặc tương tác, đúng cỡ với cân nặng của bé." },
   { icon: SprayCan, title: "Chăm sóc, phụ kiện", text: "Một món dùng hằng ngày như khăn lau, lược chải lông, xịt khử mùi." },
-  { icon: MailOpen, title: "Thiệp tên bé", text: "Thiệp ghi tên bé và danh sách các món trong hộp." },
+  // Thiệp chỉ hiện khi cửa hàng xác nhận có kèm thiệp trong hộp (src/config/business.ts)
+  ...(BUSINESS.nameCard ? [{ icon: MailOpen, title: "Thiệp tên bé", text: BUSINESS.nameCard }] : []),
 ];
 
 export default function AboutPage() {
@@ -49,7 +50,7 @@ export default function AboutPage() {
               FPETS làm hộp quà riêng cho từng bé chó, mèo
             </h1>
             <p className="text-base text-bark-700 leading-relaxed">
-              Thay vì đứng trước kệ hàng và đoán bé thích gì, bạn cho FPETS biết về bé một lần: loài, cân nặng, tuổi, dị ứng. Mỗi tháng FPETS chọn đồ ăn, đồ chơi và món chăm sóc hợp với bé rồi gửi tới nhà.
+              Thay vì đứng trước kệ hàng và đoán bé thích gì, bạn cho FPETS biết về bé một lần: loài, cân nặng, tuổi, dị ứng, sở thích. FPETS chọn đồ ăn, đồ chơi và món chăm sóc hợp với bé rồi gửi tới nhà: mua thử 1 hộp, hoặc đăng ký gói để mỗi tháng bé nhận một hộp.
             </p>
             <div className="flex flex-wrap gap-3 pt-1">
               <ButtonLink href="/boxes" size="lg">Xem các loại hộp</ButtonLink>
@@ -91,7 +92,7 @@ export default function AboutPage() {
               Box Tiêu chuẩn có {STANDARD_ITEMS}, Box Premium có {PREMIUM_ITEMS}. Tổng giá bán lẻ các món luôn cao hơn giá hộp.
             </p>
           </div>
-          <dl className="rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border sm:divide-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:divide-x">
+          <dl className={`rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border sm:divide-y-0 sm:grid sm:divide-x ${BOX_CONTENTS.length === 4 ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}>
             {BOX_CONTENTS.map(({ icon: Icon, title, text }) => (
               <div key={title} className="p-5">
                 <span className="w-10 h-10 rounded-box bg-honey-100 text-honey-700 flex items-center justify-center" aria-hidden="true">

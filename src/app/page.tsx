@@ -8,7 +8,7 @@ import { fetchBoxTypes, fetchProducts } from "@/lib/catalog";
 import { formatVND, formatDate } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/client";
 import ProductItemImage from "@/components/common/ProductItemImage";
-import { DISLIKE_POLICY, NO_AUTO_CHARGE, PREMIUM_ITEMS, QUIZ_LENGTH, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
+import { COD_RULE, DISLIKE_POLICY, NO_AUTO_CHARGE, PREMIUM_ITEMS, QUIZ_LENGTH, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
 import { BoxType, Product } from "@/types/models";
 import { ButtonLink } from "@/components/ui/Button";
 import { SHIPPING_SUMMARY } from "@/lib/shipping";
@@ -37,7 +37,7 @@ const HOME_FAQ = [
   { q: "Bé không thích món trong hộp thì sao?", a: DISLIKE_POLICY },
   {
     q: "Gói định kỳ có tự trừ tiền không?",
-    a: `Không. ${NO_AUTO_CHARGE} Khi còn hộp cuối, FPETS nhắc bạn gia hạn; không gia hạn thì gói tự kết thúc.`,
+    a: `Không. ${NO_AUTO_CHARGE} Sau hộp cuối, FPETS nhắc bạn gia hạn trong mục Thông báo; không gia hạn thì gói tự kết thúc.`,
   },
   {
     q: "Có cần tài khoản để mua không?",
@@ -259,7 +259,7 @@ export default function HomePage() {
           {[
             { icon: Truck, title: "Giao toàn quốc", text: SHIPPING_SUMMARY },
             { icon: RefreshCw, title: "Đổi trả trong 3–7 ngày", text: "Mystery Box báo lỗi trong 3 ngày (món dị ứng đã khai, hàng hỏng, giao thiếu); hàng lẻ còn nguyên seal đổi trong 7 ngày.", href: "/return-policy" },
-            { icon: CreditCard, title: "MoMo, VNPay hoặc COD", text: "COD cho đơn mua 1 lần dưới 2.000.000₫. Gói định kỳ trả trước, không tự động trừ tiền." },
+            { icon: CreditCard, title: "MoMo, VNPay hoặc COD", text: `COD cho ${COD_RULE}. Gói định kỳ trả trước, không tự động trừ tiền.` },
           ].map(({ icon: Icon, title, text, href }) => (
             <div key={title} className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border flex gap-3 items-start">
               <div className="w-10 h-10 rounded-box bg-honey-100 text-honey-700 flex items-center justify-center shrink-0">

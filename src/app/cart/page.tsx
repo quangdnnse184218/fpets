@@ -323,7 +323,7 @@ export default function CartPage() {
               </div>
               {shippingFee === null && (
                 <p className="text-xs text-bark-500">
-                  {formatVND(SHIPPING_CONFIG.hcmFee)} nội thành TP.HCM, {formatVND(SHIPPING_CONFIG.otherFee)} tỉnh khác. Tính chính xác ở bước đặt hàng.
+                  {formatVND(SHIPPING_CONFIG.hcmFee)} tại TP.HCM, {formatVND(SHIPPING_CONFIG.otherFee)} tỉnh thành khác. Tính chính xác ở bước đặt hàng.
                 </p>
               )}
 

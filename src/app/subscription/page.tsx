@@ -21,7 +21,7 @@ const STEPS = [
   { title: "Tạo hồ sơ cho bé", text: `Làm ${QUIZ_NAME} hoặc nhập nhanh: loài, cân nặng, độ tuổi, dị ứng và sở thích.` },
   { title: "Chọn hộp, gói và đợt giao", text: "Box Tiêu chuẩn hoặc Premium; gói 1, 3 hoặc 6 hộp; giao đầu tháng hoặc giữa tháng." },
   { title: "Thanh toán một lần", text: "Trả trước toàn bộ gói qua MoMo hoặc VNPay. FPETS không lưu thẻ và không tự trừ tiền." },
-  { title: "Nhận hộp đầu ngay, rồi mỗi tháng một hộp", text: "Hộp đầu gửi ngay sau khi thanh toán. Các hộp sau giao theo đợt bạn chọn; 7 ngày trước mỗi đợt, FPETS chốt hồ sơ của bé và chọn món, không trùng món kỳ trước." },
+  { title: "Nhận hộp đầu ngay, rồi mỗi tháng một hộp", text: "Hộp đầu gửi ngay sau khi thanh toán. Các hộp sau giao theo đợt bạn chọn; 7 ngày trước mỗi đợt, FPETS chốt hồ sơ của bé và chọn món, ưu tiên món bé chưa nhận ở các hộp trước." },
   { title: "Chấm món, gia hạn khi hết gói", text: "Chấm từng món thích hay không để hộp sau hợp hơn. Giao hết số hộp đã trả, FPETS nhắc bạn gia hạn." },
 ];
 

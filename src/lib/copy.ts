@@ -16,6 +16,9 @@ export const NO_AUTO_CHARGE = "Trả trước một lần, FPETS không lưu th�
 export const CANCEL_POLICY =
   "Bạn hủy gói bất kỳ lúc nào trong tài khoản. Khi hủy, FPETS ngừng nhắc gia hạn; các hộp đã trả trước vẫn được giao đủ theo lịch và không hoàn tiền.";
 
+// COD (SPEC §6): hệ thống nhận COD khi tổng đơn không vượt 2.000.000₫ (checkout_create_order chặn đơn trên mức này)
+export const COD_RULE = "đơn mua 1 lần không quá 2.000.000₫";
+
 // Pet Quiz (SPEC §3: không cần đăng nhập)
 export const QUIZ_NAME = "Pet Quiz";
 export const QUIZ_LENGTH = "7 câu, khoảng 2 phút";

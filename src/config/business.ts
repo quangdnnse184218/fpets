@@ -10,7 +10,7 @@
 
 export const BUSINESS = {
   // Nơi gửi hàng, ví dụ: "kho FPETS tại TP.HCM". CẦN CỬA HÀNG ĐIỀN.
-  // Lưu ý: địa chỉ liên hệ hiện ghi Hà Nội nhưng phí ship đang tính "nội thành TP.HCM" (SPEC §6).
+  // Lưu ý: địa chỉ liên hệ hiện ghi Hà Nội nhưng phí ship đang ưu đãi cho địa chỉ tại TP.HCM (SPEC §6).
   shipFrom: null as string | null,
 
   // Cam kết sản phẩm. CẦN CỬA HÀNG ĐIỀN (để null thì khối "Về sản phẩm" không hiện dòng đó).
@@ -20,6 +20,11 @@ export const BUSINESS = {
   minShelfLife: null as string | null,
   // Ví dụ: "Danh mục món ăn được bác sĩ thú y tư vấn". Không có tư vấn thú y thì để null.
   vetAdvice: null as string | null,
+
+  // Thiệp trong hộp. CẦN CỬA HÀNG ĐIỀN: nếu mỗi hộp có kèm thiệp ghi tên bé thì điền mô tả,
+  // ví dụ: "Thiệp ghi tên bé và danh sách các món trong hộp."
+  // Để null thì trang Về FPETS và Pet Quiz không nhắc tới thiệp (hệ thống hiện chưa có bước in thiệp).
+  nameCard: null as string | null,
 
   // Hộp được chọn nhiều nhất: slug trong bảng box_types, ví dụ "box-tieu-chuan-cho-nho".
   // Để null khi chưa đủ dữ liệu bán hàng thật; nhãn "Được chọn nhiều nhất" sẽ không hiện.

@@ -11,9 +11,10 @@ export const SHIPPING_CONFIG = {
   deliveryDaysOther: "3–5 ngày",
 } as const;
 
-// Một câu chính sách dùng lại ở mọi nơi
-export const SHIPPING_POLICY = `Phí ship ${formatVND(SHIPPING_CONFIG.hcmFee)} nội thành TP.HCM, ${formatVND(SHIPPING_CONFIG.otherFee)} tỉnh khác. Miễn phí cho đơn từ ${formatVND(SHIPPING_CONFIG.freeShippingThreshold)} và gói 3, 6 hộp.`;
-export const DELIVERY_DAYS = `${SHIPPING_CONFIG.deliveryDaysHcm} nội thành TP.HCM, ${SHIPPING_CONFIG.deliveryDaysOther} tỉnh khác`;
+// Một câu chính sách dùng lại ở mọi nơi.
+// Phí tính theo tỉnh/thành của địa chỉ nhận (địa chỉ không có cấp quận): mọi địa chỉ tại TP.HCM cùng một mức.
+export const SHIPPING_POLICY = `Phí ship ${formatVND(SHIPPING_CONFIG.hcmFee)} tại TP.HCM, ${formatVND(SHIPPING_CONFIG.otherFee)} tỉnh thành khác. Miễn phí cho đơn từ ${formatVND(SHIPPING_CONFIG.freeShippingThreshold)} và gói 3, 6 hộp.`;
+export const DELIVERY_DAYS = `${SHIPPING_CONFIG.deliveryDaysHcm} tại TP.HCM, ${SHIPPING_CONFIG.deliveryDaysOther} tỉnh thành khác`;
 export const DELIVERY_TIME = `Giao ${DELIVERY_DAYS}.`;
 // Nơi gửi hàng: chỉ hiện khi cửa hàng đã điền trong src/config/business.ts
 export const SHIP_FROM = BUSINESS.shipFrom ? `Hàng gửi từ ${BUSINESS.shipFrom}.` : "";

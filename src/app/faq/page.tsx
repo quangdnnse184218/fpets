@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Search } from "lucide-react";
 import { DELIVERY_DAYS, SHIPPING_SUMMARY } from "@/lib/shipping";
-import { CANCEL_POLICY, DISLIKE_POLICY, NO_AUTO_CHARGE, PREMIUM_ITEMS, STANDARD_ITEMS } from "@/lib/copy";
+import { CANCEL_POLICY, COD_RULE, DISLIKE_POLICY, NO_AUTO_CHARGE, PREMIUM_ITEMS, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
 import { CONTACT_INFO } from "@/lib/contactInfo";
 import { normalizeText } from "@/lib/petOptions";
 import { buttonClass } from "@/components/ui/Button";
@@ -49,8 +49,8 @@ const buildFaq = (plans: PlanLite[]): FaqItem[] => [
   },
   {
     category: "box",
-    question: "Mua Mystery Box có cần tài khoản không?",
-    answer: "Có. Hộp gắn với một bé cụ thể nên bạn cần đăng nhập và tạo hồ sơ thú cưng trước khi đặt. Làm Pet Quiz mất khoảng 2 phút và tạo luôn hồ sơ cho bé.",
+    question: "Mua hàng có cần tài khoản không?",
+    answer: `Có. Mọi đơn đều cần đăng nhập để bạn theo dõi đơn và gửi yêu cầu đổi trả. Mystery Box còn cần hồ sơ thú cưng vì mỗi hộp gắn với một bé; làm ${QUIZ_NAME} khoảng 2 phút là có hồ sơ cho bé.`,
     openByDefault: true,
   },
   {
@@ -61,12 +61,12 @@ const buildFaq = (plans: PlanLite[]): FaqItem[] => [
   {
     category: "subscription",
     question: "FPETS có tự động trừ tiền khi hết gói không?",
-    answer: `Không. ${NO_AUTO_CHARGE} Khi đã giao hết số hộp trả trước, bạn nhận thông báo nhắc gia hạn trước hạn 7, 3 và 1 ngày; không gia hạn thì gói tự kết thúc.`,
+    answer: `Không. ${NO_AUTO_CHARGE} Sau khi hộp cuối của gói được chuẩn bị, FPETS nhắc gia hạn trong mục Thông báo của tài khoản, trước hạn 7, 3 và 1 ngày. Quá hạn bạn còn 5 ngày để gia hạn; sau đó gói tự kết thúc, không phát sinh phí và hồ sơ của bé vẫn được giữ.`,
   },
   {
     category: "subscription",
     question: "Tôi tạm dừng hoặc hủy gói thế nào?",
-    answer: `Vào Tài khoản → Gói định kỳ. Tạm dừng 1 hoặc 2 kỳ trước ngày chốt (7 ngày trước đợt giao), lịch giao tự lùi lại và gói tự chạy tiếp khi hết thời gian tạm dừng. ${CANCEL_POLICY}`,
+    answer: `Vào Tài khoản → Gói định kỳ. Khi gói còn hộp chưa giao, bạn tạm dừng 1 hoặc 2 kỳ trước ngày chốt (7 ngày trước đợt giao): lịch giao tự lùi lại, hết thời gian tạm dừng gói tự chạy tiếp, hoặc bạn bấm “Tiếp tục ngay” để nhận sớm hơn. ${CANCEL_POLICY}`,
   },
   {
     category: "subscription",
@@ -81,7 +81,7 @@ const buildFaq = (plans: PlanLite[]): FaqItem[] => [
   {
     category: "shipping",
     question: "Bao lâu thì tôi nhận được hàng?",
-    answer: `Sản phẩm lẻ và Mystery Box mua 1 lần: ${DELIVERY_DAYS}, tính từ khi đơn được xác nhận. Hộp theo gói định kỳ: giao trong đợt bạn chọn. Bạn theo dõi trạng thái trong Đơn hàng của tôi, hoặc tra bằng mã đơn và số điện thoại ở trang Tra cứu đơn hàng.`,
+    answer: `Sản phẩm lẻ và Mystery Box mua 1 lần: ${DELIVERY_DAYS}, tính từ khi đơn được xác nhận. Gói định kỳ: hộp đầu gửi ngay sau khi thanh toán với thời gian giao như trên, các hộp sau giao trong đợt bạn chọn. Bạn theo dõi trạng thái trong Tài khoản → Đơn hàng, hoặc tra bằng mã đơn và số điện thoại ở trang Tra cứu đơn hàng.`,
   },
   {
     category: "return",
@@ -96,12 +96,12 @@ const buildFaq = (plans: PlanLite[]): FaqItem[] => [
   {
     category: "payment",
     question: "FPETS nhận những hình thức thanh toán nào?",
-    answer: "Ví MoMo, VNPay (QR ngân hàng, thẻ ATM, Visa/Mastercard) và COD cho đơn mua 1 lần dưới 2.000.000₫. Gói định kỳ chỉ thanh toán online qua MoMo hoặc VNPay.",
+    answer: `Ví MoMo, VNPay (QR ngân hàng, thẻ ATM, Visa/Mastercard) và thanh toán khi nhận hàng (COD) cho ${COD_RULE}. Gói định kỳ chỉ thanh toán online qua MoMo hoặc VNPay.`,
   },
   {
     category: "payment",
     question: "Đơn chưa thanh toán online được giữ bao lâu?",
-    answer: "30 phút. Quá thời gian này đơn tự hủy và hàng được trả lại kho; bạn đặt lại nếu vẫn muốn mua.",
+    answer: "30 phút. Quá thời gian này đơn tự hủy; bạn đặt lại nếu vẫn muốn mua. Hàng chỉ được giữ cho bạn sau khi thanh toán thành công.",
   },
 ];
 

@@ -218,16 +218,16 @@ Dùng MoMo và VNPay cho thanh toán online, COD cho đơn mua 1 lần; giao to�
 | --- | --- | --- | --- |
 | Ví MoMo | Có | Có |  |
 | VNPay (QR ngân hàng, thẻ ATM, Visa/Master) | Có | Có |  |
-| COD | Có, đơn dưới 2.000.000₫ | Không | Admin gọi xác nhận đơn COD đầu tiên của khách |
+| COD | Có, đơn không quá 2.000.000₫ | Không | Admin gọi xác nhận đơn COD đầu tiên của khách |
 
 Giai đoạn làm web chạy trên môi trường sandbox; khách cần tài khoản merchant MoMo/VNPay trước khi mở bán thật.
 
 **Giao hàng**
 
 - Phạm vi: toàn quốc.
-- Phí ship: đồng giá 25.000₫ nội thành TP.HCM, 35.000₫ tỉnh khác (giai đoạn 1); giai đoạn 2 lấy phí thật từ API GHN.
+- Phí ship: đồng giá 25.000₫ cho địa chỉ tại TP.HCM, 35.000₫ tỉnh thành khác (giai đoạn 1, tính theo tỉnh/thành vì địa chỉ không có cấp quận); giai đoạn 2 lấy phí thật từ API GHN.
 - Freeship cho đơn từ 500.000₫ và cho gói 3, gói 6.
-- Thời gian dự kiến: 1–2 ngày nội thành, 3–5 ngày tỉnh khác, hiển thị ở checkout.
+- Thời gian dự kiến: 1–2 ngày tại TP.HCM, 3–5 ngày tỉnh thành khác, hiển thị ở checkout.
 
 ## 7. Trạng thái đơn hàng và tracking
 

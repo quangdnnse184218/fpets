@@ -373,7 +373,7 @@ function CheckoutFormContent() {
                     <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="accent-pine-900" />
                     <div className="min-w-0">
                       <span className="font-bold text-pine-950">Thanh toán khi nhận hàng (COD)</span>
-                      <p className="text-xs text-bark-500 leading-snug whitespace-normal">Cho đơn dưới 2.000.000₫. FPETS gọi xác nhận đơn COD đầu tiên của bạn.</p>
+                      <p className="text-xs text-bark-500 leading-snug whitespace-normal">Cho đơn không quá 2.000.000₫. FPETS gọi xác nhận đơn COD đầu tiên của bạn.</p>
                     </div>
                   </div>
                   <Banknote className="w-5 h-5 text-bark-600 shrink-0" />
