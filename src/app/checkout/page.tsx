@@ -11,7 +11,7 @@ import { fetchBoxTypeById, fetchPlanOptions } from "@/lib/catalog";
 import { CreditCard, Truck, ArrowLeft, Banknote, Smartphone } from "lucide-react";
 import { BoxType, SubscriptionPlan } from "@/types/models";
 import AddressFields, { AddressValue, SavedAddressRow, emptyAddress, formatAddress, isAddressValid, rowToAddress } from "@/components/common/AddressFields";
-import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, nextDeliveryWindow } from "@/lib/deliverySchedule";
+import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, recommendedSchedule, secondDeliveryWindow } from "@/lib/deliverySchedule";
 import { formatDate } from "@/lib/formatters";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { planUnitPrice } from "@/lib/pricing";
@@ -39,7 +39,10 @@ function CheckoutFormContent() {
   // Đặt xong thì giỏ được xóa trước khi chuyển trang: không hiện "giỏ hàng trống" trong khoảnh khắc đó
   const [placed, setPlaced] = useState(false);
 
-  const [deliverySchedule, setDeliverySchedule] = useState<DeliverySchedule>(searchParams.get("schedule") === "giua_thang" ? "giua_thang" : "dau_thang");
+  const [deliverySchedule, setDeliverySchedule] = useState<DeliverySchedule>(() => {
+    const fromUrl = searchParams.get("schedule");
+    return fromUrl === "giua_thang" || fromUrl === "dau_thang" ? fromUrl : recommendedSchedule();
+  });
   const [paymentMethod, setPaymentMethod] = useState<'momo' | 'vnpay' | 'cod'>('momo');
 
   const [subBox, setSubBox] = useState<BoxType | null>(null);
@@ -304,7 +307,7 @@ function CheckoutFormContent() {
           <div className="p-5 sm:p-6 space-y-4">
             <h2 className="text-sm font-bold text-pine-950 flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-pine-900 text-white flex items-center justify-center text-xs font-bold">2</span>
-              <span>{isSubscription ? "Lịch giao hằng tháng" : "Vận chuyển"}</span>
+              <span>{isSubscription ? "Lịch giao" : "Vận chuyển"}</span>
             </h2>
 
             {isSubscription ? (
@@ -317,9 +320,10 @@ function CheckoutFormContent() {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-bark-600">
-                  Hộp đầu tiên giao {deliveryWindowLabel(nextDeliveryWindow(deliverySchedule).start, deliverySchedule)}. Ngày chốt là 7 ngày trước mỗi đợt giao
-                  (đợt đầu: {formatDate(nextDeliveryWindow(deliverySchedule).cutoff)}), sau ngày chốt mọi thay đổi áp dụng từ kỳ sau.
+                <p className="text-xs text-bark-700 leading-relaxed">
+                  <strong className="text-pine-950">Hộp đầu tiên gửi ngay sau khi thanh toán</strong> (giao {DELIVERY_DAYS}). Đợt giao bạn chọn áp dụng từ hộp thứ 2:
+                  hộp kế tiếp giao {deliveryWindowLabel(secondDeliveryWindow(deliverySchedule).start, deliverySchedule)}, các hộp sau cách nhau 1 tháng.
+                  Trước mỗi đợt 7 ngày (từ {formatDate(secondDeliveryWindow(deliverySchedule).cutoff)}) FPETS chốt hồ sơ của bé để chọn món; thay đổi sau ngày chốt áp dụng từ kỳ sau.
                 </p>
               </div>
             ) : (

@@ -10,8 +10,8 @@ import { QUIZ_NAME } from "@/lib/copy";
 import { BUSINESS } from "@/config/business";
 import { planUnitPrice } from "@/lib/pricing";
 import { DEFAULT_PLANS, capitalize, discountSentence, freeShippingPlans } from "@/lib/planCopy";
-import { SHIPPING_CONFIG } from "@/lib/shipping";
-import { DeliverySchedule, SCHEDULE_LABEL, cutoffOf, deliveryWindowLabel, nextDeliveryWindow } from "@/lib/deliverySchedule";
+import { DELIVERY_DAYS, SHIPPING_CONFIG } from "@/lib/shipping";
+import { DeliverySchedule, SCHEDULE_LABEL, cutoffOf, deliveryWindowLabel, laterBoxWindows, recommendedSchedule } from "@/lib/deliverySchedule";
 import { useApp } from "@/context/AppContext";
 import { buttonClass } from "@/components/ui/Button";
 import { SubscriptionPlan } from "@/types/models";
@@ -21,8 +21,8 @@ const STEPS = [
   { title: "Tạo hồ sơ cho bé", text: `Làm ${QUIZ_NAME} hoặc nhập nhanh: loài, cân nặng, độ tuổi, dị ứng và sở thích.` },
   { title: "Chọn hộp, gói và đợt giao", text: "Box Tiêu chuẩn hoặc Premium; gói 1, 3 hoặc 6 hộp; giao đầu tháng hoặc giữa tháng." },
   { title: "Thanh toán một lần", text: "Trả trước toàn bộ gói qua MoMo hoặc VNPay. FPETS không lưu thẻ và không tự trừ tiền." },
-  { title: "Nhận hộp mỗi tháng", text: "7 ngày trước đợt giao, FPETS chốt hồ sơ của bé và chọn món cho kỳ đó, không trùng món kỳ trước." },
-  { title: "Chấm món, gia hạn khi hết gói", text: "Chấm từng món thích hay không để hộp sau hợp hơn. Còn hộp cuối, FPETS nhắc bạn gia hạn." },
+  { title: "Nhận hộp đầu ngay, rồi mỗi tháng một hộp", text: "Hộp đầu gửi ngay sau khi thanh toán. Các hộp sau giao theo đợt bạn chọn; 7 ngày trước mỗi đợt, FPETS chốt hồ sơ của bé và chọn món, không trùng món kỳ trước." },
+  { title: "Chấm món, gia hạn khi hết gói", text: "Chấm từng món thích hay không để hộp sau hợp hơn. Giao hết số hộp đã trả, FPETS nhắc bạn gia hạn." },
 ];
 
 // Các thao tác khách tự làm trong Tài khoản → Gói định kỳ, đúng với quy tắc đang chạy trên hệ thống
@@ -39,8 +39,8 @@ const MANAGE = [
   },
   {
     title: "Gia hạn",
-    when: "Khi còn hộp cuối, hoặc trong 5 ngày sau khi hết gói",
-    result: "FPETS nhắc trước 7, 3 và 1 ngày. Chọn lại gói, thanh toán là gói nối tiếp lịch cũ. Không gia hạn thì gói tự kết thúc, không phát sinh phí.",
+    when: "Từ khi còn hộp cuối, tới hạn gia hạn và thêm 5 ngày sau đó",
+    result: "Hạn gia hạn là ngày chốt của hộp kế tiếp sau khi đã giao hết số hộp trả trước; FPETS nhắc trước 7, 3 và 1 ngày. Chọn lại gói, thanh toán là gói nối tiếp lịch cũ. Không gia hạn thì gói tự kết thúc, không phát sinh phí.",
   },
   {
     title: "Hủy gói",
@@ -51,8 +51,12 @@ const MANAGE = [
 
 const FAQ = [
   {
+    q: "Khi nào bé nhận hộp đầu tiên?",
+    a: `Ngay sau khi bạn thanh toán: FPETS chọn món và gửi đi, thời gian giao ${DELIVERY_DAYS}. Từ hộp thứ 2, hộp giao theo đợt bạn chọn (đầu tháng hoặc giữa tháng), mỗi tháng một hộp.`,
+  },
+  {
     q: "Ngày chốt là gì?",
-    a: "Là mốc 7 ngày trước đợt giao. Trước mốc này bạn tạm dừng gói, đổi địa chỉ hoặc cập nhật dị ứng, sở thích của bé; sau mốc này thay đổi áp dụng từ kỳ sau vì hộp đã được chuẩn bị.",
+    a: "Áp dụng từ hộp thứ 2: là mốc 7 ngày trước đợt giao. Trước mốc này bạn tạm dừng gói, đổi địa chỉ hoặc cập nhật dị ứng, sở thích của bé; sau mốc này thay đổi áp dụng từ kỳ sau vì hộp đã được chuẩn bị.",
   },
   {
     q: "Gói định kỳ thanh toán bằng gì?",
@@ -75,7 +79,7 @@ export default function SubscriptionIntroPage() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   // Câu chữ về mức giảm dùng cùng dữ liệu với các thẻ gói bên dưới
   const planLites = plans.length > 0 ? plans : DEFAULT_PLANS;
-  const [schedule, setSchedule] = useState<DeliverySchedule>("dau_thang");
+  const [schedule, setSchedule] = useState<DeliverySchedule>(() => recommendedSchedule());
 
   useEffect(() => {
     fetchBoxTypes().then((boxes) => {
@@ -86,8 +90,9 @@ export default function SubscriptionIntroPage() {
   }, []);
 
   const basePrice = prices ? prices[tier] : null;
-  const first = nextDeliveryWindow(schedule);
-  const sampleBoxes = [0, 1, 2].map((i) => addMonths(first.start, i));
+  // Ví dụ gói 3 hộp đăng ký hôm nay: hộp 1 gửi ngay, hộp 2 và 3 theo đợt đã chọn; kỳ kế tiếp là kỳ cần gia hạn
+  const laterBoxes = laterBoxWindows(schedule, 3);
+  const renewalCutoff = cutoffOf(addMonths(laterBoxes[laterBoxes.length - 1], 1));
 
   return (
     <div className="pb-12 sm:pb-16">
@@ -99,7 +104,7 @@ export default function SubscriptionIntroPage() {
               Mỗi tháng một hộp quà chọn riêng cho bé
             </h1>
             <p className="text-base text-bark-700 leading-relaxed">
-              Trả trước 1, 3 hoặc 6 hộp, mỗi tháng bé nhận 1 hộp vào đợt bạn chọn. {capitalize(discountSentence(planLites))}, {freeShippingPlans(planLites)} được miễn phí vận chuyển.
+              Trả trước 1, 3 hoặc 6 hộp. Hộp đầu gửi ngay sau khi thanh toán, các hộp sau mỗi tháng một hộp vào đợt bạn chọn. {capitalize(discountSentence(planLites))}, {freeShippingPlans(planLites)} được miễn phí vận chuyển.
             </p>
             <ul className="space-y-2 text-sm text-bark-700">
               {["Không tự động trừ tiền, không lưu thẻ", "Tạm dừng 1–2 kỳ khi bé còn nhiều đồ", "Hủy bất kỳ lúc nào: hộp đã trả vẫn giao đủ, không hoàn tiền"].map((t) => (
@@ -250,15 +255,22 @@ export default function SubscriptionIntroPage() {
               </div>
             </div>
             <ol className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {sampleBoxes.map((start, i) => (
+              <li className="p-3.5 rounded-box bg-pine-50 border border-pine-200 text-sm">
+                <p className="text-xs font-bold text-pine-900 uppercase tracking-wide">Hộp 1/3</p>
+                <p className="font-bold text-pine-950 mt-1">Gửi ngay sau khi thanh toán</p>
+                <p className="text-xs text-bark-700 mt-0.5">Giao {DELIVERY_DAYS}</p>
+              </li>
+              {laterBoxes.map((start, i) => (
                 <li key={i} className="p-3.5 rounded-box bg-surface-muted/70 border border-surface-border text-sm">
-                  <p className="text-xs font-bold text-bark-500 uppercase tracking-wide">Hộp {i + 1}/3</p>
+                  <p className="text-xs font-bold text-bark-600 uppercase tracking-wide">Hộp {i + 2}/3</p>
                   <p className="font-bold text-pine-950 mt-1">Giao {deliveryWindowLabel(start, schedule)}</p>
                   <p className="text-xs text-bark-600 mt-0.5">Chốt hồ sơ ngày {formatDate(cutoffOf(start))}</p>
-                  {i === 2 && <p className="text-xs text-pine-900 font-semibold mt-1">FPETS nhắc gia hạn trước ngày chốt</p>}
                 </li>
               ))}
             </ol>
+            <p className="text-xs text-bark-700">
+              Sau hộp 3, FPETS nhắc bạn gia hạn. Hạn gia hạn là <strong className="text-pine-950">{formatDate(renewalCutoff)}</strong>; không gia hạn thì gói tự kết thúc.
+            </p>
           </div>
         </section>
 

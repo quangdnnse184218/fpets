@@ -56,12 +56,12 @@ const buildFaq = (plans: PlanLite[]): FaqItem[] => [
   {
     category: "subscription",
     question: "Gói định kỳ gồm những gói nào?",
-    answer: `Có ${plans.length} gói trả trước: ${planListSentence(plans)}. Mỗi tháng bạn nhận 1 hộp theo đợt đã chọn: đầu tháng (ngày 1–5) hoặc giữa tháng (ngày 15–20).`,
+    answer: `Có ${plans.length} gói trả trước: ${planListSentence(plans)}. Hộp đầu tiên gửi ngay sau khi thanh toán; từ hộp thứ 2, mỗi tháng bạn nhận 1 hộp theo đợt đã chọn: đầu tháng (ngày 1–5) hoặc giữa tháng (ngày 15–20).`,
   },
   {
     category: "subscription",
     question: "FPETS có tự động trừ tiền khi hết gói không?",
-    answer: `Không. ${NO_AUTO_CHARGE} Khi còn hộp cuối, bạn nhận thông báo nhắc gia hạn; không gia hạn thì gói tự kết thúc.`,
+    answer: `Không. ${NO_AUTO_CHARGE} Khi đã giao hết số hộp trả trước, bạn nhận thông báo nhắc gia hạn trước hạn 7, 3 và 1 ngày; không gia hạn thì gói tự kết thúc.`,
   },
   {
     category: "subscription",

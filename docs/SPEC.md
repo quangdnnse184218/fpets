@@ -147,15 +147,22 @@ Giá mỗi hộp sau giảm được làm tròn đến 1.000₫, giá trả trư
 
 1. Chọn loại box và gói (1/3/6).
 2. Chọn pet (hoặc tạo mới qua quiz).
-3. Chọn đợt giao: đầu tháng (ngày 1–5) hoặc giữa tháng (ngày 15–20).
+3. Chọn đợt giao cho các hộp từ thứ 2: đầu tháng (ngày 1–5) hoặc giữa tháng (ngày 15–20).
 4. Nhập địa chỉ, áp voucher, thanh toán.
 5. Gói chuyển "Đang hoạt động"; hệ thống tự tạo đơn box cho từng kỳ và đưa vào hàng chờ tuyển chọn.
 
-**Ngày chốt (cut-off)**: 7 ngày trước đợt giao. Sau ngày chốt, mọi thay đổi (pause, cancel, đổi pet, đổi địa chỉ) áp dụng từ kỳ sau vì hộp kỳ này đã được chuẩn bị.
+**Lịch giao**
+
+- Hộp 1: tạo đơn và đưa vào hàng chờ tuyển chọn ngay khi thanh toán xong, giao như đơn mua 1 lần (không chờ đợt).
+- Hộp 2: giao vào đợt đầu tiên (theo đợt khách chọn) cách ngày đăng ký ít nhất 20 ngày. Giao diện gợi ý sẵn đợt cho hộp 2 gần mốc "1 tháng sau hộp đầu" nhất.
+- Hộp 3 trở đi: mỗi hộp cách hộp trước 1 tháng, cùng đợt.
+
+**Ngày chốt (cut-off)**: áp dụng từ hộp 2, là 7 ngày trước đợt giao. Sau ngày chốt, mọi thay đổi (pause, cancel, đổi pet, đổi địa chỉ) áp dụng từ kỳ sau vì hộp kỳ này đã được chuẩn bị.
 
 **Gia hạn**
 
-- Khi còn 1 hộp cuối: nhắc gia hạn trước hạn 7 ngày, 3 ngày, 1 ngày (email + thông báo web).
+- Hạn gia hạn ("tới hạn") = ngày chốt của hộp kế tiếp sau khi đã giao hết số hộp trả trước. Gói vẫn "Đang hoạt động" tới hạn này.
+- Nhắc gia hạn trước hạn 7 ngày, 3 ngày, 1 ngày (email + thông báo web). Khách có thể gia hạn sớm từ khi còn 1 hộp cuối.
 - Khách bấm "Gia hạn", chọn lại gói (có thể đổi gói), thanh toán: gói nối tiếp, không gián đoạn.
 - Không thanh toán: đến hạn chuyển "Quá hạn", giữ ưu đãi và lịch giao thêm 5 ngày.
 - Hết 5 ngày vẫn chưa trả: chuyển "Hết hạn". Pet Profile và lịch sử vẫn giữ, khách đăng ký lại bất kỳ lúc nào.

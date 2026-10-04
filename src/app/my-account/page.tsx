@@ -90,11 +90,20 @@ export default function AccountOverviewPage() {
               <p className="font-bold text-pine-950">{nextSub.box_types?.name}</p>
               <p className="text-xs text-bark-600">Bé {nextSub.pets?.name} · {SUB_STATUS[nextSub.status]}</p>
             </div>
-            <div>
-              <p className="text-xs text-bark-500">Dự kiến giao</p>
-              <p className="font-bold text-pine-950">{deliveryWindowLabel(nextSub.next_delivery_date, nextSub.delivery_schedule)}</p>
-              <p className="text-xs text-bark-600">Chốt hồ sơ {formatDate(cutoffOf(nextSub.next_delivery_date))}</p>
-            </div>
+            {nextSub.remaining_cycles > 0 ? (
+              <div>
+                <p className="text-xs text-bark-500">Dự kiến giao</p>
+                <p className="font-bold text-pine-950">{deliveryWindowLabel(nextSub.next_delivery_date, nextSub.delivery_schedule)}</p>
+                <p className="text-xs text-bark-600">Chốt hồ sơ {formatDate(cutoffOf(nextSub.next_delivery_date))}</p>
+              </div>
+            ) : (
+              // Đã chuẩn bị hết hộp trả trước: mốc kế tiếp là hạn gia hạn
+              <div>
+                <p className="text-xs text-bark-500">Hạn gia hạn</p>
+                <p className="font-bold text-pine-950">{formatDate(cutoffOf(nextSub.next_delivery_date))}</p>
+                <p className="text-xs text-bark-600">Gia hạn để nhận hộp {deliveryWindowLabel(nextSub.next_delivery_date, nextSub.delivery_schedule)}</p>
+              </div>
+            )}
             <div>
               <p className="text-xs text-bark-500">Còn lại</p>
               <p className="font-bold text-pine-950">{nextSub.remaining_cycles}/{nextSub.total_cycles} hộp</p>

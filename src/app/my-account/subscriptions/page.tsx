@@ -100,7 +100,7 @@ const snapshotToAddress = (s: SnapshotAddress | null): AddressValue => ({
   street: s?.address || "",
 });
 
-// Gia hạn được khi còn hộp cuối hoặc đang trong 5 ngày quá hạn (khớp renew_subscription)
+// Gia hạn được khi còn hộp cuối, khi đã giao hết hộp và chờ tới hạn, hoặc trong 5 ngày quá hạn (khớp renew_subscription)
 const canRenew = (sub: SubscriptionRow) =>
   (sub.status === "dang_hoat_dong" && sub.remaining_cycles <= 1) ||
   (sub.status === "qua_han" && !!sub.grace_period_expires_at && new Date(sub.grace_period_expires_at) >= new Date());
@@ -192,8 +192,10 @@ export default function MySubscriptionsPage() {
         const isPaused = sub.status === "tam_dung";
         const pastCutoff = daysUntil(sub.cutoff_date) < 0;
         const renewable = canRenew(sub);
-        // Nút gia hạn chỉ thành nút chính khi đã quá hạn hoặc còn ≤7 ngày tới ngày chốt hộp cuối
-        const renewUrgent = renewable && (sub.status === "qua_han" || daysUntil(sub.cutoff_date) <= 7);
+        // Đã giao hết hộp trả trước, gói còn hiệu lực tới hạn gia hạn (= ngày chốt của hộp kế tiếp)
+        const awaitingRenewal = isActive && sub.remaining_cycles === 0;
+        // Nút gia hạn chỉ thành nút chính khi đã quá hạn hoặc còn ≤7 ngày tới hạn gia hạn
+        const renewUrgent = renewable && (sub.status === "qua_han" || (awaitingRenewal && daysUntil(sub.cutoff_date) <= 7));
         const addr = snapshotToAddress(sub.shipping_address_snapshot);
 
         return (
@@ -257,6 +259,13 @@ export default function MySubscriptionsPage() {
               </div>
             )}
 
+            {awaitingRenewal && (
+              <p className="p-3 rounded-box bg-honey-100 border border-honey-200 text-bark-800 text-xs leading-relaxed">
+                Đã chuẩn bị đủ {sub.total_cycles} hộp bạn trả trước. Gia hạn trước <strong>{formatDate(sub.cutoff_date)}</strong> để bé nhận hộp tiếp theo{" "}
+                <strong>{deliveryWindowLabel(sub.next_delivery_date, sub.delivery_schedule)}</strong>; không gia hạn thì gói tự kết thúc.
+              </p>
+            )}
+
             {sub.status === "qua_han" && sub.grace_period_expires_at && (
               <p className="p-3 rounded-box bg-amber-50 border border-amber-200 text-amber-900 text-xs">
                 Gói đã giao hết hộp. Gia hạn trước <strong>{formatDate(sub.grace_period_expires_at)}</strong> để giữ ưu đãi và lịch giao cho bé.
@@ -286,7 +295,7 @@ export default function MySubscriptionsPage() {
                   <RefreshCw className="w-4 h-4" /> {pending ? "Chọn lại gói gia hạn" : "Gia hạn gói"}
                 </Button>
               )}
-              {isActive && (
+              {isActive && sub.remaining_cycles > 0 && (
                 <Button variant="secondary" onClick={() => setPauseSub(sub)}>
                   <Pause className="w-4 h-4" /> Tạm dừng
                 </Button>

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { fetchBoxTypeBySlug, fetchPlanOptions } from "@/lib/catalog";
-import { formatVND, formatDate, formatWeight } from "@/lib/formatters";
+import { formatVND, formatWeight } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
 import { Check, CheckCircle2, Info, ShieldCheck, ShoppingCart, PlusCircle, PawPrint, Truck, ChevronDown, Gift } from "lucide-react";
 import { Button, ButtonLink, buttonClass } from "@/components/ui/Button";
@@ -14,7 +14,7 @@ import { DEFAULT_PLANS, PlanLite, discountSentence, freeShippingPlans } from "@/
 import { planUnitPrice } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
-import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, nextDeliveryWindow } from "@/lib/deliverySchedule";
+import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, recommendedSchedule, secondDeliveryWindow } from "@/lib/deliverySchedule";
 import { BoxType, SubscriptionPlan } from "@/types/models";
 import { DELIVERY_DAYS, SHIPPING_POLICY } from "@/lib/shipping";
 
@@ -52,7 +52,8 @@ export default function BoxDetailPage() {
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   // Nút đang xử lý: "add" = thêm vào giỏ, "buy" = mua ngay
   const [busy, setBusy] = useState<"add" | "buy" | null>(null);
-  const [schedule, setSchedule] = useState<DeliverySchedule>("dau_thang");
+  // Gợi ý sẵn đợt giao để hộp thứ 2 cách hộp đầu (gửi ngay) gần 1 tháng nhất
+  const [schedule, setSchedule] = useState<DeliverySchedule>(() => recommendedSchedule());
   // Gói còn hiệu lực theo bé: cảnh báo khi mua trùng
   const [activeSubs, setActiveSubs] = useState<Record<string, { planName: string; remaining: number }>>({});
 
@@ -87,7 +88,8 @@ export default function BoxDetailPage() {
       });
   }, [user.id]);
 
-  const firstDelivery = nextDeliveryWindow(schedule);
+  // Hộp đầu gửi ngay sau khi thanh toán; đợt giao khách chọn áp dụng từ hộp thứ 2
+  const secondBox = secondDeliveryWindow(schedule);
 
   // Chỉ bé cùng loài (và với chó: cùng size) mới nhận được loại box này — server cũng chặn lại
   const eligiblePets = box
@@ -429,7 +431,7 @@ export default function BoxDetailPage() {
               </div>
 
               <div className="pt-3 border-t border-surface-border space-y-2">
-                <span className="text-xs font-bold text-pine-950 block">3. Chọn đợt giao hằng tháng:</span>
+                <span className="text-xs font-bold text-pine-950 block">3. Chọn đợt giao cho các hộp sau:</span>
                 <div className="grid grid-cols-2 gap-2">
                   {(Object.keys(SCHEDULE_LABEL) as DeliverySchedule[]).map((sc) => (
                     <button
@@ -443,8 +445,11 @@ export default function BoxDetailPage() {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-bark-600">
-                  Hộp đầu tiên giao {deliveryWindowLabel(firstDelivery.start, schedule)}, chốt thông tin bé ngày {formatDate(firstDelivery.cutoff)}.
+                <p className="text-xs text-bark-700 leading-relaxed">
+                  <strong className="text-pine-950">Hộp đầu tiên gửi ngay sau khi thanh toán</strong> (giao {DELIVERY_DAYS}).{" "}
+                  {(selectedPlan?.cycles || 1) > 1
+                    ? `Hộp thứ 2 giao ${deliveryWindowLabel(secondBox.start, schedule)}, các hộp sau cách nhau 1 tháng.`
+                    : `Nếu gia hạn, hộp tiếp theo giao ${deliveryWindowLabel(secondBox.start, schedule)}.`}
                 </p>
               </div>
             </div>
@@ -521,7 +526,7 @@ export default function BoxDetailPage() {
           </h2>
           <ul className="space-y-2 text-sm text-bark-700">
             <li>Mua 1 hộp: giao {DELIVERY_DAYS}.</li>
-            <li>Gói định kỳ: giao mỗi tháng 1 hộp, đợt đầu tháng (ngày 1–5) hoặc giữa tháng (ngày 15–20).</li>
+            <li>Gói định kỳ: hộp đầu gửi ngay sau khi thanh toán; các hộp sau giao mỗi tháng 1 hộp, đợt đầu tháng (ngày 1–5) hoặc giữa tháng (ngày 15–20).</li>
             <li>{SHIPPING_POLICY}</li>
           </ul>
           <Link href="/reviews" className="inline-block text-xs font-bold text-pine-900 hover:underline">Xem đánh giá của khách đã nhận hộp</Link>

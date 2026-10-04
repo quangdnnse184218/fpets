@@ -32,6 +32,7 @@ const STATUS_STYLE: Record<SubStatus, string> = {
 
 const ERROR_TEXT: Record<string, string> = {
   ERR_PAST_CUTOFF: "Đã qua ngày chốt của kỳ này nên không tạm dừng được; hộp kỳ này vẫn được giao.",
+  ERR_NOTHING_TO_PAUSE: "Gói đã giao hết số hộp trả trước và đang chờ gia hạn, không còn kỳ nào để tạm dừng.",
   ERR_INVALID_STATUS_FOR_PAUSE: "Chỉ tạm dừng được gói đang hoạt động.",
   ERR_INVALID_STATUS_FOR_RESUME: "Gói không ở trạng thái tạm dừng.",
   ERR_INVALID_STATUS_FOR_CANCEL: "Gói này không hủy được ở trạng thái hiện tại.",
@@ -231,6 +232,12 @@ function SubscriptionsContent() {
       <>
         <div className="font-semibold text-bark-900">{deliveryWindowLabel(sub.next_delivery_date, sub.delivery_schedule)}</div>
         <div className="text-[11px] text-bark-500">Chốt hộp {formatDate(sub.cutoff_date)}</div>
+      </>
+    ) : sub.status === "dang_hoat_dong" && sub.remaining_cycles === 0 ? (
+      // Đã giao hết hộp trả trước, chờ khách gia hạn tới ngày chốt của kỳ kế tiếp
+      <>
+        <div className="font-semibold text-bark-900">Chờ gia hạn</div>
+        <div className="text-[11px] text-bark-500">Hạn {formatDate(sub.cutoff_date)}</div>
       </>
     ) : (
       <span className="text-bark-500">–</span>

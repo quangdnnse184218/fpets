@@ -35,10 +35,10 @@ export default function TermsPage() {
         {
           title: "Gói định kỳ",
           items: [
-            "Gói trả trước cho 1, 3 hoặc 6 hộp, giao mỗi tháng 1 hộp. FPETS không tự động trừ tiền.",
-            "Ngày chốt là 7 ngày trước đợt giao; thay đổi sau ngày chốt áp dụng từ kỳ sau.",
+            "Gói trả trước cho 1, 3 hoặc 6 hộp. Hộp đầu tiên gửi ngay sau khi thanh toán, các hộp sau giao mỗi tháng 1 hộp theo đợt đã chọn. FPETS không tự động trừ tiền.",
+            "Từ hộp thứ 2, ngày chốt là 7 ngày trước đợt giao; thay đổi sau ngày chốt áp dụng từ kỳ sau.",
             "Bạn có thể tạm dừng tối đa 2 kỳ liên tiếp hoặc hủy gói bất kỳ lúc nào. Khi hủy, các hộp đã trả trước vẫn được giao đủ và không hoàn tiền.",
-            "Hết hộp mà chưa gia hạn, gói giữ ưu đãi thêm 5 ngày rồi chuyển sang hết hạn.",
+            "Giao hết số hộp trả trước, hạn gia hạn là ngày chốt của hộp kế tiếp. Tới hạn mà chưa gia hạn, gói giữ ưu đãi và lịch giao thêm 5 ngày rồi chuyển sang hết hạn.",
           ],
         },
         {
