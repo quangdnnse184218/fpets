@@ -131,8 +131,10 @@ Mọi đơn đều cần đăng nhập: giỏ hàng lưu theo tài khoản; gi�
 - Mỗi dòng có ô tick, kèm ô "Chọn tất cả": khách tick các món muốn thanh toán lần này (như giỏ Shopee). Mặc định chưa tick món nào và tổng tiền là 0₫; mọi số tiền chỉ tính trên món đã tick. Đặt hàng xong chỉ các món đã đặt rời giỏ, món chưa tick ở lại.
 - "Mua ngay" ở trang sản phẩm, trang hộp: chỉ thanh toán đúng món vừa bấm, các món khác trong giỏ không bị tính.
 - Tạm tính, ô nhập voucher (báo "Áp dụng thành công" hoặc lý do không hợp lệ; mức giảm tính lại theo các món đang tick).
-- Phí ship ước tính, dòng nổi bật "Miễn phí vận chuyển cho đơn từ 500.000₫" và "Mua thêm X₫".
+- Phí ship ước tính; mốc miễn phí vận chuyển (đơn từ 500.000₫) chỉ hiện một chỗ trong khung tóm tắt, kèm thanh tiến độ và số tiền cần mua thêm.
 - Tổng thanh toán, nút "Thanh toán" (khóa khi chưa tick món nào).
+- Nút thanh toán luôn trong tầm bấm: trên máy tính khung tóm tắt bám theo khi cuộn, trên điện thoại và tablet có thanh tổng tiền + "Thanh toán" dính đáy màn hình.
+- Dòng hết hàng không tick được; dòng sắp hết ghi "Chỉ còn X". Có nút xóa một lần các món đã tick.
 - Giỏ rỗng: gợi ý box và sản phẩm bán chạy. Cuối giỏ có banner "Đăng ký gói để tiết kiệm đến 15%".
 - Giỏ lưu theo tài khoản; khách chưa đăng nhập vẫn giữ giỏ khi tải lại trang, đăng nhập thì gộp giỏ.
 

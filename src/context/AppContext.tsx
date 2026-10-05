@@ -64,8 +64,9 @@ interface AppContextType {
   selectedIds: string[];
   selectedCart: CartItem[];
   toggleSelected: (id: string) => void;
-  selectAll: (on: boolean) => void;
   selectOnly: (ids: string[]) => void;
+  // Xóa nhiều dòng một lần (nút "Xóa các món đã chọn" trong giỏ)
+  removeManyFromCart: (ids: string[]) => Promise<void>;
   // Đặt hàng xong: chỉ gỡ các món đã đặt, món chưa tick vẫn nằm lại trong giỏ
   removeOrderedFromCart: (ids: string[]) => Promise<void>;
   // Mã đang áp dụng được cho các món đã tick ("" nếu chưa có mã hoặc mã chưa đủ điều kiện)
@@ -540,7 +541,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     storeSelectedIds(ids);
   };
   const toggleSelected = (id: string) => setSelectedIds(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
-  const selectAll = (on: boolean) => setSelectedIds(on ? cart.map((c) => c.id) : []);
   const selectOnly = (ids: string[]) => setSelectedIds(ids);
   const selectedCart = useMemo(() => cart.filter((c) => selectedIds.includes(c.id)), [cart, selectedIds]);
 
@@ -643,12 +643,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     storeVoucherCode("");
   };
 
-  const removeOrderedFromCart = async (ids: string[]) => {
+  const removeManyFromCart = async (ids: string[]) => {
+    setCart((prev) => prev.filter((c) => !ids.includes(c.id)));
+    setSelectedIds(selectedIds.filter((x) => !ids.includes(x)));
     if (isLoggedIn && ids.length > 0) {
       await createClient().from("cart_items").delete().in("id", ids);
     }
-    setCart((prev) => prev.filter((c) => !ids.includes(c.id)));
-    setSelectedIds(selectedIds.filter((x) => !ids.includes(x)));
+  };
+
+  const removeOrderedFromCart = async (ids: string[]) => {
+    await removeManyFromCart(ids);
     clearVoucher();
   };
 
@@ -744,8 +748,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         selectedIds,
         selectedCart,
         toggleSelected,
-        selectAll,
         selectOnly,
+        removeManyFromCart,
         removeOrderedFromCart,
         voucherCode: voucherState.applied && appliedVoucher ? appliedVoucher.code : "",
         voucherDiscount: voucherState.discount,
