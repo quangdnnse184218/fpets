@@ -27,7 +27,7 @@ function PaySimulationContent() {
   const handleConfirmPayment = async () => {
     setStatus("processing");
     const supabase = createClient();
-    const { error } = await supabase.rpc("confirm_order_payment", {
+    const { data, error } = await supabase.rpc("confirm_order_payment", {
       p_order_id: orderId,
       p_order_code: orderCode,
     });
@@ -40,6 +40,17 @@ function PaySimulationContent() {
       } else {
         setStatus("failed");
       }
+      return;
+    }
+    // Server không báo lỗi khi đơn đã ở trạng thái khác (trả về trạng thái hiện tại). Đơn đã bị hủy vì quá hạn
+    // thì KHÔNG được coi là thanh toán thành công; chỉ sang trang kết quả khi đơn thật sự đã thanh toán.
+    const result = data as { status?: string; payment_status?: string } | null;
+    if (result?.status === "da_huy") {
+      setStatus("expired");
+      return;
+    }
+    if (result?.payment_status !== "paid") {
+      setStatus("failed");
       return;
     }
 
