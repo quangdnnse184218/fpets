@@ -25,7 +25,7 @@ const FILTERS: { id: string; label: string; match: (s: OrderStatus) => boolean }
 
 export default function MyOrdersPage() {
   const router = useRouter();
-  const { addToCart } = useApp();
+  const { addToCart, selectOnly, selectedIds } = useApp();
   const { show } = useToast();
   const [orders, setOrders] = useState<MyOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,12 +47,16 @@ export default function MyOrdersPage() {
     setReordering(order.id);
     const products = await fetchProducts();
     let added = 0;
+    const lineIds: string[] = [];
     for (const item of order.order_items) {
       const product = products.find((p) => p.id === item.product_id);
       if (!product || product.stock <= 0) continue;
-      await addToCart({ type: "retail", productId: product.id, product, quantity: Math.min(item.quantity, product.stock), unitPrice: product.price });
+      const lineId = await addToCart({ type: "retail", productId: product.id, product, quantity: Math.min(item.quantity, product.stock), unitPrice: product.price });
+      if (lineId) lineIds.push(lineId);
       added++;
     }
+    // Tick sẵn các món vừa mua lại để khách thanh toán ngay
+    if (lineIds.length > 0) selectOnly([...selectedIds.filter((id) => !lineIds.includes(id)), ...lineIds]);
     setReordering(null);
     if (added === 0) {
       show("Các sản phẩm trong đơn này hiện đã hết hàng.", { tone: "error" });

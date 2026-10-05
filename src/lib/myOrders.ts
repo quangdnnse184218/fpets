@@ -69,13 +69,27 @@ const ORDER_SELECT = `id, order_code, order_type, status, payment_method, paymen
 export async function fetchMyOrders(): Promise<MyOrder[]> {
   const uid = await currentUserId();
   if (!uid) return [];
+  await expireUnpaidOrders();
   const { data } = await createClient().from("orders").select(ORDER_SELECT).eq("user_id", uid).order("created_at", { ascending: false });
   return (data as unknown as MyOrder[]) || [];
+}
+
+/**
+ * Hủy ngay các đơn đã quá 30 phút chưa thanh toán (server tự kiểm tra hạn), không chờ lượt chạy định kỳ.
+ * Gọi trước khi tải danh sách đơn để khách không thấy đơn hết hạn còn nằm ở "Chờ thanh toán".
+ */
+export async function expireUnpaidOrders(): Promise<void> {
+  try {
+    await createClient().rpc("cancel_expired_orders");
+  } catch {
+    // Không gọi được thì lượt chạy định kỳ ở server vẫn hủy sau đó
+  }
 }
 
 export async function fetchMyOrder(id: string): Promise<MyOrder | null> {
   const uid = await currentUserId();
   if (!uid) return null;
+  await expireUnpaidOrders();
   const { data } = await createClient().from("orders").select(ORDER_SELECT).eq("id", id).eq("user_id", uid).maybeSingle();
   return (data as unknown as MyOrder) || null;
 }

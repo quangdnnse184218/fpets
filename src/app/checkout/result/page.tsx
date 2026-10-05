@@ -45,7 +45,7 @@ function CheckoutResultContent() {
           Cảm ơn bạn đã đặt hàng tại FPETS!
         </h1>
         <p className="text-xs sm:text-sm text-bark-600 max-w-md mx-auto">
-          Mã đơn hàng của bạn là <strong className="text-pine-950 font-mono">{orderCode}</strong>. Hãy lưu lại mã này để tra cứu đơn cùng số điện thoại đặt hàng.
+          Mã đơn hàng của bạn là <strong className="text-pine-950 font-mono">{orderCode}</strong>. Hãy lưu lại mã này để tra cứu đơn.
         </p>
       </div>
 

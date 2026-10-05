@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { calcShippingFee } from "@/lib/shipping";
@@ -55,16 +55,27 @@ interface AppContextType {
   cart: CartItem[];
   // false cho tới khi giỏ hàng được tải xong lần đầu: tránh hiện "giỏ trống" khi dữ liệu chưa về
   isCartReady: boolean;
-  addToCart: (item: Omit<CartItem, "id">) => Promise<void>;
+  // Trả về mã dòng giỏ hàng vừa thêm (hoặc dòng đã có sẵn) để trang gọi có thể tick chọn nó
+  addToCart: (item: Omit<CartItem, "id">) => Promise<string | undefined>;
   updateQuantity: (id: string, delta: number) => Promise<void>;
   updatePetForBox: (cartItemId: string, petId: string, petName: string) => Promise<void>;
   removeFromCart: (id: string) => Promise<void>;
-  clearCart: () => Promise<void>;
+  // Các món khách tick để thanh toán (như giỏ Shopee): mọi số tiền bên dưới chỉ tính trên các món này
+  selectedIds: string[];
+  selectedCart: CartItem[];
+  toggleSelected: (id: string) => void;
+  selectAll: (on: boolean) => void;
+  selectOnly: (ids: string[]) => void;
+  // Đặt hàng xong: chỉ gỡ các món đã đặt, món chưa tick vẫn nằm lại trong giỏ
+  removeOrderedFromCart: (ids: string[]) => Promise<void>;
+  // Mã đang áp dụng được cho các món đã tick ("" nếu chưa có mã hoặc mã chưa đủ điều kiện)
   voucherCode: string;
   voucherDiscount: number;
   voucherFreeShip: boolean;
+  voucherApplied: boolean;
   voucherMessage: string;
   applyVoucher: (code: string) => Promise<boolean>;
+  clearVoucher: () => void;
   subtotal: number;
   // null = chưa biết tỉnh nhận hàng (giỏ hàng), checkout tính theo địa chỉ thật
   shippingFee: number | null;
@@ -84,6 +95,42 @@ function readGuestCart(): GuestCartLine[] {
 }
 
 const VOUCHER_KEY = "fpets_voucher_code";
+const SELECTED_KEY = "fpets_cart_selected";
+
+function storeSelectedIds(ids: string[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(SELECTED_KEY, JSON.stringify(ids));
+  } catch {
+    // sessionStorage bị chặn: lựa chọn chỉ sống trong trang hiện tại
+  }
+}
+
+function readSelectedIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(SELECTED_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+// Thông tin mã giảm giá khách đã nhập; số tiền giảm được tính lại mỗi khi khách đổi các món đã tick
+interface AppliedVoucher {
+  code: string;
+  voucherType: string;
+  discountValue: number;
+  maxDiscount: number | null;
+  minOrderValue: number;
+  scope: string;
+}
+
+const VOUCHER_SCOPE_LABEL: Record<string, string> = {
+  retail: "sản phẩm bán lẻ",
+  box: "Mystery Box",
+  first_subscription: "đăng ký gói định kỳ lần đầu",
+};
 
 function storeVoucherCode(code: string) {
   if (typeof window === "undefined") return;
@@ -482,16 +529,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, isLoadingAuth, user.id]);
 
-  const [voucherCode, setVoucherCode] = useState<string>("");
-  const [voucherDiscount, setVoucherDiscount] = useState<number>(0);
-  const [voucherFreeShip, setVoucherFreeShip] = useState<boolean>(false);
-  const [voucherMessage, setVoucherMessage] = useState<string>("");
+  const [appliedVoucher, setAppliedVoucher] = useState<AppliedVoucher | null>(null);
+  const [voucherError, setVoucherError] = useState<string>("");
 
-  const addToCart = async (item: Omit<CartItem, "id">) => {
+  // Món được tick trong giỏ. Mặc định chưa tick món nào; lựa chọn giữ trong phiên để tải lại trang không mất.
+  const [selectedIds, setSelectedIdsState] = useState<string[]>([]);
+  useEffect(() => setSelectedIdsState(readSelectedIds()), []);
+  const setSelectedIds = (ids: string[]) => {
+    setSelectedIdsState(ids);
+    storeSelectedIds(ids);
+  };
+  const toggleSelected = (id: string) => setSelectedIds(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
+  const selectAll = (on: boolean) => setSelectedIds(on ? cart.map((c) => c.id) : []);
+  const selectOnly = (ids: string[]) => setSelectedIds(ids);
+  const selectedCart = useMemo(() => cart.filter((c) => selectedIds.includes(c.id)), [cart, selectedIds]);
+
+  const addToCart = async (item: Omit<CartItem, "id">): Promise<string | undefined> => {
     if (!isLoggedIn || !user.id) {
       // Yêu cầu đăng nhập để mua sắm và thêm sản phẩm vào giỏ
-      return;
+      return undefined;
     }
+    let lineId: string | undefined;
 
     const supabase = createClient();
     const cartId = cartIdRef.current || (await getOrCreateCartId(user.id));
@@ -507,8 +565,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .maybeSingle();
       if (existingRow) {
         await supabase.from("cart_items").update({ quantity: Math.min(maxQty, existingRow.quantity + item.quantity) }).eq("id", existingRow.id);
+        lineId = existingRow.id;
       } else {
-        await supabase.from("cart_items").insert({ cart_id: cartId, product_id: item.productId, quantity: Math.min(maxQty, item.quantity) });
+        const { data: inserted } = await supabase
+          .from("cart_items")
+          .insert({ cart_id: cartId, product_id: item.productId, quantity: Math.min(maxQty, item.quantity) })
+          .select("id")
+          .single();
+        lineId = inserted?.id;
       }
     } else if (item.type === "box" && item.boxTypeId && item.petId) {
       // Một đơn chứa được nhiều Mystery Box (mỗi bé một hộp, hoặc nhiều loại hộp), nhưng cùng một
@@ -520,11 +584,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .eq("box_type_id", item.boxTypeId)
         .eq("pet_id", item.petId)
         .maybeSingle();
-      if (!sameBox) {
-        await supabase.from("cart_items").insert({ cart_id: cartId, box_type_id: item.boxTypeId, pet_id: item.petId, quantity: 1 });
+      if (sameBox) {
+        lineId = sameBox.id;
+      } else {
+        const { data: inserted } = await supabase
+          .from("cart_items")
+          .insert({ cart_id: cartId, box_type_id: item.boxTypeId, pet_id: item.petId, quantity: 1 })
+          .select("id")
+          .single();
+        lineId = inserted?.id;
       }
     }
     await loadServerCart(user.id);
+    return lineId;
   };
 
   const updateQuantity = async (id: string, delta: number) => {
@@ -557,6 +629,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const removeFromCart = async (id: string) => {
     const current = cart.find((c) => c.id === id);
     setCart((prev) => prev.filter((c) => c.id !== id));
+    if (selectedIds.includes(id)) setSelectedIds(selectedIds.filter((x) => x !== id));
     if (isLoggedIn && user.id) {
       await createClient().from("cart_items").delete().eq("id", id);
     } else if (current?.productId) {
@@ -564,19 +637,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const clearCart = async () => {
-    if (isLoggedIn && cartIdRef.current) {
-      const supabase = createClient();
-      await supabase.from("cart_items").delete().eq("cart_id", cartIdRef.current);
-    } else {
-      writeGuestCart([]);
-    }
-    setCart([]);
-    setVoucherCode("");
+  const clearVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherError("");
     storeVoucherCode("");
-    setVoucherDiscount(0);
-    setVoucherFreeShip(false);
-    setVoucherMessage("");
+  };
+
+  const removeOrderedFromCart = async (ids: string[]) => {
+    if (isLoggedIn && ids.length > 0) {
+      await createClient().from("cart_items").delete().in("id", ids);
+    }
+    setCart((prev) => prev.filter((c) => !ids.includes(c.id)));
+    setSelectedIds(selectedIds.filter((x) => !ids.includes(x)));
+    clearVoucher();
   };
 
   // Xem trước giảm giá: server chỉ trả đúng mã khách nhập nếu còn hiệu lực (bảng voucher không mở công khai).
@@ -584,7 +657,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const applyVoucher = async (code: string): Promise<boolean> => {
     const clean = code.trim().toUpperCase();
     if (!clean) {
-      setVoucherMessage("Vui lòng nhập mã giảm giá");
+      setVoucherError("Vui lòng nhập mã giảm giá");
       return false;
     }
 
@@ -593,72 +666,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const voucher = rows?.[0];
 
     if (!voucher) {
-      setVoucherMessage("Mã voucher không hợp lệ hoặc đã hết hạn");
-      setVoucherCode("");
+      setAppliedVoucher(null);
       storeVoucherCode("");
-      setVoucherDiscount(0);
-      setVoucherFreeShip(false);
+      setVoucherError("Mã không hợp lệ hoặc đã hết hạn");
       return false;
     }
 
-    // Phạm vi voucher: giảm trên phần hàng thuộc phạm vi (khớp checkout_create_order)
-    const retailAmount = cart.filter((c) => c.type === "retail").reduce((s, c) => s + c.unitPrice * c.quantity, 0);
-    const boxAmount = cart.filter((c) => c.type === "box").reduce((s, c) => s + c.unitPrice * c.quantity, 0);
-    const base =
-      voucher.scope === "all" ? subtotal : voucher.scope === "retail" ? retailAmount : voucher.scope === "box" ? boxAmount : 0;
-    if (base <= 0) {
-      const scopeLabel: Record<string, string> = {
-        retail: "sản phẩm bán lẻ",
-        box: "Mystery Box",
-        first_subscription: "đăng ký gói định kỳ lần đầu",
-      };
-      setVoucherMessage(`Mã này chỉ áp dụng cho ${scopeLabel[voucher.scope] || "đơn phù hợp"}`);
-      setVoucherCode("");
-      storeVoucherCode("");
-      setVoucherDiscount(0);
-      setVoucherFreeShip(false);
-      return false;
-    }
-
-    if (base < voucher.min_order_value) {
-      setVoucherMessage(`Đơn tối thiểu ${voucher.min_order_value.toLocaleString("vi-VN")}₫ mới áp dụng được mã này`);
-      setVoucherCode("");
-      storeVoucherCode("");
-      setVoucherDiscount(0);
-      setVoucherFreeShip(false);
-      return false;
-    }
-
-    let discount = 0;
-    if (voucher.voucher_type === "percentage") {
-      discount = Math.round((base * voucher.discount_value) / 100);
-      if (voucher.max_discount) discount = Math.min(discount, voucher.max_discount);
-    } else if (voucher.voucher_type === "fixed_amount") {
-      discount = Math.min(voucher.discount_value, base);
-    }
-    // Voucher freeship không trừ tiền hàng: nó đưa phí ship về 0 (voucherFreeShip)
-
-    setVoucherCode(clean);
+    setVoucherError("");
+    setAppliedVoucher({
+      code: clean,
+      voucherType: voucher.voucher_type,
+      discountValue: voucher.discount_value,
+      maxDiscount: voucher.max_discount,
+      minOrderValue: voucher.min_order_value,
+      scope: voucher.scope,
+    });
     storeVoucherCode(clean);
-    setVoucherDiscount(discount);
-    setVoucherFreeShip(voucher.voucher_type === "free_shipping");
-    setVoucherMessage(`Áp dụng thành công mã ${clean}. Số tiền giảm chính xác sẽ hiện lại ở bước thanh toán.`);
     return true;
   };
+
+  // Mức giảm theo các món đang tick (khớp cách tính của checkout_create_order): đổi lựa chọn là tính lại ngay
+  const voucherState = useMemo(() => {
+    const none = { discount: 0, freeShip: false, applied: false };
+    if (!appliedVoucher) return { ...none, message: voucherError };
+    const v = appliedVoucher;
+    if (selectedCart.length === 0) return { ...none, message: `Đã nhận mã ${v.code}. Tick món cần thanh toán để áp dụng.` };
+    const amountOf = (type?: CartItem["type"]) =>
+      selectedCart.filter((c) => !type || c.type === type).reduce((sum, c) => sum + c.unitPrice * c.quantity, 0);
+    // Phạm vi voucher: giảm trên phần hàng thuộc phạm vi
+    const base = v.scope === "all" ? amountOf() : v.scope === "retail" ? amountOf("retail") : v.scope === "box" ? amountOf("box") : 0;
+    if (base <= 0) return { ...none, message: `Mã này chỉ áp dụng cho ${VOUCHER_SCOPE_LABEL[v.scope] || "đơn phù hợp"}` };
+    if (base < v.minOrderValue) return { ...none, message: `Đơn tối thiểu ${v.minOrderValue.toLocaleString("vi-VN")}₫ mới áp dụng được mã này` };
+    let discount = 0;
+    if (v.voucherType === "percentage") {
+      discount = Math.round((base * v.discountValue) / 100);
+      if (v.maxDiscount) discount = Math.min(discount, v.maxDiscount);
+    } else if (v.voucherType === "fixed_amount") {
+      discount = Math.min(v.discountValue, base);
+    }
+    // Voucher freeship không trừ tiền hàng: nó đưa phí ship về 0
+    return { discount, freeShip: v.voucherType === "free_shipping", applied: true, message: "Áp dụng thành công" };
+  }, [appliedVoucher, voucherError, selectedCart]);
 
   // Khôi phục voucher đã áp khi khách tải lại trang (giỏ tải xong mới tính lại được số tiền giảm)
   const voucherRestored = useRef(false);
   useEffect(() => {
-    if (voucherRestored.current || cartLoading || cart.length === 0 || voucherCode) return;
+    if (voucherRestored.current || cartLoading || cart.length === 0 || appliedVoucher) return;
     voucherRestored.current = true;
     const stored = readVoucherCode();
     if (stored) applyVoucher(stored);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cart, cartLoading, voucherCode]);
+  }, [cart, cartLoading, appliedVoucher]);
 
-  const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const shippingFee = calcShippingFee(null, subtotal, voucherFreeShip);
-  const total = Math.max(0, subtotal + (shippingFee ?? 0) - voucherDiscount);
+  // Mọi số tiền chỉ tính trên các món đã tick; chưa tick món nào thì bằng 0
+  const subtotal = selectedCart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+  const shippingFee = calcShippingFee(null, subtotal, voucherState.freeShip);
+  const total = Math.max(0, subtotal + (shippingFee ?? 0) - voucherState.discount);
 
   return (
     <AppContext.Provider
@@ -678,12 +741,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateQuantity,
         updatePetForBox,
         removeFromCart,
-        clearCart,
-        voucherCode,
-        voucherDiscount,
-        voucherFreeShip,
-        voucherMessage,
+        selectedIds,
+        selectedCart,
+        toggleSelected,
+        selectAll,
+        selectOnly,
+        removeOrderedFromCart,
+        voucherCode: voucherState.applied && appliedVoucher ? appliedVoucher.code : "",
+        voucherDiscount: voucherState.discount,
+        voucherFreeShip: voucherState.freeShip,
+        voucherApplied: voucherState.applied,
+        voucherMessage: voucherState.message,
         applyVoucher,
+        clearVoucher,
         subtotal,
         shippingFee,
         total,

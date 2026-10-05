@@ -2,6 +2,7 @@
 
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { expireUnpaidOrders } from "@/lib/myOrders";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, Truck, PackageCheck, PackageSearch, CheckCircle2, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -180,12 +181,22 @@ function OrdersContent() {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
 
+  // Gõ tới đâu tìm tới đó: chờ 350 ms sau phím cuối rồi mới hỏi server, không cần bấm Enter
+  useEffect(() => {
+    if (searchInput === q) return;
+    const timer = setTimeout(() => setParams({ q: searchInput }), 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
+
   const typeList = TYPE_FILTERS.find((t) => t.id === type)?.types || null;
   const search = cleanQuery(q);
 
   const load = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
+    // Đơn quá 30 phút chưa thanh toán: hủy ngay khi admin mở trang, không chờ lượt chạy định kỳ
+    await expireUnpaidOrders();
     const base = () => {
       let query = supabase.from("orders").select("id", { count: "exact", head: true });
       if (typeList) query = query.in("order_type", typeList);
@@ -309,7 +320,7 @@ function OrdersContent() {
             className="relative flex-1 sm:max-w-sm"
             onSubmit={(e) => {
               e.preventDefault();
-              setParams({ q: searchInput.trim() });
+              setParams({ q: searchInput });
             }}
           >
             <Search className="w-4 h-4 text-bark-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -318,7 +329,6 @@ function OrdersContent() {
               placeholder="Mã đơn, tên hoặc SĐT người nhận"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              onBlur={() => searchInput.trim() !== q && setParams({ q: searchInput.trim() })}
               aria-label="Tìm đơn hàng"
               className="w-full h-10 pl-9 pr-3 rounded-box border border-surface-border text-xs focus:border-pine-900 focus:outline-none"
             />

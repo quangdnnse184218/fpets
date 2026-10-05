@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { expireUnpaidOrders } from "@/lib/myOrders";
 import { useRouter } from "next/navigation";
 import { CalendarClock, Check, CreditCard, MapPin, Pause, Play, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -120,6 +121,8 @@ export default function MySubscriptionsPage() {
   const [resuming, setResuming] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    // Gói đăng ký quá 30 phút chưa thanh toán: hủy ngay để không nằm lại ở "Chờ thanh toán"
+    await expireUnpaidOrders();
     const supabase = createClient();
     const uid = await currentUserId();
     if (!uid) return;

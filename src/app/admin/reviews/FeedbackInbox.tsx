@@ -5,6 +5,7 @@ import { CheckCircle2, Mail, Phone, RotateCcw, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatDateTime } from "@/lib/formatters";
 import { Button } from "@/components/ui/Button";
+import { textMatches } from "@/lib/search";
 
 interface FeedbackRow {
   id: string;
@@ -62,11 +63,8 @@ export default function FeedbackInbox({ onCountChange }: { onCountChange?: (newC
     load();
   };
 
-  const q = search.trim().toLowerCase();
   const filtered = rows.filter(
-    (r) =>
-      (filter === "all" || r.status === filter) &&
-      (!q || [r.full_name, r.phone, r.email || "", r.subject, r.message].some((v) => v.toLowerCase().includes(q)))
+    (r) => (filter === "all" || r.status === filter) && textMatches([r.full_name, r.phone, r.email, r.subject, r.message], search)
   );
 
   return (

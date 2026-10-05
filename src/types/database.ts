@@ -1295,26 +1295,16 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_staff: { Args: never; Returns: boolean }
       lookup_order: {
-        Args: { p_order_code: string; p_phone: string }
+        Args: { p_order_code: string }
         Returns: {
           created_at: string
-          discount_amount: number
-          district: string
-          id: string
           order_code: string
-          order_type: string
-          payment_method: Database["public"]["Enums"]["payment_method"]
-          payment_status: Database["public"]["Enums"]["payment_status"]
           province_city: string
           recipient_name: string
           recipient_phone: string
-          shipping_address: string
-          shipping_fee: number
           status: Database["public"]["Enums"]["order_status"]
-          subtotal: number
           total_amount: number
           tracking_code: string
-          ward: string
         }[]
       }
       mark_order_delivered: { Args: { p_order_id: string }; Returns: Json }

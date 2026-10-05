@@ -21,6 +21,11 @@ import BrandLogo from "@/components/common/BrandLogo";
 import NotificationBell from "@/components/common/NotificationBell";
 import { buttonClass } from "@/components/ui/Button";
 import { CONTACT_INFO } from "@/lib/contactInfo";
+import { fetchProducts } from "@/lib/catalog";
+import { searchProducts } from "@/lib/search";
+import { formatVND } from "@/lib/formatters";
+import ProductItemImage from "@/components/common/ProductItemImage";
+import { Product } from "@/types/models";
 
 type SubLink = { href: string; label: string; desc?: string };
 type NavItem = { label: string; href: string; children?: SubLink[] };
@@ -117,6 +122,17 @@ export default function MainNavbar() {
     if (searchOpen) searchInputRef.current?.focus();
   }, [searchOpen]);
 
+  // Gợi ý sản phẩm ngay khi gõ: danh mục tải một lần lúc mở ô tìm
+  const [searchProductsList, setSearchProductsList] = useState<Product[] | null>(null);
+  useEffect(() => {
+    if (!searchOpen || searchProductsList) return;
+    let alive = true;
+    fetchProducts().then((list) => alive && setSearchProductsList(list));
+    return () => {
+      alive = false;
+    };
+  }, [searchOpen, searchProductsList]);
+
   // Không hiển thị Header khách khi đang ở các trang Admin
   if (pathname.startsWith("/admin")) return null;
 
@@ -127,6 +143,8 @@ export default function MainNavbar() {
     const roots = [item.href, ...(item.children || []).map((c) => c.href.split(/[?#]/)[0])];
     return roots.some((r) => r !== "/" && pathname.startsWith(r));
   };
+
+  const suggestions = keyword.trim() && searchProductsList ? searchProducts(searchProductsList, keyword) : [];
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -337,6 +355,35 @@ export default function MainNavbar() {
             </div>
             <button type="submit" className={buttonClass("primary", "md")}>Tìm</button>
           </form>
+          {/* Gõ tới đâu gợi ý tới đó, không cần gõ đủ chữ hay bấm Tìm */}
+          {keyword.trim() !== "" && searchProductsList && (
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-3">
+              {suggestions.length === 0 ? (
+                <p className="py-2 text-sm text-bark-600">Không có sản phẩm nào khớp “{keyword.trim()}”.</p>
+              ) : (
+                <ul className="rounded-box border border-surface-border bg-white divide-y divide-surface-border overflow-hidden">
+                  {suggestions.slice(0, 6).map((p) => (
+                    <li key={p.id}>
+                      <Link href={`/shop/${p.slug}`} onClick={() => setSearchOpen(false)} className="flex items-center gap-3 px-3 py-2 hover:bg-surface-muted">
+                        <span className="relative w-10 h-10 shrink-0 rounded-box overflow-hidden border border-surface-border bg-surface-muted">
+                          <ProductItemImage src={p.image} alt="" category={p.category} placeholderColor={p.placeholderColor} sizes="40px" showNote={false} />
+                        </span>
+                        <span className="min-w-0 flex-1 text-sm font-semibold text-pine-950 truncate">{p.name}</span>
+                        <span className="shrink-0 text-sm font-bold text-pine-950">{formatVND(p.price)}</span>
+                      </Link>
+                    </li>
+                  ))}
+                  {suggestions.length > 6 && (
+                    <li>
+                      <Link href={`/shop?q=${encodeURIComponent(keyword.trim())}`} onClick={() => setSearchOpen(false)} className="block px-3 py-2.5 text-sm font-bold text-pine-900 hover:bg-surface-muted">
+                        Xem tất cả {suggestions.length} kết quả
+                      </Link>
+                    </li>
+                  )}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       )}
 

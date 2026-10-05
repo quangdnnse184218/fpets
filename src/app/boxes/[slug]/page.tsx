@@ -55,7 +55,7 @@ export default function BoxDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params?.slug as string;
-  const { pets, cart, addToCart, isLoggedIn, isLoadingAuth, isCartReady, user } = useApp();
+  const { pets, cart, addToCart, selectOnly, isLoggedIn, isLoadingAuth, isCartReady, user } = useApp();
   const { show } = useToast();
 
   const [box, setBox] = useState<BoxType | null>(null);
@@ -137,19 +137,22 @@ export default function BoxDetailPage() {
   const maxDiscount = plans.reduce((m, p) => Math.max(m, p.discountPercent), 0);
 
   // Giỏ đã có đúng hộp này cho đúng bé đang chọn (một đơn có thể có nhiều hộp, nhưng không trùng hộp cho cùng một bé)
-  const alreadyInCart = !!box && !!selectedPet && cart.some((c) => c.type === "box" && c.boxTypeId === box.id && c.petId === selectedPet.id);
+  // Đường dẫn quay lại đúng hộp này (giữ gói đang chọn) sau khi khách tạo hồ sơ bé
+  const returnPath = `/boxes/${slug}${purchaseMode === "subscription" && selectedPlan ? `?plan=${selectedPlan.cycles}` : ""}`;
+  const lineInCart = box && selectedPet ? cart.find((c) => c.type === "box" && c.boxTypeId === box.id && c.petId === selectedPet.id) : undefined;
+  const alreadyInCart = !!lineInCart;
 
-  // Đưa hộp đang xem vào giỏ. Trả về false khi chưa đủ điều kiện (chưa đăng nhập thì chuyển sang trang đăng nhập).
-  const putBoxInCart = async (mode: "add" | "buy"): Promise<boolean> => {
-    if (!box) return false;
+  // Đưa hộp đang xem vào giỏ, trả về mã dòng giỏ hàng. Trả về null khi chưa đủ điều kiện (chưa đăng nhập thì chuyển sang trang đăng nhập).
+  const putBoxInCart = async (mode: "add" | "buy"): Promise<string | null> => {
+    if (!box) return null;
     if (!isLoggedIn) {
       router.push(`/login?redirect=/boxes/${slug}`);
-      return false;
+      return null;
     }
-    if (!selectedPet) return false;
-    if (alreadyInCart) return true;
+    if (!selectedPet) return null;
+    if (lineInCart) return lineInCart.id;
     setBusy(mode);
-    await addToCart({
+    const lineId = await addToCart({
       type: "box",
       boxTypeId: box.id,
       boxType: box,
@@ -158,12 +161,15 @@ export default function BoxDetailPage() {
       quantity: 1,
       unitPrice: box.basePrice,
     });
-    return true;
+    return lineId || null;
   };
 
-  // Mua ngay: thêm vào giỏ rồi sang thẳng trang thanh toán (giỏ có món khác thì thanh toán cùng lúc)
+  // Mua ngay: thêm vào giỏ, tick riêng hộp này rồi sang thẳng trang thanh toán (món khác trong giỏ không bị tính tiền)
   const handleBuyNow = async () => {
-    if (await putBoxInCart("buy")) router.push("/checkout");
+    const lineId = await putBoxInCart("buy");
+    if (!lineId) return setBusy(null);
+    selectOnly([lineId]);
+    router.push("/checkout");
   };
 
   // Thêm vào giỏ rồi ở lại trang, khách tự chọn xem giỏ hay mua tiếp
@@ -471,8 +477,12 @@ export default function BoxDetailPage() {
               <div className="w-full min-h-12 rounded-box bg-surface-muted animate-pulse" aria-hidden="true" />
             ) : blocked === "no_pet" ? (
               <>
-                <ButtonLink href="/quiz" size="lg" className="w-full">Tạo hồ sơ bé</ButtonLink>
-                <p className="text-sm text-bark-700 text-center">Cần có hồ sơ thú cưng trước khi đặt hộp.</p>
+                {/* Hai cách tạo hồ sơ: nhập nhanh một form (xong quay lại đúng hộp này) hoặc làm quiz để được gợi ý hộp */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <ButtonLink href={`/my-account/pets?add=1&next=${encodeURIComponent(returnPath)}`} size="lg" className="!px-3">Thêm bé nhanh</ButtonLink>
+                  <ButtonLink href="/quiz" variant="secondary" size="lg" className="!px-3">Làm {QUIZ_NAME}</ButtonLink>
+                </div>
+                <p className="text-sm text-bark-700 text-center">Mỗi hộp gắn với một bé nên cần hồ sơ thú cưng trước khi đặt. {QUIZ_NAME} không bắt buộc.</p>
               </>
             ) : blocked === "no_match" ? (
               <>

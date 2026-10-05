@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Star, Eye, EyeOff, MessageSquare, Search, X } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
 import FeedbackInbox from "./FeedbackInbox";
+import { textMatches } from "@/lib/search";
 
 interface ReviewRow {
   id: string;
@@ -186,9 +187,7 @@ function ReviewsPanel({ initialUnreplied, onChanged }: { initialUnreplied: boole
 
   const filtered = sorted.filter((r) => {
     const matchStar = (starFilter === "all" || r.rating === starFilter) && (replyFilter === "all" || (replyFilter === "unreplied") === !r.admin_reply);
-    const matchSearch =
-      (r.profiles?.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
-      (r.comment || "").toLowerCase().includes(search.toLowerCase());
+    const matchSearch = textMatches([r.profiles?.full_name, r.comment], search);
     return matchStar && matchSearch;
   });
 

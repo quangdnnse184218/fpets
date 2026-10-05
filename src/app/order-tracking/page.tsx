@@ -11,13 +11,13 @@ import { useApp } from "@/context/AppContext";
 import { Button } from "@/components/ui/Button";
 import OrderStepper from "@/components/common/OrderStepper";
 
+// Tra cứu chỉ bằng mã đơn nên server chỉ trả tên và số điện thoại đã che bớt, địa chỉ chỉ còn tỉnh/thành.
+// Chi tiết đầy đủ nằm trong Tài khoản → Đơn hàng.
 interface LookupResult {
   order_code: string;
   status: OrderStatus;
   recipient_name: string;
   recipient_phone: string;
-  shipping_address: string;
-  ward: string | null;
   province_city: string | null;
   total_amount: number;
   tracking_code: string | null;
@@ -38,7 +38,6 @@ const input = "w-full min-h-11 px-3.5 rounded-box border border-surface-border b
 export default function OrderTrackingPage() {
   const { isLoggedIn } = useApp();
   const [orderCode, setOrderCode] = useState("");
-  const [phone, setPhone] = useState("");
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -55,11 +54,9 @@ export default function OrderTrackingPage() {
     e.preventDefault();
     setError("");
     if (!orderCode.trim()) return setError("Nhập mã đơn hàng.");
-    if (!/^0[0-9]{9}$/.test(phone.trim())) return setError("Số điện thoại gồm 10 số, bắt đầu bằng 0.");
     setLoading(true);
     const { data, error: rpcError } = await createClient().rpc("lookup_order", {
       p_order_code: orderCode.trim().toUpperCase(),
-      p_phone: phone.trim(),
     });
     setLoading(false);
     if (rpcError) return setError("Chưa tra cứu được, vui lòng thử lại sau ít phút.");
@@ -86,7 +83,7 @@ export default function OrderTrackingPage() {
       <header className="space-y-1.5">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">Tra cứu đơn hàng</h1>
         <p className="text-sm text-bark-600">
-          Nhập mã đơn và số điện thoại đã dùng khi đặt hàng.
+          Nhập mã đơn để xem trạng thái giao hàng.
           {isLoggedIn && (
             <>
               {" "}Bạn đã đăng nhập, xem mọi đơn trong{" "}
@@ -97,14 +94,10 @@ export default function OrderTrackingPage() {
       </header>
 
       <form onSubmit={handleSearch} noValidate className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 sm:items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 sm:items-end">
           <div>
             <label htmlFor="track-code" className="text-xs font-bold text-bark-800 block mb-1">Mã đơn hàng</label>
             <input id="track-code" type="text" value={orderCode} onChange={(e) => setOrderCode(e.target.value)} placeholder="FPET-20261003-1234" autoComplete="off" className={`${input} font-mono uppercase placeholder:normal-case placeholder:font-sans`} />
-          </div>
-          <div>
-            <label htmlFor="track-phone" className="text-xs font-bold text-bark-800 block mb-1">Số điện thoại đặt hàng</label>
-            <input id="track-phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\s/g, ""))} placeholder="0912345678" autoComplete="tel" className={input} />
           </div>
           <Button type="submit" loading={loading} loadingText="Đang tìm…">
             <Search className="w-4 h-4" /> Tra cứu
@@ -140,8 +133,8 @@ export default function OrderTrackingPage() {
               <dd className="font-semibold text-pine-950">{formatVND(order.total_amount)}</dd>
             </div>
             <div className="sm:col-span-2">
-              <dt className="text-xs text-bark-500">Địa chỉ giao</dt>
-              <dd className="text-bark-800">{[order.shipping_address, order.ward, order.province_city].filter(Boolean).join(", ")}</dd>
+              <dt className="text-xs text-bark-500">Giao đến</dt>
+              <dd className="text-bark-800">{order.province_city || "—"}</dd>
             </div>
             {order.tracking_code && (
               <div className="sm:col-span-2">
@@ -157,7 +150,7 @@ export default function OrderTrackingPage() {
           </dl>
 
           <p className="p-4 sm:p-5 text-xs text-bark-600">
-            Muốn đánh giá đơn hoặc yêu cầu đổi / trả?{" "}
+            Tên, số điện thoại được che bớt và địa chỉ chỉ hiện tỉnh/thành để bảo vệ thông tin của người nhận. Muốn xem đầy đủ, đánh giá đơn hoặc yêu cầu đổi / trả?{" "}
             <Link href="/my-account/orders" prefetch={false} className="font-bold text-pine-900 underline underline-offset-2">Mở Đơn hàng của tôi</Link>.
           </p>
         </section>
@@ -165,9 +158,9 @@ export default function OrderTrackingPage() {
 
       {searched && !loading && !order && (
         <div role="status" className="p-5 rounded-container bg-surface-card border border-surface-border space-y-1.5">
-          <h2 className="text-sm font-bold text-pine-950">Không tìm thấy đơn khớp thông tin này</h2>
+          <h2 className="text-sm font-bold text-pine-950">Không tìm thấy đơn có mã này</h2>
           <p className="text-sm text-bark-600">
-            Kiểm tra lại mã đơn (bắt đầu bằng FPET-) và số điện thoại đã dùng khi đặt. Cần hỗ trợ, gọi{" "}
+            Kiểm tra lại mã đơn (bắt đầu bằng FPET-, có trên trang xác nhận sau khi đặt hàng). Cần hỗ trợ, gọi{" "}
             <a href={`tel:${CONTACT_INFO.hotlineTel}`} className="font-bold text-pine-900 underline underline-offset-2">{CONTACT_INFO.hotline}</a>.
           </p>
         </div>

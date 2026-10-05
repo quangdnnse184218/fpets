@@ -7,6 +7,7 @@ import { Search, Lock, Unlock, Eye, Phone, Mail, Heart, X } from "lucide-react";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { textMatches } from "@/lib/search";
 
 interface ProfileRow {
   id: string;
@@ -93,12 +94,7 @@ export default function AdminCustomersPage() {
     else setActive(customer, true);
   };
 
-  const filtered = profiles.filter(
-    (c) =>
-      (c.full_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.phone || "").includes(searchTerm)
-  );
+  const filtered = profiles.filter((c) => textMatches([c.full_name, c.email, c.phone], searchTerm));
 
   const selectedCustomer = profiles.find((p) => p.id === selectedId) || null;
 

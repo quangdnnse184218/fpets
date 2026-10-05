@@ -6,6 +6,7 @@ import { formatDate, formatVND } from "@/lib/formatters";
 import { Tables } from "@/types/database";
 import { Plus, Edit2, Trash2, Power, Search, X, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
+import { textMatches } from "@/lib/search";
 
 type VoucherRow = Tables<"vouchers">;
 
@@ -136,7 +137,7 @@ export default function AdminVouchersPage() {
     loadVouchers();
   };
 
-  const filtered = vouchers.filter((v) => v.code.toLowerCase().includes(search.toLowerCase()));
+  const filtered = vouchers.filter((v) => textMatches([v.code], search));
 
   if (loading) return <div className="py-16 text-center text-xs text-bark-500">Đang tải voucher...</div>;
 

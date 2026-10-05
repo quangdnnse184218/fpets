@@ -6,6 +6,7 @@ import { Search, AlertTriangle, Eye, ThumbsUp, Meh, ThumbsDown, Package, X } fro
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 import { Tables } from "@/types/database";
 import { formatDate } from "@/lib/formatters";
+import { textMatches } from "@/lib/search";
 
 type PetRow = Tables<"pets"> & { profiles: { full_name: string | null; phone: string | null } | null };
 interface FeedbackRow {
@@ -57,10 +58,7 @@ export default function AdminPetsPage() {
   const filteredPets = pets.filter((pet) => {
     const matchSpecies = speciesFilter === "all" || pet.species === speciesFilter;
     const matchSize = sizeFilter === "all" || pet.size === sizeFilter;
-    const matchSearch =
-      pet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (pet.breed || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (pet.profiles?.full_name || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchSearch = textMatches([pet.name, pet.breed, pet.profiles?.full_name], searchTerm);
     return matchSpecies && matchSize && matchSearch;
   });
 

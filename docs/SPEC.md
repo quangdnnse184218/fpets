@@ -38,7 +38,7 @@ Website gồm 3 nhóm trang cho khách và 5 nhóm module cho admin; Order Track
 | Mua hàng | Cart | Chỉ chứa hàng mua 1 lần |
 | Mua hàng | Checkout | Mua 1 lần hoặc đăng ký gói |
 | Mua hàng | Kết quả thanh toán | Thành công / thất bại, mã đơn |
-| Mua hàng | Tra cứu đơn | Cho khách không đăng nhập: mã đơn + SĐT |
+| Mua hàng | Tra cứu đơn | Cho khách không đăng nhập: chỉ cần mã đơn. Vì mã đơn có thể dò được nên trang chỉ hiện trạng thái, tổng tiền, mã vận đơn, tỉnh/thành và tên, số điện thoại đã che bớt; chi tiết đầy đủ nằm trong My Account |
 | My Account | Thông tin & sổ địa chỉ |  |
 | My Account | Thú cưng của tôi | Danh sách Pet Profile |
 | My Account | Đơn hàng | Lịch sử, chi tiết, tracking |
@@ -128,9 +128,11 @@ Mọi đơn đều cần đăng nhập: giỏ hàng lưu theo tài khoản; gi�
 
 **Cart: tóm tắt đơn**
 
-- Tạm tính, ô nhập voucher (hiện số tiền giảm hoặc lý do không hợp lệ).
-- Phí ship ước tính và dòng "Mua thêm X₫ để được freeship".
-- Tổng thanh toán, nút "Thanh toán".
+- Mỗi dòng có ô tick, kèm ô "Chọn tất cả": khách tick các món muốn thanh toán lần này (như giỏ Shopee). Mặc định chưa tick món nào và tổng tiền là 0₫; mọi số tiền chỉ tính trên món đã tick. Đặt hàng xong chỉ các món đã đặt rời giỏ, món chưa tick ở lại.
+- "Mua ngay" ở trang sản phẩm, trang hộp: chỉ thanh toán đúng món vừa bấm, các món khác trong giỏ không bị tính.
+- Tạm tính, ô nhập voucher (báo "Áp dụng thành công" hoặc lý do không hợp lệ; mức giảm tính lại theo các món đang tick).
+- Phí ship ước tính, dòng nổi bật "Miễn phí vận chuyển cho đơn từ 500.000₫" và "Mua thêm X₫".
+- Tổng thanh toán, nút "Thanh toán" (khóa khi chưa tick món nào).
 - Giỏ rỗng: gợi ý box và sản phẩm bán chạy. Cuối giỏ có banner "Đăng ký gói để tiết kiệm đến 15%".
 - Giỏ lưu theo tài khoản; khách chưa đăng nhập vẫn giữ giỏ khi tải lại trang, đăng nhập thì gộp giỏ.
 
@@ -235,7 +237,7 @@ Mọi đơn (mua 1 lần hoặc từng kỳ của gói) đi qua 7 trạng thái 
 
 | Trạng thái | Ý nghĩa | Khách được hủy? |
 | --- | --- | --- |
-| Chờ thanh toán | Đã tạo đơn, chưa trả tiền online (tự hủy sau 30 phút) | Có |
+| Chờ thanh toán | Đã tạo đơn, chưa trả tiền online. Quá 30 phút đơn tự chuyển sang Đã hủy với lý do hết hạn thanh toán (ngay khi khách hoặc admin mở trang đơn hàng, chậm nhất là lượt chạy định kỳ 10 phút/lần) | Có |
 | Đã xác nhận | Đã thanh toán, hoặc đơn COD đã được xác nhận | Có |
 | Đang chuẩn bị | Box đang được tuyển chọn / đóng gói | Không |
 | Đang giao | Đã bàn giao vận chuyển, có mã vận đơn | Không |

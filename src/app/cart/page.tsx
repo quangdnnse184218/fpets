@@ -27,27 +27,37 @@ export default function CartPage() {
     updateQuantity,
     updatePetForBox,
     removeFromCart,
+    selectedIds,
+    selectedCart,
+    toggleSelected,
+    selectAll,
+    selectOnly,
     subtotal,
     shippingFee,
     total,
     voucherCode,
     voucherDiscount,
+    voucherApplied,
     voucherMessage,
     applyVoucher,
+    clearVoucher,
     addToCart,
   } = useApp();
   const { show } = useToast();
   const plans = usePlans();
 
-  // Xóa ngay, cho phép hoàn tác trong 5 giây
+  // Xóa ngay, cho phép hoàn tác trong 5 giây. Hoàn tác thì món được tick lại như trước khi xóa.
   const handleRemove = (item: CartItem) => {
+    const wasSelected = selectedIds.includes(item.id);
+    const keepSelected = selectedIds.filter((id) => id !== item.id);
     removeFromCart(item.id);
     const name = item.type === "box" ? item.boxType?.name : item.product?.name;
     show(`Đã xóa ${name || "sản phẩm"}`, {
-      actions: [{ label: "Hoàn tác", onClick: () => {
+      actions: [{ label: "Hoàn tác", onClick: async () => {
         const { id: _removedId, ...rest } = item;
         void _removedId;
-        addToCart(rest);
+        const lineId = await addToCart(rest);
+        if (wasSelected && lineId) selectOnly([...keepSelected, lineId]);
       } }],
     });
   };
@@ -60,6 +70,8 @@ export default function CartPage() {
   };
 
   const remainingForFreeship = Math.max(0, SHIPPING_CONFIG.freeShippingThreshold - subtotal);
+  const selectedCount = selectedCart.length;
+  const allSelected = cart.length > 0 && selectedCount === cart.length;
 
   // Box chỉ đổi được sang bé cùng loài (chó: cùng size) và chưa có hộp cùng loại trong giỏ — khớp ràng buộc ở server
   const eligiblePetsFor = (item: (typeof cart)[number]) =>
@@ -115,8 +127,8 @@ export default function CartPage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">
             Giỏ hàng ({cart.reduce((s, i) => s + i.quantity, 0)} món)
           </h1>
-          <p className="text-xs text-bark-500 mt-0.5">
-            Các món mua lẻ và Mystery Box mua 1 lần được giao chung trong 1 kiện.
+          <p className="text-xs text-bark-600 mt-0.5">
+            Tick các món bạn muốn thanh toán lần này; món chưa tick vẫn nằm lại trong giỏ.
           </p>
         </div>
       </div>
@@ -125,7 +137,11 @@ export default function CartPage() {
       <div className="p-3.5 rounded-box bg-pine-50 border border-pine-100 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
           <Truck className="w-4 h-4 text-pine-800" />
-          {remainingForFreeship === 0 ? (
+          {selectedCount === 0 ? (
+            <span className="text-bark-700">
+              Đơn từ <strong>{formatVND(SHIPPING_CONFIG.freeShippingThreshold)}</strong> được miễn phí vận chuyển.
+            </span>
+          ) : remainingForFreeship === 0 ? (
             <span className="font-bold text-grass-700">
               Đơn của bạn được miễn phí vận chuyển.
             </span>
@@ -140,14 +156,30 @@ export default function CartPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Danh sách dòng sản phẩm */}
         <div className="lg:col-span-8 space-y-3">
+          {/* Chọn tất cả / bỏ chọn tất cả */}
+          <label className="flex items-center gap-3 px-4 min-h-11 rounded-box bg-surface-card border border-surface-border text-sm cursor-pointer">
+            <input type="checkbox" className="w-5 h-5 accent-pine-900" checked={allSelected} onChange={(e) => selectAll(e.target.checked)} />
+            <span className="font-bold text-pine-950">Chọn tất cả ({cart.length})</span>
+            <span className="ml-auto text-xs text-bark-600">Đã chọn {selectedCount} món</span>
+          </label>
+
           {cart.map((item) => {
             const conflicts = item.product ? findAllergyConflicts(item.product, pets) : [];
+            const itemName = (item.type === "box" ? item.boxType?.name : item.product?.name) || "sản phẩm";
+            const checked = selectedIds.includes(item.id);
             return (
             <Card
               key={item.id}
-              className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+              className={`p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${checked ? "!border-pine-800" : ""}`}
             >
               <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                <input
+                  type="checkbox"
+                  className="w-5 h-5 shrink-0 accent-pine-900 cursor-pointer"
+                  checked={checked}
+                  onChange={() => toggleSelected(item.id)}
+                  aria-label={`Chọn ${itemName} để thanh toán`}
+                />
                 {/* Ảnh thật của sản phẩm / Mystery Box */}
                 <div className="w-16 h-16 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
                   {item.type === 'box' && item.boxType?.imageUrl ? (
@@ -289,23 +321,20 @@ export default function CartPage() {
                   onChange={(e) => setInputCode(e.target.value)}
                   className="flex-1 min-h-11 md:min-h-9 px-3 text-xs rounded-box border border-surface-border focus:border-pine-900 focus:outline-none bg-surface-card"
                 />
-                <Button type="submit" variant="secondary" size="sm" disabled={!inputCode.trim()}>
+                <Button type="submit" variant="secondary" size="sm" className="shrink-0 whitespace-nowrap" disabled={!inputCode.trim()}>
                   Áp dụng
                 </Button>
               </div>
 
               {voucherMessage && (
-                <div
-                  className={`text-xs font-medium pt-1 flex items-center gap-1 ${
-                    voucherDiscount > 0 ? "text-grass-700" : "text-red-600"
-                  }`}
-                >
-                  {voucherDiscount > 0 ? (
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  ) : (
-                    <AlertCircle className="w-3.5 h-3.5" />
-                  )}
+                <div className={`text-xs font-medium pt-1 flex items-center gap-1 ${voucherApplied ? "text-grass-700" : "text-red-600"}`}>
+                  {voucherApplied ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 shrink-0" />}
                   <span>{voucherMessage}</span>
+                  {voucherApplied && (
+                    <button type="button" onClick={() => { clearVoucher(); setInputCode(""); }} className="ml-auto font-bold text-bark-700 underline underline-offset-2">
+                      Bỏ mã
+                    </button>
+                  )}
                 </div>
               )}
             </form>
@@ -313,16 +342,21 @@ export default function CartPage() {
             {/* Bảng tính tiền */}
             <div className="space-y-2 pt-3 border-t border-surface-border text-xs">
               <div className="flex justify-between text-bark-600">
-                <span>Tạm tính hàng:</span>
+                <span>Tạm tính ({selectedCount} món đã chọn):</span>
                 <span className="font-semibold text-bark-900">{formatVND(subtotal)}</span>
               </div>
 
               <div className="flex justify-between text-bark-600">
                 <span>Phí vận chuyển:</span>
-                <span>{formatShippingFee(shippingFee)}</span>
+                <span>{selectedCount === 0 ? "—" : formatShippingFee(shippingFee)}</span>
               </div>
-              {shippingFee === null && (
-                <p className="text-xs text-bark-500">
+              {/* Mốc miễn phí vận chuyển luôn hiện ngay dưới phí ship để khách biết còn thiếu bao nhiêu */}
+              <p className="px-3 py-2 rounded-box bg-honey-100 border border-honey-200 text-xs font-semibold text-honey-800">
+                Miễn phí vận chuyển cho đơn từ {formatVND(SHIPPING_CONFIG.freeShippingThreshold)}.
+                {selectedCount > 0 && remainingForFreeship > 0 && <> Mua thêm {formatVND(remainingForFreeship)} nữa là được.</>}
+              </p>
+              {selectedCount > 0 && shippingFee === null && (
+                <p className="text-xs text-bark-600">
                   {formatVND(SHIPPING_CONFIG.hcmFee)} tại TP.HCM, {formatVND(SHIPPING_CONFIG.otherFee)} tỉnh thành khác. Tính chính xác ở bước đặt hàng.
                 </p>
               )}
@@ -345,10 +379,12 @@ export default function CartPage() {
             <button
               type="button"
               onClick={() => router.push("/checkout")}
-              className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center cursor-pointer"
+              disabled={selectedCount === 0}
+              className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors flex items-center justify-center cursor-pointer disabled:bg-surface-muted disabled:text-bark-500 disabled:shadow-none disabled:cursor-not-allowed"
             >
-              <span>Thanh toán</span>
+              <span>{selectedCount === 0 ? "Thanh toán" : `Thanh toán (${selectedCount} món)`}</span>
             </button>
+            {selectedCount === 0 && <p className="text-xs text-bark-600 text-center">Tick ít nhất một món để thanh toán.</p>}
           </div>
         </div>
       </div>

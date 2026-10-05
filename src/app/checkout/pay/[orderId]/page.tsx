@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { expireUnpaidOrders } from "@/lib/myOrders";
 import { createClient } from "@/lib/supabase/client";
 import { formatVND } from "@/lib/formatters";
 import { Smartphone, CreditCard, ShieldCheck, ArrowLeft } from "lucide-react";
@@ -21,7 +22,7 @@ function PaySimulationContent() {
   const method = searchParams.get("method") || "momo";
   const isSubscription = searchParams.get("sub") === "1";
 
-  const [status, setStatus] = useState<"idle" | "processing" | "failed">("idle");
+  const [status, setStatus] = useState<"idle" | "processing" | "failed" | "expired">("idle");
 
   const handleConfirmPayment = async () => {
     setStatus("processing");
@@ -32,7 +33,13 @@ function PaySimulationContent() {
     });
 
     if (error) {
-      setStatus("failed");
+      // Quá 30 phút: đơn không thanh toán được nữa, chuyển luôn sang "Đã hủy" thay vì nằm lại ở "Chờ thanh toán"
+      if (error.message.includes("ERR_PAYMENT_EXPIRED")) {
+        await expireUnpaidOrders();
+        setStatus("expired");
+      } else {
+        setStatus("failed");
+      }
       return;
     }
 
@@ -69,13 +76,19 @@ function PaySimulationContent() {
         </p>
 
         {status === "failed" && (
-          <p className="text-xs text-red-600 font-semibold">Giao dịch thất bại hoặc đã hết hạn (30 phút). Vui lòng đặt lại đơn.</p>
+          <p role="alert" className="text-xs text-red-600 font-semibold">Chưa xác nhận được thanh toán. Vui lòng thử lại.</p>
+        )}
+        {status === "expired" && (
+          <div role="alert" className="p-3 rounded-box bg-red-50 border border-red-200 text-xs text-red-700 font-semibold space-y-2">
+            <p>Đơn đã quá 30 phút chưa thanh toán nên đã bị hủy. Vui lòng đặt lại đơn mới.</p>
+            <Link href="/cart" className="inline-block font-bold underline underline-offset-2">Về giỏ hàng</Link>
+          </div>
         )}
 
         <button
           type="button"
           onClick={handleConfirmPayment}
-          disabled={status === "processing"}
+          disabled={status === "processing" || status === "expired"}
           className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors disabled:opacity-60"
         >
           {status === "processing" ? "Đang xác nhận..." : "Tôi đã thanh toán"}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Search } from "lucide-react";
 import { DELIVERY_DAYS, SHIPPING_SUMMARY } from "@/lib/shipping";
@@ -81,7 +81,7 @@ const buildFaq = (plans: PlanLite[]): FaqItem[] => [
   {
     category: "shipping",
     question: "Bao lâu thì tôi nhận được hàng?",
-    answer: `Sản phẩm lẻ và Mystery Box mua 1 lần: ${DELIVERY_DAYS}, tính từ khi đơn được xác nhận. Gói định kỳ: hộp đầu gửi ngay sau khi thanh toán với thời gian giao như trên, các hộp sau giao trong đợt bạn chọn. Bạn theo dõi trạng thái trong Tài khoản → Đơn hàng, hoặc tra bằng mã đơn và số điện thoại ở trang Tra cứu đơn hàng.`,
+    answer: `Sản phẩm lẻ và Mystery Box mua 1 lần: ${DELIVERY_DAYS}, tính từ khi đơn được xác nhận. Gói định kỳ: hộp đầu gửi ngay sau khi thanh toán với thời gian giao như trên, các hộp sau giao trong đợt bạn chọn. Bạn theo dõi trạng thái trong Tài khoản → Đơn hàng, hoặc tra bằng mã đơn ở trang Tra cứu đơn hàng.`,
   },
   {
     category: "return",
@@ -116,11 +116,38 @@ export default function FAQPage() {
   const groups = CATEGORIES.map((c) => ({ ...c, items: matches.filter((m) => m.category === c.id) })).filter((g) => g.items.length > 0);
   const groupIds = groups.map((g) => g.id).join(",");
 
+  // Chủ đề khách vừa bấm ở mục lục. Các chủ đề gần cuối trang không cuộn lên tới mép trên được,
+  // nên nếu chỉ dựa vào vị trí cuộn thì mục lục sẽ tô nhầm chủ đề phía trên. Giữ đúng chủ đề đã bấm
+  // cho tới khi khách tự cuộn đi chỗ khác (lệch quá 80px so với vị trí trang dừng lại sau khi bấm).
+  const picked = useRef<{ id: CategoryId; restY: number | null; timer: ReturnType<typeof setTimeout> | null } | null>(null);
+  const pickTopic = (id: CategoryId) => {
+    if (picked.current?.timer) clearTimeout(picked.current.timer);
+    picked.current = { id, restY: null, timer: null };
+    setActiveId(id);
+  };
+
   // Đánh dấu chủ đề đang xem ở mục lục: chủ đề cuối cùng có tiêu đề đã cuộn qua mép dưới header
   useEffect(() => {
     const ids = groupIds ? (groupIds.split(",") as CategoryId[]) : [];
     if (ids.length === 0) return;
     const update = () => {
+      const pick = picked.current;
+      if (pick) {
+        if (pick.restY === null) {
+          // Trang đang tự cuộn tới chủ đề vừa bấm: chờ cuộn xong rồi ghi lại vị trí dừng
+          if (pick.timer) clearTimeout(pick.timer);
+          pick.timer = setTimeout(() => {
+            if (picked.current === pick) pick.restY = window.scrollY;
+          }, 160);
+          setActiveId(pick.id);
+          return;
+        }
+        if (Math.abs(window.scrollY - pick.restY) <= 80) {
+          setActiveId(pick.id);
+          return;
+        }
+        picked.current = null;
+      }
       let current = ids[0];
       for (const id of ids) {
         const el = document.getElementById(id);
@@ -149,6 +176,7 @@ export default function FAQPage() {
             <a
               key={c.id}
               href={`#${c.id}`}
+              onClick={() => pickTopic(c.id)}
               aria-current={activeId === c.id ? "true" : undefined}
               className={`min-h-10 px-3 inline-flex items-center rounded-box border-l-2 text-sm transition-colors ${
                 activeId === c.id ? "border-pine-900 bg-pine-50 font-bold text-pine-950" : "border-transparent font-semibold text-bark-700 hover:text-pine-950 hover:bg-surface-muted"
@@ -183,6 +211,7 @@ export default function FAQPage() {
                 <a
                   key={c.id}
                   href={`#${c.id}`}
+                  onClick={() => pickTopic(c.id)}
                   className="min-h-10 px-3.5 inline-flex items-center rounded-full border border-surface-border bg-surface-card text-sm font-semibold text-bark-700 hover:text-pine-950 hover:bg-surface-muted transition-colors"
                 >
                   {c.label}

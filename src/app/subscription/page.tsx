@@ -12,7 +12,6 @@ import { planUnitPrice } from "@/lib/pricing";
 import { DEFAULT_PLANS, capitalize, discountSentence, freeShippingPlans } from "@/lib/planCopy";
 import { DELIVERY_DAYS, SHIPPING_CONFIG } from "@/lib/shipping";
 import { DeliverySchedule, SCHEDULE_LABEL, cutoffOf, deliveryWindowLabel, laterBoxWindows, recommendedSchedule } from "@/lib/deliverySchedule";
-import { useApp } from "@/context/AppContext";
 import { buttonClass } from "@/components/ui/Button";
 import { SubscriptionPlan } from "@/types/models";
 
@@ -72,8 +71,8 @@ const addMonths = (d: Date, n: number) => new Date(Date.UTC(d.getUTCFullYear(), 
 
 export default function SubscriptionIntroPage() {
   // Khách đã có hồ sơ bé thì chọn hộp luôn; chưa có thì làm Pet Quiz để tạo hồ sơ trước
-  const { pets } = useApp();
-  const planHref = (cycles: number) => (pets.length > 0 ? `/boxes?plan=${cycles}` : `/quiz?plan=${cycles}`);
+  // Chọn gói thì sang xem các hộp với giá của gói đó. Hồ sơ bé chỉ cần khi đặt hộp, lúc đó khách tự chọn làm quiz hay nhập nhanh.
+  const planHref = (cycles: number) => `/boxes?plan=${cycles}`;
   const [tier, setTier] = useState<"standard" | "premium">("standard");
   const [prices, setPrices] = useState<{ standard: number; premium: number } | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);

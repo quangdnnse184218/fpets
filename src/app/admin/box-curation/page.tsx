@@ -12,6 +12,7 @@ import { CheckCircle2, AlertTriangle, ShieldAlert, Plus, PlusCircle, RotateCcw, 
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 import { Modal } from "@/components/ui/Modal";
 import { useAdminTasks } from "../AdminTasks";
+import { textMatches } from "@/lib/search";
 
 const ORDER_TYPE_SHORT: Record<string, string> = { mystery_box: "Mua 1 lần", subscription_cycle: "Theo gói" };
 
@@ -96,11 +97,10 @@ function CurationContent() {
 
   // Danh sách chờ sau khi lọc theo loài và từ khóa (tên bé, mã đơn, tên hộp)
   const visibleQueue = useMemo(() => {
-    const kw = query.trim().toLowerCase();
     return queue.filter(
       (item) =>
         (species === "all" || item.pets.species === species) &&
-        (!kw || `${item.pets.name} ${item.orders?.order_code || ""} ${item.box_types.name}`.toLowerCase().includes(kw))
+        textMatches([item.pets.name, item.orders?.order_code, item.box_types.name], query)
     );
   }, [queue, species, query]);
   // Số hộp của cùng một đơn còn trong hàng chờ (đơn có nhiều hộp chỉ chuyển bước khi duyệt hết)

@@ -12,6 +12,8 @@ import { AGE_LABEL, ALLERGY_OPTIONS, BREED_SUGGESTIONS, PREFERENCE_OPTIONS, size
 import { Button, ButtonLink, IconButton } from "@/components/ui/Button";
 import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { safeRedirect } from "@/lib/safeRedirect";
+import { useRouter } from "next/navigation";
 
 // Gói còn hiệu lực: chặn xóa bé và hiện "Đang có gói"
 const ACTIVE_SUB_STATUSES = ["cho_thanh_toan", "dang_hoat_dong", "tam_dung", "qua_han"] as const;
@@ -40,6 +42,7 @@ const emptyForm = (): PetFormValue => ({
 
 export default function MyPetsPage() {
   const { pets, addPet, updatePet, deletePet, isLoadingAuth, user } = useApp();
+  const router = useRouter();
   const { show } = useToast();
 
   const [boxesReceived, setBoxesReceived] = useState<Record<string, number>>({});
@@ -48,6 +51,13 @@ export default function MyPetsPage() {
 
   const [addChooserOpen, setAddChooserOpen] = useState(false);
   const [formMode, setFormMode] = useState<"add" | "edit" | null>(null);
+  // Đến từ trang hộp (?add=1&next=/boxes/...): mở sẵn form nhập nhanh, lưu xong quay lại đúng hộp đó
+  const [returnTo, setReturnTo] = useState("");
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("add") === "1") setFormMode("add");
+    setReturnTo(safeRedirect(params.get("next"), ""));
+  }, []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Pet | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -289,8 +299,11 @@ export default function MyPetsPage() {
           userId={user.id || ""}
           onClose={() => setFormMode(null)}
           onSaved={(msg) => {
+            const added = formMode === "add";
             setFormMode(null);
             show(msg);
+            // Thêm bé xong thì quay lại trang hộp khách đang xem dở
+            if (added && returnTo) router.push(returnTo);
           }}
           addPet={addPet}
           updatePet={updatePet}

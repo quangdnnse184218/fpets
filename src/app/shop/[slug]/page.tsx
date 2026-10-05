@@ -33,7 +33,7 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params?.slug as string;
-  const { addToCart, pets, isLoggedIn } = useApp();
+  const { addToCart, selectOnly, pets, isLoggedIn } = useApp();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,16 +61,15 @@ export default function ProductDetailPage() {
     });
   }, [slug]);
 
-  // Đưa sản phẩm vào giỏ theo số lượng đang chọn. Chưa đăng nhập thì chuyển sang trang đăng nhập.
-  const putInCart = async (mode: "add" | "buy"): Promise<boolean> => {
-    if (!product) return false;
+  // Đưa sản phẩm vào giỏ theo số lượng đang chọn, trả về mã dòng giỏ hàng. Chưa đăng nhập thì chuyển sang trang đăng nhập.
+  const putInCart = async (mode: "add" | "buy"): Promise<string | null> => {
+    if (!product) return null;
     if (!isLoggedIn) {
       router.push(`/login?redirect=${encodeURIComponent(`/shop/${slug}`)}`);
-      return false;
+      return null;
     }
     setBusy(mode);
-    await addToCart({ type: "retail", productId: product.id, product, quantity, unitPrice: product.price });
-    return true;
+    return (await addToCart({ type: "retail", productId: product.id, product, quantity, unitPrice: product.price })) || null;
   };
 
   // Thêm vào giỏ rồi ở lại trang
@@ -80,9 +79,12 @@ export default function ProductDetailPage() {
     show(`Đã thêm ${quantity > 1 ? `${quantity} × ` : ""}${product.name} vào giỏ`, { actions: [{ label: "Xem giỏ", onClick: () => router.push("/cart") }], duration: 6000 });
   };
 
-  // Mua ngay: thêm vào giỏ rồi sang thẳng trang thanh toán (giỏ có món khác thì thanh toán cùng lúc)
+  // Mua ngay: thêm vào giỏ, tick riêng món này rồi sang thẳng trang thanh toán (món khác trong giỏ không bị tính tiền)
   const handleBuyNow = async () => {
-    if (await putInCart("buy")) router.push("/checkout");
+    const lineId = await putInCart("buy");
+    if (!lineId) return setBusy(null);
+    selectOnly([lineId]);
+    router.push("/checkout");
   };
 
   if (loading) {

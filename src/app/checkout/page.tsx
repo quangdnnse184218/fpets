@@ -15,7 +15,7 @@ import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, recommendedSched
 import { formatDate } from "@/lib/formatters";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { planUnitPrice } from "@/lib/pricing";
-import { CANCEL_POLICY, NO_AUTO_CHARGE } from "@/lib/copy";
+import { CANCEL_POLICY, COD_MAX_AMOUNT, COD_OVER_LIMIT, NO_AUTO_CHARGE } from "@/lib/copy";
 
 function CheckoutFormContent() {
   const router = useRouter();
@@ -25,7 +25,8 @@ function CheckoutFormContent() {
   const petId = searchParams.get("pet");
   const planId = searchParams.get("plan");
 
-  const { cart, isCartReady, user, subtotal, voucherCode, voucherDiscount, voucherFreeShip, clearCart, pets, isLoggedIn, isLoadingAuth } = useApp();
+  // Chỉ thanh toán các món khách đã tick trong giỏ (selectedCart); món chưa tick ở lại giỏ
+  const { cart: fullCart, selectedCart: cart, isCartReady, user, subtotal, voucherCode, voucherDiscount, voucherFreeShip, removeOrderedFromCart, pets, isLoggedIn, isLoadingAuth } = useApp();
 
   const [addr, setAddr] = useState<AddressValue>(emptyAddress());
   const [savedAddresses, setSavedAddresses] = useState<SavedAddressRow[]>([]);
@@ -121,6 +122,11 @@ function CheckoutFormContent() {
     : calcShippingFee(province, subtotal, voucherFreeShip);
   const discount = isSubscription || voucherFreeShip ? 0 : voucherDiscount;
   const finalAmount = Math.max(0, itemsAmount + (shippingFee ?? 0) - discount);
+  // COD chỉ nhận đơn không quá 2.000.000₫ (server kiểm tra lại): quá mức thì khóa lựa chọn và nói rõ lý do
+  const codAllowed = finalAmount <= COD_MAX_AMOUNT;
+  useEffect(() => {
+    if (!codAllowed && paymentMethod === "cod") setPaymentMethod("momo");
+  }, [codAllowed, paymentMethod]);
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,7 +168,7 @@ function CheckoutFormContent() {
         return;
       }
 
-      if (cart.length === 0) throw new Error("Giỏ hàng trống");
+      if (cart.length === 0) throw new Error("Chưa chọn món nào để thanh toán");
 
       const items = cart.map((c) =>
         c.type === "retail"
@@ -187,7 +193,7 @@ function CheckoutFormContent() {
       await persistAddress();
       const result = data as { order_id: string; order_code: string; status: string; total_amount: number };
       setPlaced(true);
-      await clearCart();
+      await removeOrderedFromCart(cart.map((c) => c.id));
 
       if (paymentMethod === "cod") {
         router.push(`/checkout/result?code=${result.order_code}&method=cod&amount=${result.total_amount}&status=confirmed`);
@@ -208,7 +214,7 @@ function CheckoutFormContent() {
     if (message.includes("ERR_PHONE_INVALID")) return "Số điện thoại nhận hàng gồm 10 số, bắt đầu bằng 0.";
     if (message.includes("ERR_OUT_OF_STOCK")) return "Một sản phẩm trong giỏ đã hết hàng: " + message.split(":")[1];
     if (message.includes("ERR_EMPTY_CART")) return "Giỏ hàng của bạn đang trống.";
-    if (message.includes("ERR_COD_LIMIT_EXCEEDED")) return "Đơn trên 2.000.000₫ không hỗ trợ thanh toán khi nhận hàng (COD).";
+    if (message.includes("ERR_COD_LIMIT_EXCEEDED")) return COD_OVER_LIMIT;
     if (message.includes("ERR_LOGIN_REQUIRED_FOR_BOX")) return "Vui lòng đăng nhập để mua Mystery Box.";
     if (message.includes("ERR_PET_NOT_OWNED")) return "Thú cưng không hợp lệ, vui lòng chọn lại.";
     if (message.includes("ERR_VOUCHER_SCOPE")) return "Mã voucher không áp dụng cho loại hàng trong đơn này.";
@@ -226,6 +232,18 @@ function CheckoutFormContent() {
 
   if (isLoadingAuth || !isLoggedIn || !isCartReady) {
     return <div className="max-w-5xl mx-auto px-4 py-16 text-center text-sm text-bark-600" aria-busy="true">Đang tải trang thanh toán…</div>;
+  }
+
+  if (!isSubscription && cart.length === 0 && fullCart.length > 0 && !placed) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-16 text-center space-y-4">
+        <h1 className="text-xl font-bold text-pine-950">Chưa chọn món nào để thanh toán</h1>
+        <p className="text-sm text-bark-600">Vào giỏ hàng và tick các món bạn muốn thanh toán lần này.</p>
+        <div className="flex justify-center">
+          <ButtonLink href="/cart">Về giỏ hàng</ButtonLink>
+        </div>
+      </div>
+    );
   }
 
   if (!isSubscription && cart.length === 0 && !placed) {
@@ -368,12 +386,16 @@ function CheckoutFormContent() {
               </label>
 
               {!isSubscription ? (
-                <label className={`p-3.5 rounded-box border flex items-center justify-between cursor-pointer transition-colors ${paymentMethod === 'cod' ? 'border-pine-900 bg-pine-50/60 ring-1 ring-pine-900/20' : 'border-surface-border hover:bg-surface-muted'}`}>
+                <label className={`p-3.5 rounded-box border flex items-center justify-between transition-colors ${codAllowed ? "cursor-pointer" : "cursor-not-allowed bg-surface-muted/60"} ${paymentMethod === 'cod' ? 'border-pine-900 bg-pine-50/60 ring-1 ring-pine-900/20' : 'border-surface-border hover:bg-surface-muted'}`}>
                   <div className="flex items-center gap-3 min-w-0">
-                    <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="accent-pine-900" />
+                    <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} disabled={!codAllowed} className="accent-pine-900" />
                     <div className="min-w-0">
-                      <span className="font-bold text-pine-950">Thanh toán khi nhận hàng (COD)</span>
-                      <p className="text-xs text-bark-500 leading-snug whitespace-normal">Cho đơn không quá 2.000.000₫. FPETS gọi xác nhận đơn COD đầu tiên của bạn.</p>
+                      <span className={`font-bold ${codAllowed ? "text-pine-950" : "text-bark-500"}`}>Thanh toán khi nhận hàng (COD)</span>
+                      {codAllowed ? (
+                        <p className="text-xs text-bark-600 leading-snug whitespace-normal">Cho đơn không quá 2.000.000₫. FPETS gọi xác nhận đơn COD đầu tiên của bạn.</p>
+                      ) : (
+                        <p className="text-xs font-semibold text-red-700 leading-snug whitespace-normal">{COD_OVER_LIMIT}</p>
+                      )}
                     </div>
                   </div>
                   <Banknote className="w-5 h-5 text-bark-600 shrink-0" />

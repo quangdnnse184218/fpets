@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Suspense, useCallback, useEffect, useState } from "react";
+import { expireUnpaidOrders } from "@/lib/myOrders";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, Pause, Play, XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -9,6 +10,7 @@ import { deliveryWindowLabel, DeliverySchedule } from "@/lib/deliverySchedule";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { textMatches } from "@/lib/search";
 
 type SubStatus = "cho_thanh_toan" | "dang_hoat_dong" | "tam_dung" | "qua_han" | "het_han" | "da_huy";
 
@@ -101,6 +103,7 @@ function SubscriptionsContent() {
   const [cancelReason, setCancelReason] = useState("");
 
   const load = useCallback(async () => {
+    await expireUnpaidOrders();
     setLoading(true);
     const { data } = await createClient()
       .from("subscriptions")
@@ -177,14 +180,11 @@ function SubscriptionsContent() {
 
   const today = todayIso();
   const in7 = plusDaysIso(7);
-  const q = search.trim().toLowerCase();
   const filtered = subs.filter((s) => {
     const matchFilter =
       filter === "all" ||
       (filter === "cutoff" ? s.status === "dang_hoat_dong" && s.remaining_cycles > 0 && s.cutoff_date >= today && s.cutoff_date <= in7 : s.status === filter);
-    const matchSearch =
-      !q ||
-      [s.subscription_code, s.profiles?.full_name || "", contactPhone(s), s.pets?.name || ""].some((v) => v.toLowerCase().includes(q));
+    const matchSearch = textMatches([s.subscription_code, s.profiles?.full_name, contactPhone(s), s.pets?.name], search);
     return matchFilter && matchSearch;
   });
 

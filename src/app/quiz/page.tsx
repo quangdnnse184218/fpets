@@ -75,7 +75,7 @@ const inputClass = (invalid: boolean) =>
 
 export default function PetQuizPage() {
   const router = useRouter();
-  const { addPet, updatePet, addToCart, pets, isLoggedIn, isLoadingAuth } = useApp();
+  const { addPet, updatePet, addToCart, selectOnly, selectedIds, pets, isLoggedIn, isLoadingAuth } = useApp();
   const [boxTypes, setBoxTypes] = useState<BoxType[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [saving, setSaving] = useState(false);
@@ -208,7 +208,9 @@ export default function PetQuizPage() {
         router.push(`/checkout?type=subscription&box=${box.id}&pet=${petId}&plan=${plan.id}`);
         return;
       }
-      await addToCart({ type: "box", boxTypeId: box.id, boxType: box, petId, petName: a.petName, quantity: 1, unitPrice: box.basePrice });
+      const lineId = await addToCart({ type: "box", boxTypeId: box.id, boxType: box, petId, petName: a.petName, quantity: 1, unitPrice: box.basePrice });
+      // Tick sẵn hộp vừa chọn để khách bấm Thanh toán được ngay
+      if (lineId) selectOnly([...selectedIds.filter((id) => id !== lineId), lineId]);
       router.push("/cart");
     } catch {
       setSaveError("Không lưu được hồ sơ bé, vui lòng thử lại.");

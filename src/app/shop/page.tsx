@@ -6,6 +6,7 @@ import Link from "next/link";
 import { fetchProducts } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
 import { useApp } from "@/context/AppContext";
+import { searchProducts } from "@/lib/search";
 import ProductItemImage from "@/components/common/ProductItemImage";
 import {
   ShoppingCart,
@@ -26,18 +27,6 @@ import { Product } from "@/types/models";
 // Ngưỡng hiện nhãn "Chỉ còn X" (SPEC §4)
 const LOW_STOCK = 5;
 
-// So khớp không dấu để khách gõ "pate ca hoi" vẫn ra "Pate cá hồi"
-const normalize = (text: string) =>
-  text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
-
-// Mỗi từ khách gõ phải khớp đầu một từ trong sản phẩm; từ ngắn (≤ 2 ký tự như "ga", "bo") phải khớp nguyên từ
-// để "ga" ra "ức gà" chứ không ra "gạo", "gặm"
-function matchesSearch(text: string, query: string): boolean {
-  const words = normalize(text).split(/[^a-z0-9]+/).filter(Boolean);
-  const tokens = normalize(query).split(/[^a-z0-9]+/).filter(Boolean);
-  return tokens.every((t) => words.some((w) => (t.length <= 2 ? w === t : w.startsWith(t))));
-}
-
 export default function ShopPage() {
   return (
     <Suspense>
@@ -49,7 +38,7 @@ export default function ShopPage() {
 function ShopContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { addToCart, isLoggedIn } = useApp();
+  const { addToCart, selectOnly, isLoggedIn } = useApp();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -88,15 +77,16 @@ function ShopContent() {
     { id: "cat", label: "Cho mèo", icon: Cat },
   ];
 
-  const filteredProducts = products
-    .filter((p) => {
+  // Gõ tới đâu lọc tới đó ("p" đã ra Pate…); đang tìm mà chưa chọn sắp xếp theo giá thì món khớp nhất lên đầu
+  const filteredProducts = searchProducts(
+    products.filter((p) => {
       const matchCat = selectedCategory === "all" || p.category === selectedCategory;
       const matchSpecies =
         selectedSpecies === "all" || p.species === selectedSpecies || p.species === "both";
-      const matchQuery = matchesSearch(`${p.name} ${p.description} ${p.ingredients.join(" ")}`, query);
-      return matchCat && matchSpecies && matchQuery;
-    })
-    .sort((a, b) => (sortBy === "price_asc" ? a.price - b.price : sortBy === "price_desc" ? b.price - a.price : 0));
+      return matchCat && matchSpecies;
+    }),
+    query
+  ).sort((a, b) => (sortBy === "price_asc" ? a.price - b.price : sortBy === "price_desc" ? b.price - a.price : 0));
 
   // Mua ngay từ thẻ sản phẩm: thêm 1 sản phẩm vào giỏ rồi sang thẳng trang thanh toán
   const [buyingId, setBuyingId] = useState<string | null>(null);
@@ -106,7 +96,9 @@ function ShopContent() {
       return;
     }
     setBuyingId(product.id);
-    await addToCart({ type: "retail", productId: product.id, product, quantity: 1, unitPrice: product.price });
+    const lineId = await addToCart({ type: "retail", productId: product.id, product, quantity: 1, unitPrice: product.price });
+    // Chỉ thanh toán món vừa bấm; các món khác trong giỏ giữ nguyên, không bị tính tiền
+    if (lineId) selectOnly([lineId]);
     router.push("/checkout");
   };
 

@@ -14,6 +14,7 @@ import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { useAdminTasks } from "../AdminTasks";
 import ImageUpload from "@/components/admin/ImageUpload";
+import { textMatches } from "@/lib/search";
 
 type ProductRow = Tables<"products"> & { categories: { name: string; slug: string } | null };
 type Species = "dog" | "cat" | "both";
@@ -236,8 +237,7 @@ function ProductsContent() {
     refreshTasks();
   };
 
-  const q = search.trim().toLowerCase();
-  const visible = products.filter((p) => matchesFilter(p, filter) && (!q || p.name.toLowerCase().includes(q) || (p.categories?.name || "").toLowerCase().includes(q)));
+  const visible = products.filter((p) => matchesFilter(p, filter) && textMatches([p.name, p.categories?.name], search));
 
   const stockControl = (p: ProductRow) => (
     <div className="flex items-center gap-1.5">
