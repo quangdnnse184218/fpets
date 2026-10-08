@@ -15,6 +15,9 @@ import { SHIPPING_SUMMARY } from "@/lib/shipping";
 import { capitalize, discountSentence, freeShippingPlans, savingsSentence } from "@/lib/planCopy";
 import { usePlans } from "@/lib/usePlans";
 import { CONTACT_INFO } from "@/lib/contactInfo";
+import Reveal from "@/components/motion/Reveal";
+import CountUp from "@/components/motion/CountUp";
+import Parallax from "@/components/motion/Parallax";
 
 // Lối vào nhanh theo loại bé: dẫn thẳng tới bộ lọc "Dành cho" của trang Mystery Box
 const AUDIENCE_CARDS = [
@@ -52,6 +55,8 @@ const MIN_DELIVERED_TO_SHOW = 20;
 const isPremium = (b: BoxType) => b.slug.includes("premium");
 const container = "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8";
 const sectionTitle = "text-xl sm:text-3xl font-extrabold text-pine-950 font-display leading-snug";
+// Thẻ nhấc nhẹ và đổ bóng khi rê chuột (điện thoại không có hover nên không ảnh hưởng)
+const liftCard = "transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_40px_-24px_rgba(23,52,44,0.45)]";
 
 export default function HomePage() {
   const plans = usePlans();
@@ -104,31 +109,31 @@ export default function HomePage() {
       <section className={`${container} pt-4 sm:pt-6`}>
         <div className="rounded-3xl bg-surface-card border border-surface-border/70 shadow-[0_24px_64px_-28px_rgba(23,52,44,0.3)] p-5 sm:p-8 lg:p-12 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-14 items-center">
           <div className="lg:col-span-7 space-y-4 sm:space-y-6">
-            <h1 className="text-[26px] sm:text-[36px] lg:text-[46px] font-extrabold text-pine-950 font-display tracking-tight leading-[1.25]">
+            <h1 className="hero-rise text-[26px] sm:text-[36px] lg:text-[46px] font-extrabold text-pine-950 font-display tracking-tight leading-[1.25]">
               Hộp quà bất ngờ mỗi tháng <br className="hidden sm:block" />
               cho bé cưng của bạn
             </h1>
 
-            <p className="text-sm sm:text-base lg:text-lg text-bark-700 leading-relaxed max-w-xl">
+            <p className="hero-rise text-sm sm:text-base lg:text-lg text-bark-700 leading-relaxed max-w-xl" style={{ "--rise-delay": "100ms" } as React.CSSProperties}>
               Mystery Box gồm đồ ăn, đồ chơi và phụ kiện, được FPETS chọn riêng theo cân nặng, độ tuổi, dị ứng và sở thích của cún hoặc mèo nhà bạn. Mua thử 1 hộp hoặc đăng ký nhận hằng tháng.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
+            <div className="hero-rise flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3" style={{ "--rise-delay": "200ms" } as React.CSSProperties}>
               <ButtonLink href="/quiz" size="lg">Tìm hộp cho bé</ButtonLink>
               <ButtonLink href="/boxes" size="lg" variant="secondary">Xem các loại hộp</ButtonLink>
             </div>
 
-            <p className="text-sm text-bark-700">
+            <p className="hero-rise text-sm text-bark-700" style={{ "--rise-delay": "280ms" } as React.CSSProperties}>
               Box Tiêu chuẩn từ <strong className="text-pine-950">{formatVND(standard.price)}</strong>, Box Premium từ{" "}
               <strong className="text-pine-950">{formatVND(premium.price)}</strong> mỗi hộp.
             </p>
 
             {/* Số liệu lấy thật từ database; chỉ hiện khi đã có dữ liệu để tránh khoe số 0 */}
             {(stats.delivered >= MIN_DELIVERED_TO_SHOW || stats.reviewCount >= MIN_REVIEWS_TO_SHOW) && (
-              <div className="pt-3 sm:pt-4 border-t border-surface-border/70 flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-bark-700">
+              <div className="hero-rise pt-3 sm:pt-4 border-t border-surface-border/70 flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-bark-700" style={{ "--rise-delay": "360ms" } as React.CSSProperties}>
                 {stats.delivered >= MIN_DELIVERED_TO_SHOW && (
                   <div>
-                    <span className="font-extrabold text-pine-950 block leading-tight">{stats.delivered.toLocaleString("vi-VN")}</span>
+                    <CountUp value={stats.delivered} className="font-extrabold text-pine-950 block leading-tight" />
                     <span className="text-xs text-bark-600">Đơn hàng đã giao</span>
                   </div>
                 )}
@@ -148,15 +153,17 @@ export default function HomePage() {
 
           <div className="lg:col-span-5">
             {/* Ảnh hộp tạm; thay bằng ảnh chụp hộp thật khi có */}
-            <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-surface-muted">
-              <Image
-                src="/images/hero/fpets-box-open.jpg"
-                alt="Hộp FPETS đang mở với gói snack, bóng cao su, dây thừng và thiệp gửi bé"
-                fill
-                sizes="(max-width: 1024px) 100vw, 480px"
-                className="object-cover"
-                priority
-              />
+            <div className="hero-reveal relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-surface-muted">
+              <Parallax className="absolute inset-0">
+                <Image
+                  src="/images/hero/fpets-box-open.jpg"
+                  alt="Hộp FPETS đang mở với gói snack, bóng cao su, dây thừng và thiệp gửi bé"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 480px"
+                  className="object-cover"
+                  priority
+                />
+              </Parallax>
             </div>
           </div>
         </div>
@@ -164,16 +171,17 @@ export default function HomePage() {
 
       {/* 2. CÁCH HOẠT ĐỘNG */}
       <section aria-labelledby="how-heading" className={`${container} space-y-5 sm:space-y-8`}>
-        <div className="space-y-1.5 max-w-2xl">
+        <Reveal className="space-y-1.5 max-w-2xl">
           <h2 id="how-heading" className={sectionTitle}>Cách Mystery Box hoạt động</h2>
           <p className="text-sm text-bark-700">Không đóng sẵn hàng loạt: mỗi hộp được chọn món sát ngày giao, cho đúng một bé.</p>
-        </div>
+        </Reveal>
 
         {/* Điện thoại: số bước bên trái, chữ bên phải cho gọn; từ md xếp 3 cột */}
+        <Reveal stagger={0.12}>
         <ol className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6">
           {HOW_IT_WORKS.map((step, i) => (
-            <li key={step.title} className="p-4 sm:p-6 rounded-container bg-surface-card border border-surface-border flex items-start md:flex-col gap-3">
-              <span className="w-9 h-9 sm:w-10 sm:h-10 rounded-box bg-pine-900 text-white flex items-center justify-center font-bold text-sm sm:text-base font-display shrink-0">
+            <li key={step.title} data-reveal className={`p-4 sm:p-6 rounded-container bg-surface-card border border-surface-border flex items-start md:flex-col gap-3 ${liftCard}`}>
+              <span data-pop className="w-9 h-9 sm:w-10 sm:h-10 rounded-box bg-pine-900 text-white flex items-center justify-center font-bold text-sm sm:text-base font-display shrink-0">
                 {i + 1}
               </span>
               <div className="space-y-1 sm:space-y-2">
@@ -183,31 +191,33 @@ export default function HomePage() {
             </li>
           ))}
         </ol>
+        </Reveal>
       </section>
 
       {/* 3. CHỌN HỘP: theo loại bé, kèm tóm tắt 2 phân hạng và mức tiết kiệm của gói (chi tiết ở /boxes và /subscription) */}
       <section aria-labelledby="audience-heading" className={`${container} space-y-4 sm:space-y-6`}>
-        <div className="flex items-end justify-between gap-4">
+        <Reveal className="flex items-end justify-between gap-4">
           <div className="space-y-1.5">
             <h2 id="audience-heading" className={sectionTitle}>Chọn hộp cho bé nhà bạn</h2>
             <p className="text-sm text-bark-700">Mỗi nhóm có Box Tiêu chuẩn và Box Premium.</p>
           </div>
           <Link href="/boxes" className="text-sm font-bold text-pine-900 hover:underline shrink-0">Tất cả hộp</Link>
-        </div>
+        </Reveal>
 
+        <Reveal>
         <ul className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-5">
           {AUDIENCE_CARDS.map((card) => {
             const group = boxes.filter(card.match);
             const image = group.find((b) => !isPremium(b))?.imageUrl || group[0]?.imageUrl;
             const from = group.length ? Math.min(...group.map((b) => b.basePrice)) : null;
             return (
-              <li key={card.key}>
+              <li key={card.key} data-reveal>
                 <Link
                   href={card.href}
-                  className="group flex sm:flex-col h-full rounded-container bg-surface-card border border-surface-border overflow-hidden hover:border-pine-800 transition-colors"
+                  className={`group flex sm:flex-col h-full rounded-container bg-surface-card border border-surface-border overflow-hidden hover:border-pine-800 ${liftCard}`}
                 >
-                  <div className="relative w-28 shrink-0 sm:w-auto sm:aspect-[16/10] bg-surface-muted">
-                    {image && <Image src={image} alt="" fill sizes="(max-width: 640px) 112px, 33vw" className="object-cover" />}
+                  <div className="relative w-28 shrink-0 sm:w-auto sm:aspect-[16/10] bg-surface-muted overflow-hidden">
+                    {image && <Image src={image} alt="" fill sizes="(max-width: 640px) 112px, 33vw" className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]" />}
                   </div>
                   <div className="p-3 sm:p-4 flex-1 flex flex-col gap-1">
                     <h3 className="text-base font-bold text-pine-950">
@@ -226,8 +236,9 @@ export default function HomePage() {
             );
           })}
         </ul>
+        </Reveal>
 
-        <div className="rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border overflow-hidden">
+        <Reveal className="rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border overflow-hidden">
           {[
             { name: "Box Tiêu chuẩn", items: STANDARD_ITEMS, ...standard, href: "/boxes?tier=standard" },
             { name: "Box Premium", items: PREMIUM_ITEMS, ...premium, href: "/boxes?tier=premium" },
@@ -250,19 +261,19 @@ export default function HomePage() {
             </p>
             <ButtonLink href="/subscription" variant="secondary" className="shrink-0">Xem gói định kỳ</ButtonLink>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* 4. DẢI CAM KẾT: giao hàng, đổi trả, thanh toán */}
       <section aria-label="Giao hàng, đổi trả và thanh toán" className={container}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+        <Reveal className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
           {[
             { icon: Truck, title: "Giao toàn quốc", text: SHIPPING_SUMMARY },
             { icon: RefreshCw, title: "Đổi trả trong 3–7 ngày", text: "Mystery Box báo lỗi trong 3 ngày (món dị ứng đã khai, hàng hỏng, giao thiếu); hàng lẻ còn nguyên seal đổi trong 7 ngày.", href: "/return-policy" },
             { icon: CreditCard, title: PAYMENT_METHODS_SHORT, text: `Quét mã VietQR bằng app ngân hàng; COD cho ${COD_RULE}. Gói định kỳ trả trước, không tự động trừ tiền.` },
           ].map(({ icon: Icon, title, text, href }) => (
-            <div key={title} className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border flex gap-3 items-start">
-              <div className="w-10 h-10 rounded-box bg-honey-100 text-honey-700 flex items-center justify-center shrink-0">
+            <div key={title} data-reveal className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border flex gap-3 items-start">
+              <div data-pop className="w-10 h-10 rounded-box bg-honey-100 text-honey-700 flex items-center justify-center shrink-0">
                 <Icon className="w-5 h-5" />
               </div>
               <div className="space-y-1">
@@ -272,23 +283,23 @@ export default function HomePage() {
               </div>
             </div>
           ))}
-        </div>
+        </Reveal>
       </section>
 
       {/* 5. MUA LẺ: phần phụ, đứng sau toàn bộ nội dung về Mystery Box */}
       {featured.length > 0 && (
         <section aria-labelledby="shop-heading" className={`${container} space-y-4 sm:space-y-6`}>
-          <div className="flex items-end justify-between gap-4">
+          <Reveal className="flex items-end justify-between gap-4">
             <div className="space-y-1.5">
               <h2 id="shop-heading" className={sectionTitle}>Mua lẻ tại cửa hàng</h2>
               <p className="text-sm text-bark-700">Đồ ăn, đồ chơi và phụ kiện cho chó mèo, mua từng món.</p>
             </div>
             <Link href="/shop" className="text-sm font-bold text-pine-900 hover:underline shrink-0">Xem tất cả</Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          </Reveal>
+          <Reveal className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4" stagger={0.07}>
             {featured.map((p) => (
-              <Link key={p.id} href={`/shop/${p.slug}`} className="rounded-container bg-surface-card border border-surface-border overflow-hidden hover:border-pine-800 transition-colors group">
-                <div className="relative w-full aspect-square bg-surface-muted">
+              <Link key={p.id} href={`/shop/${p.slug}`} data-reveal className={`block rounded-container bg-surface-card border border-surface-border overflow-hidden hover:border-pine-800 group ${liftCard}`}>
+                <div className="relative w-full aspect-square bg-surface-muted overflow-hidden [&_img]:transition-transform [&_img]:duration-700 [&_img]:ease-out group-hover:[&_img]:scale-[1.06]">
                   <ProductItemImage src={p.image} alt={p.name} category={p.category} placeholderColor={p.placeholderColor} sizes="(max-width: 768px) 50vw, 25vw" showNote={false} />
                 </div>
                 <div className="p-3 space-y-1">
@@ -297,7 +308,7 @@ export default function HomePage() {
                 </div>
               </Link>
             ))}
-          </div>
+          </Reveal>
         </section>
       )}
 
@@ -305,13 +316,13 @@ export default function HomePage() {
       {topReviews.length >= 3 && (
         <section aria-labelledby="reviews-heading" className="bg-surface-muted border-y border-surface-border py-10 sm:py-14">
           <div className={`${container} space-y-6 sm:space-y-8`}>
-            <div className="flex items-end justify-between gap-4">
+            <Reveal className="flex items-end justify-between gap-4">
               <h2 id="reviews-heading" className={sectionTitle}>Khách đã nhận hộp nói gì</h2>
               <Link href="/reviews" className="text-sm font-bold text-pine-900 hover:underline shrink-0">Tất cả đánh giá</Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+            </Reveal>
+            <Reveal className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6" stagger={0.12}>
               {topReviews.map((rev) => (
-                <div key={rev.id} className="p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-3">
+                <div key={rev.id} data-reveal className={`p-4 sm:p-5 rounded-container bg-surface-card border border-surface-border space-y-3 ${liftCard}`}>
                   <div className="flex items-center gap-1 text-honey-500">
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} className={`w-4 h-4 ${i < rev.rating ? "fill-honey-500" : "fill-bark-200 text-bark-200"}`} />
@@ -324,7 +335,7 @@ export default function HomePage() {
                   </div>
                 </div>
               ))}
-            </div>
+            </Reveal>
           </div>
         </section>
       )}
@@ -332,7 +343,7 @@ export default function HomePage() {
       {/* 7. FAQ rút gọn, mục cuối trang: tiêu đề và lối sang trang hỗ trợ ở cột trái, câu hỏi ở cột phải (câu đầu mở sẵn) */}
       <section aria-labelledby="faq-heading" className={container}>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-12 items-start">
-          <div className="lg:col-span-4 space-y-2 lg:space-y-3">
+          <Reveal className="lg:col-span-4 space-y-2 lg:space-y-3">
             <h2 id="faq-heading" className={sectionTitle}>Câu hỏi thường gặp</h2>
             <p className="text-sm sm:text-base text-bark-700 leading-relaxed">Những điều khách hay hỏi trước khi đặt hộp đầu tiên cho bé.</p>
             <div className="hidden lg:block pt-3 space-y-4">
@@ -343,20 +354,20 @@ export default function HomePage() {
                 <span className="block text-bark-600">{CONTACT_INFO.hours} hằng ngày</span>
               </p>
             </div>
-          </div>
+          </Reveal>
 
           <div className="lg:col-span-8 space-y-4">
-            <div className="rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border overflow-hidden">
+            <Reveal className="rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border overflow-hidden">
               {HOME_FAQ.map((item, i) => (
-                <details key={item.q} open={i === 0} className="group">
+                <details key={item.q} open={i === 0} className="group faq-item">
                   <summary className="flex items-center justify-between gap-4 cursor-pointer list-none px-4 sm:px-6 py-4 sm:py-5 text-[15px] sm:text-base font-bold text-pine-950 hover:bg-surface-muted/50 transition-colors">
                     <span>{item.q}</span>
-                    <ChevronDown className="w-5 h-5 text-bark-600 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                    <ChevronDown className="w-5 h-5 text-bark-600 shrink-0 transition-transform duration-300 group-open:rotate-180" aria-hidden="true" />
                   </summary>
-                  <p className="px-4 sm:px-6 pb-4 sm:pb-5 text-sm sm:text-[15px] text-bark-700 leading-relaxed">{item.a}</p>
+                  <p className="faq-answer px-4 sm:px-6 pb-4 sm:pb-5 text-sm sm:text-[15px] text-bark-700 leading-relaxed">{item.a}</p>
                 </details>
               ))}
-            </div>
+            </Reveal>
             {/* Điện thoại: nút và số hotline nằm dưới danh sách câu hỏi */}
             <div className="lg:hidden space-y-3">
               <ButtonLink href="/faq" variant="secondary" className="w-full sm:w-auto">Xem tất cả câu hỏi</ButtonLink>

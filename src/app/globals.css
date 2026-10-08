@@ -93,3 +93,53 @@ html {
     display: none;
   }
 }
+
+/* Trang chủ: hiệu ứng vào trang của hero chạy bằng CSS ngay từ khung hình đầu (không chờ JavaScript nên không nháy).
+   Hiệu ứng khi cuộn dùng GSAP (src/components/motion). Người bật "giảm chuyển động" không thấy hiệu ứng nào. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes heroRise {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes heroReveal {
+    from {
+      clip-path: inset(100% 0 0 0 round 1rem);
+      transform: scale(1.06);
+    }
+    to {
+      clip-path: inset(0 0 0 0 round 1rem);
+      transform: none;
+    }
+  }
+
+  @keyframes faqIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .hero-rise {
+    animation: heroRise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--rise-delay, 0ms);
+  }
+
+  .hero-reveal {
+    animation: heroReveal 1.1s cubic-bezier(0.65, 0, 0.35, 1) 0.15s both;
+  }
+
+  .faq-item[open] > .faq-answer {
+    animation: faqIn 0.25s ease-out;
+  }
+}
