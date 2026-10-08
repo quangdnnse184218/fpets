@@ -6,6 +6,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { calcShippingFee } from "@/lib/shipping";
 import { petRowToPet, productRowToProduct, boxTypeRowToBoxType, ProductWithCategory } from "@/lib/adapters";
 import { Pet, Product, BoxType } from "@/types/models";
+import type { UserRole } from "@/lib/roles";
 
 const GUEST_CART_KEY = "fpets_guest_cart";
 
@@ -33,7 +34,7 @@ export interface UserProfile {
   email: string;
   phone: string;
   address: string;
-  role: 'customer' | 'admin';
+  role: UserRole;
   avatarUrl?: string;
 }
 

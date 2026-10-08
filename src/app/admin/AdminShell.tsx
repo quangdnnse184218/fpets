@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import BrandLogo from "@/components/common/BrandLogo";
 import { AdminNotificationBell, AdminTasksProvider, AdminTaskCounts, useAdminTasks } from "./AdminTasks";
+import { adminHomeFor, canAccessAdminPath, ROLE_LABEL } from "@/lib/roles";
 
 interface NavItem {
   href: string;
@@ -94,6 +95,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   const adminMenuRef = useRef<HTMLDivElement>(null);
 
   const pageTitle = ALL_ITEMS.find((m) => pathname.startsWith(m.href))?.label || "Quản trị";
+  const home = adminHomeFor(user.role);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -135,10 +137,10 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar desktop */}
       <aside className="hidden md:flex md:w-60 bg-pine-950 text-pine-100 px-3 py-4 flex-col border-r border-pine-900 shrink-0 md:sticky md:top-0 md:h-screen md:overflow-y-auto">
         <div className="px-2 pb-4 mb-2 border-b border-pine-900/80">
-          <BrandLogo variant="dark" size="sm" showText={true} href="/admin/dashboard" />
-          <p className="text-[11px] text-pine-400 mt-1">Quản trị cửa hàng</p>
+          <BrandLogo variant="dark" size="sm" showText={true} href={home} />
+          <p className="text-[11px] text-pine-400 mt-1">{user.role === "staff" ? "Vận hành cửa hàng" : "Quản trị cửa hàng"}</p>
         </div>
-        <AdminNav pathname={pathname} />
+        <AdminNav pathname={pathname} role={user.role} />
       </aside>
 
       {/* Menu điện thoại */}
@@ -152,7 +154,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
         }`}
       >
         <div className="px-2 pb-3 mb-2 border-b border-pine-900/80 flex items-center justify-between">
-          <BrandLogo variant="dark" size="sm" showText={true} href="/admin/dashboard" />
+          <BrandLogo variant="dark" size="sm" showText={true} href={home} />
           <button
             type="button"
             onClick={() => setMobileMenuOpen(false)}
@@ -163,7 +165,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto">
-          <AdminNav pathname={pathname} />
+          <AdminNav pathname={pathname} role={user.role} />
         </div>
         <div className="pt-3 mt-2 border-t border-pine-900/80 space-y-1 text-xs">
           <a
@@ -239,6 +241,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
                   <div className="px-4 py-2.5 border-b border-surface-border">
                     <p className="font-bold text-pine-950 truncate">{user?.name || "Quản trị viên"}</p>
                     <p className="text-[11px] text-bark-500 truncate mt-0.5">{user?.email}</p>
+                    <p className="text-[11px] text-bark-500 mt-0.5">{ROLE_LABEL[user.role]}</p>
                   </div>
                   <Link
                     href="/my-account/profile"
@@ -267,11 +270,15 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function AdminNav({ pathname }: { pathname: string }) {
+function AdminNav({ pathname, role }: { pathname: string; role: string }) {
   const { counts } = useAdminTasks();
+  // Staff chỉ thấy các trang vận hành (khớp middleware); bỏ nhóm không còn mục nào
+  const sections = NAV_SECTIONS.map((s) => ({ ...s, items: s.items.filter((item) => canAccessAdminPath(role, item.href)) })).filter(
+    (s) => s.items.length > 0
+  );
   return (
     <nav className="space-y-4 text-xs" aria-label="Danh mục quản trị">
-      {NAV_SECTIONS.map((section, i) => (
+      {sections.map((section, i) => (
         <div key={section.title || i} className="space-y-0.5">
           {section.title && (
             <p className="px-3 pb-1 text-[10px] font-semibold text-pine-400/80 uppercase tracking-wider">{section.title}</p>

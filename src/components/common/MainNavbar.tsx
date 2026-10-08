@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { adminHomeFor, isBackofficeRole } from "@/lib/roles";
 import { usePathname, useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import {
@@ -238,9 +239,9 @@ export default function MainNavbar() {
           {isLoggedIn ? (
             <div className="flex items-center gap-1.5 ml-1">
               {/* Nút tắt vào Admin Portal nhanh khi tài khoản là Admin */}
-              {user.role === "admin" && (
+              {isBackofficeRole(user.role) && (
                 <Link
-                  href="/admin/dashboard"
+                  href={adminHomeFor(user.role)}
                   className="hidden lg:inline-flex items-center gap-1.5 h-10 px-3 rounded-box bg-pine-900 hover:bg-pine-800 text-white text-xs font-bold transition-colors shadow-xs"
                   title="Vào bảng quản trị Admin"
                 >
@@ -272,9 +273,9 @@ export default function MainNavbar() {
                     </div>
 
                     <div className="py-1">
-                      {user.role === "admin" && (
+                      {isBackofficeRole(user.role) && (
                         <Link
-                          href="/admin/dashboard"
+                          href={adminHomeFor(user.role)}
                           onClick={() => setUserMenuOpen(false)}
                           className="flex items-center gap-2.5 px-4 min-h-10 text-sm font-medium text-bark-800 hover:bg-surface-muted hover:text-pine-900 transition-colors"
                         >
@@ -398,9 +399,9 @@ export default function MainNavbar() {
                   <p className="text-xs text-pine-700">{user.email}</p>
                 </div>
 
-                {user.role === "admin" && (
+                {isBackofficeRole(user.role) && (
                   <Link
-                    href="/admin/dashboard"
+                    href={adminHomeFor(user.role)}
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center justify-between p-2.5 rounded-box bg-pine-900 text-white font-bold text-xs shadow-xs"
                   >

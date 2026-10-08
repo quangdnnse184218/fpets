@@ -49,6 +49,11 @@ function CheckoutFormContent() {
   const [subBox, setSubBox] = useState<BoxType | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
 
+  // Voucher khi đăng ký gói (SPEC §5 bước 4). Giỏ hàng có ô voucher riêng; gói định kỳ không đi qua giỏ nên nhập ở đây.
+  const [subVoucherInput, setSubVoucherInput] = useState("");
+  const [subVoucher, setSubVoucher] = useState<PreviewVoucher | null>(null);
+  const [subVoucherError, setSubVoucherError] = useState("");
+
   // Tự điền từ sổ địa chỉ (ưu tiên địa chỉ mặc định); chưa có thì điền tên, SĐT từ hồ sơ
   useEffect(() => {
     if (!user.id) return;
@@ -117,10 +122,31 @@ function CheckoutFormContent() {
   // Số tiền hiển thị mô phỏng đúng công thức server (checkout_create_order / subscribe_to_box)
   const unitPrice = subBox && selectedPlan ? planUnitPrice(subBox.basePrice, selectedPlan.discountPercent) : 0;
   const itemsAmount = isSubscription ? unitPrice * (selectedPlan?.cycles || 0) : subtotal;
+  const subVoucherState = subscriptionVoucherState(subVoucher, selectedPlan, itemsAmount);
   const shippingFee = isSubscription
-    ? calcShippingFee(province, itemsAmount, selectedPlan?.freeShipping)
+    ? calcShippingFee(province, itemsAmount, selectedPlan?.freeShipping || subVoucherState.freeShip)
     : calcShippingFee(province, subtotal, voucherFreeShip);
-  const discount = isSubscription || voucherFreeShip ? 0 : voucherDiscount;
+  const discount = isSubscription ? subVoucherState.discount : voucherFreeShip ? 0 : voucherDiscount;
+
+  const applySubVoucher = async () => {
+    const code = subVoucherInput.trim().toUpperCase();
+    setSubVoucherError("");
+    if (!code) return setSubVoucherError("Vui lòng nhập mã giảm giá");
+    const { data } = await createClient().rpc("preview_voucher", { p_code: code });
+    const row = data?.[0];
+    if (!row) {
+      setSubVoucher(null);
+      return setSubVoucherError("Mã không hợp lệ hoặc đã hết hạn");
+    }
+    setSubVoucher({
+      code,
+      voucherType: row.voucher_type,
+      discountValue: row.discount_value,
+      maxDiscount: row.max_discount,
+      minOrderValue: row.min_order_value,
+      scope: row.scope,
+    });
+  };
   const finalAmount = Math.max(0, itemsAmount + (shippingFee ?? 0) - discount);
   // COD chỉ nhận đơn không quá 2.000.000₫ (server kiểm tra lại): quá mức thì khóa lựa chọn và nói rõ lý do
   const codAllowed = finalAmount <= COD_MAX_AMOUNT;
@@ -160,6 +186,7 @@ function CheckoutFormContent() {
           p_ward: addr.ward,
           p_shipping_address: addr.street.trim(),
           p_payment_method: paymentMethod,
+          p_voucher_code: subVoucherState.applied && subVoucher ? subVoucher.code : undefined,
         });
         if (error) throw error;
         await persistAddress();
@@ -220,6 +247,10 @@ function CheckoutFormContent() {
     if (message.includes("ERR_VOUCHER_SCOPE")) return "Mã voucher không áp dụng cho loại hàng trong đơn này.";
     if (message.includes("ERR_VOUCHER_MIN_ORDER")) return "Đơn chưa đạt giá trị tối thiểu để dùng mã voucher.";
     if (message.includes("ERR_VOUCHER_USER_LIMIT")) return "Bạn đã dùng hết lượt cho mã voucher này.";
+    if (message.includes("ERR_VOUCHER_NOT_STACKABLE")) return "Voucher không dùng chung với ưu đãi của gói 3 và 6 hộp. Chọn gói 1 hộp hoặc bỏ mã.";
+    if (message.includes("ERR_VOUCHER_NOT_FIRST_SUBSCRIPTION")) return "Mã này chỉ dành cho lần đăng ký gói đầu tiên.";
+    if (message.includes("ERR_VOUCHER_EXHAUSTED")) return "Mã voucher đã hết lượt sử dụng.";
+    if (message.includes("ERR_LOGIN_REQUIRED")) return "Vui lòng đăng nhập để đặt hàng.";
     if (message.includes("ERR_VOUCHER")) return "Mã voucher không áp dụng được cho đơn này.";
     if (message.includes("ERR_PET_BOX_MISMATCH")) return "Bé được chọn không phù hợp với loại box này (khác loài hoặc khác size). Vui lòng chọn lại bé hoặc loại box.";
     if (message.includes("ERR_DUPLICATE_BOX")) return "Trong giỏ có 2 hộp cùng loại cho cùng một bé. Vui lòng xóa bớt một hộp.";
@@ -459,6 +490,31 @@ function CheckoutFormContent() {
                 <span>Phí vận chuyển:</span>
                 <span>{formatShippingFee(shippingFee)}</span>
               </div>
+              {isSubscription && (
+                <div className="space-y-1.5">
+                  {subVoucher ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={subVoucherState.applied ? "text-grass-700 font-semibold" : "text-bark-600"}>
+                        Voucher {subVoucher.code}: {subVoucherState.applied ? (subVoucherState.freeShip ? "Miễn phí ship" : `−${formatVND(discount)}`) : subVoucherState.message}
+                      </span>
+                      <button type="button" onClick={() => setSubVoucher(null)} className="text-bark-500 hover:text-red-700 underline shrink-0">Bỏ mã</button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        value={subVoucherInput}
+                        onChange={(e) => setSubVoucherInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applySubVoucher(); } }}
+                        placeholder="Mã giảm giá"
+                        aria-label="Mã giảm giá"
+                        className="flex-1 min-w-0 h-9 px-3 rounded-box border border-surface-border bg-surface-card uppercase"
+                      />
+                      <Button type="button" size="sm" variant="secondary" onClick={applySubVoucher}>Áp dụng</Button>
+                    </div>
+                  )}
+                  {subVoucherError && <p className="text-red-700">{subVoucherError}</p>}
+                </div>
+              )}
               {!isSubscription && voucherCode && (
                 <div className="flex justify-between text-grass-700 font-semibold">
                   <span>Voucher {voucherCode}:</span>
@@ -480,6 +536,34 @@ function CheckoutFormContent() {
       </form>
     </div>
   );
+}
+
+interface PreviewVoucher {
+  code: string;
+  voucherType: string;
+  discountValue: number;
+  maxDiscount: number | null;
+  minOrderValue: number;
+  scope: string;
+}
+
+// Khớp kiểm tra voucher trong subscribe_to_box; số tiền thật luôn do server tính lại
+function subscriptionVoucherState(v: PreviewVoucher | null, plan: SubscriptionPlan | undefined, amount: number) {
+  const none = { discount: 0, freeShip: false, applied: false };
+  if (!v || !plan) return { ...none, message: "" };
+  if (!["all", "box", "first_subscription"].includes(v.scope)) return { ...none, message: "mã không áp dụng cho gói định kỳ" };
+  // SPEC §8: voucher không cộng dồn với giảm giá của gói 3/6
+  if (plan.discountPercent > 0) return { ...none, message: "không dùng chung với ưu đãi của gói này" };
+  if (amount < v.minOrderValue) return { ...none, message: `cần đơn từ ${formatVND(v.minOrderValue)}` };
+  if (v.voucherType === "free_shipping") return { ...none, freeShip: true, applied: true, message: "" };
+  let discount = 0;
+  if (v.voucherType === "percentage") {
+    discount = Math.round((amount * v.discountValue) / 100);
+    if (v.maxDiscount) discount = Math.min(discount, v.maxDiscount);
+  } else if (v.voucherType === "fixed_amount") {
+    discount = Math.min(v.discountValue, amount);
+  }
+  return { discount, freeShip: false, applied: true, message: "" };
 }
 
 function PolicyNote() {

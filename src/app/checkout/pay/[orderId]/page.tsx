@@ -22,7 +22,8 @@ function PaySimulationContent() {
   const method = searchParams.get("method") || "momo";
   const isSubscription = searchParams.get("sub") === "1";
 
-  const [status, setStatus] = useState<"idle" | "processing" | "failed" | "expired">("idle");
+  const [status, setStatus] = useState<"idle" | "processing" | "failed" | "expired" | "out_of_stock">("idle");
+  const [soldOutItem, setSoldOutItem] = useState("");
 
   const handleConfirmPayment = async () => {
     setStatus("processing");
@@ -44,7 +45,13 @@ function PaySimulationContent() {
     }
     // Server không báo lỗi khi đơn đã ở trạng thái khác (trả về trạng thái hiện tại). Đơn đã bị hủy vì quá hạn
     // thì KHÔNG được coi là thanh toán thành công; chỉ sang trang kết quả khi đơn thật sự đã thanh toán.
-    const result = data as { status?: string; payment_status?: string } | null;
+    const result = data as { status?: string; payment_status?: string; reason?: string; product?: string } | null;
+    // Đơn chờ thanh toán không giữ hàng: món đã bán hết cho khách khác thì server hủy đơn, không nhận tiền
+    if (result?.reason === "out_of_stock") {
+      setSoldOutItem(result.product || "");
+      setStatus("out_of_stock");
+      return;
+    }
     if (result?.status === "da_huy") {
       setStatus("expired");
       return;
@@ -96,10 +103,20 @@ function PaySimulationContent() {
           </div>
         )}
 
+        {status === "out_of_stock" && (
+          <div role="alert" className="p-3 rounded-box bg-red-50 border border-red-200 text-xs text-red-700 font-semibold space-y-2">
+            <p>
+              {soldOutItem ? `"${soldOutItem}" vừa hết hàng` : "Một món trong đơn vừa hết hàng"} trước khi bạn thanh toán nên đơn đã được hủy, bạn không bị trừ tiền.
+              Vui lòng đặt lại với số lượng còn hàng.
+            </p>
+            <Link href="/cart" className="inline-block font-bold underline underline-offset-2">Về giỏ hàng</Link>
+          </div>
+        )}
+
         <button
           type="button"
           onClick={handleConfirmPayment}
-          disabled={status === "processing" || status === "expired"}
+          disabled={status === "processing" || status === "expired" || status === "out_of_stock"}
           className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors disabled:opacity-60"
         >
           {status === "processing" ? "Đang xác nhận..." : "Tôi đã thanh toán"}
@@ -107,7 +124,7 @@ function PaySimulationContent() {
 
         <div className="flex items-center justify-center gap-1.5 text-xs text-grass-700 font-semibold">
           <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Đơn giữ chỗ trong 30 phút, quá hạn sẽ tự hủy</span>
+          <span>Thanh toán trong 30 phút, quá hạn đơn tự hủy. Hàng chỉ được giữ khi đã thanh toán.</span>
         </div>
       </div>
     </div>

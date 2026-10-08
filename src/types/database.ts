@@ -1028,6 +1028,7 @@ export type Database = {
           id: string
           next_delivery_date: string
           paused_cycles_left: number
+          consecutive_paused_cycles: number
           pet_id: string
           plan_id: string
           remaining_cycles: number
@@ -1051,6 +1052,7 @@ export type Database = {
           id?: string
           next_delivery_date: string
           paused_cycles_left?: number
+          consecutive_paused_cycles?: number
           pet_id: string
           plan_id: string
           remaining_cycles: number
@@ -1074,6 +1076,7 @@ export type Database = {
           id?: string
           next_delivery_date?: string
           paused_cycles_left?: number
+          consecutive_paused_cycles?: number
           pet_id?: string
           plan_id?: string
           remaining_cycles?: number
@@ -1258,6 +1261,10 @@ export type Database = {
         Returns: number
       }
       cancel_expired_orders: { Args: never; Returns: number }
+      cancel_my_order: {
+        Args: { p_order_id: string; p_reason?: string }
+        Returns: Json
+      }
       cancel_order_by_staff: {
         Args: { p_order_id: string; p_reason: string }
         Returns: Json
@@ -1308,6 +1315,10 @@ export type Database = {
         }[]
       }
       mark_order_delivered: { Args: { p_order_id: string }; Returns: Json }
+      mark_order_refunded: {
+        Args: { p_order_id: string; p_note?: string }
+        Returns: Json
+      }
       mark_order_shipping: {
         Args: {
           p_carrier?: string
@@ -1363,6 +1374,13 @@ export type Database = {
         Returns: Json
       }
       send_subscription_reminders: { Args: never; Returns: number }
+      set_user_role: {
+        Args: {
+          p_user_id: string
+          p_role: Database["public"]["Enums"]["user_role"]
+        }
+        Returns: Json
+      }
       start_order_preparation: { Args: { p_order_id: string }; Returns: Json }
       submit_feedback: {
         Args: {
@@ -1386,6 +1404,7 @@ export type Database = {
           p_recipient_name: string
           p_recipient_phone: string
           p_shipping_address: string
+          p_voucher_code?: string
           p_ward: string
         }
         Returns: Json
@@ -1428,7 +1447,7 @@ export type Database = {
         | "qua_han"
         | "het_han"
         | "da_huy"
-      user_role: "customer" | "admin"
+      user_role: "customer" | "staff" | "admin"
       voucher_discount_type: "percentage" | "fixed_amount" | "free_shipping"
     }
     CompositeTypes: {
@@ -1588,7 +1607,7 @@ export const Constants = {
         "het_han",
         "da_huy",
       ],
-      user_role: ["customer", "admin"],
+      user_role: ["customer", "staff", "admin"],
       voucher_discount_type: ["percentage", "fixed_amount", "free_shipping"],
     },
   },

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/Toast";
+import { useApp } from "@/context/AppContext";
 import { PackagePlus, AlertTriangle, History } from "lucide-react";
 import { formatDateTime } from "@/lib/formatters";
 
@@ -36,6 +37,7 @@ const MOVEMENT_LABEL: Record<string, string> = {
 };
 
 export default function AdminInventoryPage() {
+  const { user } = useApp();
   const [movements, setMovements] = useState<MovementRow[]>([]);
   const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,7 +110,7 @@ export default function AdminInventoryPage() {
           <div className="flex items-center gap-2 font-bold text-amber-900 text-sm">
             <AlertTriangle className="w-4 h-4" />
             <span className="flex-1">Sắp hết hàng ({lowStock.length} sản phẩm)</span>
-            <Link href="/admin/products?filter=low" className="text-xs underline">Xem trong Sản phẩm</Link>
+            {user.role === "admin" && <Link href="/admin/products?filter=low" className="text-xs underline">Xem trong Sản phẩm</Link>}
           </div>
           <div className="flex flex-wrap gap-2">
             {lowStock.map((p) => (

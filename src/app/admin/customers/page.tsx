@@ -3,11 +3,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatVND, formatDate } from "@/lib/formatters";
-import { Search, Lock, Unlock, Eye, Phone, Mail, Heart, X } from "lucide-react";
+import { Search, Lock, Unlock, Eye, Phone, Mail, Heart, X, BadgeCheck } from "lucide-react";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { textMatches } from "@/lib/search";
+import { ROLE_LABEL } from "@/lib/roles";
 
 interface ProfileRow {
   id: string;
@@ -15,6 +16,7 @@ interface ProfileRow {
   email: string;
   phone: string | null;
   is_active: boolean;
+  role: "customer" | "staff";
   created_at: string;
 }
 interface PetRow { id: string; user_id: string; name: string; species: "dog" | "cat"; breed: string | null }
@@ -31,18 +33,19 @@ export default function AdminCustomersPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [locking, setLocking] = useState<ProfileRow | null>(null);
+  const [roleChange, setRoleChange] = useState<ProfileRow | null>(null);
   const { show } = useToast();
 
   const loadData = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
     const [{ data: p }, { data: pe }, { data: o }, { data: s }] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, email, phone, is_active, created_at").eq("role", "customer").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id, full_name, email, phone, is_active, role, created_at").in("role", ["customer", "staff"]).order("created_at", { ascending: false }),
       supabase.from("pets").select("id, user_id, name, species, breed"),
       supabase.from("orders").select("user_id, total_amount, payment_status").not("user_id", "is", null),
       supabase.from("subscriptions").select("user_id, status, subscription_code"),
     ]);
-    setProfiles(p || []);
+    setProfiles((p as ProfileRow[]) || []);
     setPets((pe as unknown as PetRow[]) || []);
     setOrders((o as unknown as OrderAgg[]) || []);
     setSubs((s as unknown as SubRow[]) || []);
@@ -86,6 +89,18 @@ export default function AdminCustomersPage() {
     loadData();
   };
 
+  // Cấp / thu hồi vai trò nhân viên vận hành (RPC set_user_role chỉ cho admin, không đổi được tài khoản admin)
+  const toggleStaffRole = async (person: ProfileRow) => {
+    const next = person.role === "staff" ? "customer" : "staff";
+    setBusy(true);
+    const { error } = await createClient().rpc("set_user_role", { p_user_id: person.id, p_role: next });
+    setBusy(false);
+    if (error) return show("Không đổi được vai trò tài khoản.", { tone: "error" });
+    show(next === "staff" ? `${person.email} đã là nhân viên vận hành.` : `${person.email} đã trở lại là khách hàng.`);
+    setRoleChange(null);
+    loadData();
+  };
+
   // Khóa cần xác nhận (khách bị đăng xuất, không đặt hàng được); mở khóa làm ngay
   const toggleLockCustomer = (id: string, currentActive: boolean) => {
     const customer = profiles.find((p) => p.id === id);
@@ -105,7 +120,7 @@ export default function AdminCustomersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-pine-950 font-display">Khách hàng ({profiles.length})</h1>
-          <p className="text-xs text-bark-500">Xem hồ sơ, đơn hàng, gói định kỳ và quản lý quyền truy cập.</p>
+          <p className="text-xs text-bark-500">Xem hồ sơ, đơn hàng, gói định kỳ và quản lý quyền truy cập. Cấp quyền nhân viên trong chi tiết từng tài khoản.</p>
         </div>
       </div>
 
@@ -137,6 +152,7 @@ export default function AdminCustomersPage() {
                   <div>
                     <h3 className="font-bold text-pine-950 text-xs">
                       {customer.full_name || "(Chưa đặt tên)"}
+                      {customer.role === "staff" && <StaffBadge />}
                     </h3>
                     <div className="text-[10px] text-bark-500 mt-0.5">
                       Tham gia: {formatDate(customer.created_at)}
@@ -256,7 +272,10 @@ export default function AdminCustomersPage() {
               return (
                 <tr key={customer.id} className="hover:bg-surface-muted/50 transition-colors">
                   <td className="p-3.5">
-                    <div className="font-bold text-pine-950 text-xs">{customer.full_name || "(Chưa đặt tên)"}</div>
+                    <div className="font-bold text-pine-950 text-xs">
+                      {customer.full_name || "(Chưa đặt tên)"}
+                      {customer.role === "staff" && <StaffBadge />}
+                    </div>
                     <div className="text-[11px] text-bark-500">Tham gia: {formatDate(customer.created_at)}</div>
                   </td>
                   <td className="p-3.5 space-y-0.5">
@@ -314,7 +333,10 @@ export default function AdminCustomersPage() {
                   {(selectedCustomer.full_name || "?").charAt(0)}
                 </div>
                 <div>
-                  <h3 className="font-bold text-pine-950 text-sm">{selectedCustomer.full_name || "(Chưa đặt tên)"}</h3>
+                  <h3 className="font-bold text-pine-950 text-sm">
+                    {selectedCustomer.full_name || "(Chưa đặt tên)"}
+                    {selectedCustomer.role === "staff" && <StaffBadge />}
+                  </h3>
                   <span className="text-[11px] text-bark-500">Mã KH: {selectedCustomer.id.slice(0, 8)}</span>
                 </div>
               </div>
@@ -359,6 +381,23 @@ export default function AdminCustomersPage() {
               </div>
             </div>
 
+            <div className="p-3.5 rounded-box border border-surface-border space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-[11px] text-bark-500 block">Vai trò</span>
+                  <span className="font-bold text-pine-950">{ROLE_LABEL[selectedCustomer.role]}</span>
+                </div>
+                <button type="button" onClick={() => setRoleChange(selectedCustomer)} disabled={busy}
+                  className="px-3 py-1.5 rounded-box border border-surface-border font-semibold text-pine-900 hover:bg-surface-muted transition-colors disabled:opacity-60">
+                  {selectedCustomer.role === "staff" ? "Thu hồi quyền nhân viên" : "Cấp quyền nhân viên"}
+                </button>
+              </div>
+              <p className="text-[11px] text-bark-500 leading-relaxed">
+                Nhân viên vận hành xử lý đơn hàng, tuyển chọn hộp, tồn kho, gói định kỳ, hồ sơ thú cưng, đánh giá và góp ý.
+                Không xem doanh thu, không sửa sản phẩm, giá, voucher và không quản lý tài khoản.
+              </p>
+            </div>
+
             <div className="flex justify-between items-center pt-3 border-t border-surface-border">
               <button onClick={() => toggleLockCustomer(selectedCustomer.id, selectedCustomer.is_active)} disabled={busy}
                 className={`px-3 py-1.5 rounded-box font-bold flex items-center gap-1.5 transition-colors disabled:opacity-60 ${!selectedCustomer.is_active ? "bg-grass-700 text-white hover:bg-grass-800" : "bg-bark-800 text-white hover:bg-bark-900"}`}>
@@ -369,6 +408,28 @@ export default function AdminCustomersPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!roleChange}
+        title={roleChange?.role === "staff" ? "Thu hồi quyền nhân viên" : "Cấp quyền nhân viên"}
+        message={
+          roleChange?.role === "staff" ? (
+            <>
+              <strong>{roleChange?.full_name || roleChange?.email}</strong> sẽ không vào được trang quản trị nữa và dùng web như khách hàng.
+            </>
+          ) : (
+            <>
+              <strong>{roleChange?.full_name || roleChange?.email}</strong> sẽ vào được trang quản trị để xử lý đơn hàng, tuyển chọn hộp,
+              tồn kho, gói định kỳ, hồ sơ thú cưng, đánh giá và góp ý của khách.
+            </>
+          )
+        }
+        confirmLabel={roleChange?.role === "staff" ? "Thu hồi quyền" : "Cấp quyền"}
+        danger={roleChange?.role === "staff"}
+        loading={busy}
+        onClose={() => setRoleChange(null)}
+        onConfirm={() => roleChange && toggleStaffRole(roleChange)}
+      />
 
       <ConfirmDialog
         open={!!locking}
@@ -385,5 +446,14 @@ export default function AdminCustomersPage() {
         onConfirm={() => locking && setActive(locking, false)}
       />
     </div>
+  );
+}
+
+function StaffBadge() {
+  return (
+    <span className="ml-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-pine-100 text-pine-900 align-middle">
+      <BadgeCheck className="w-3 h-3" />
+      <span>Nhân viên</span>
+    </span>
   );
 }

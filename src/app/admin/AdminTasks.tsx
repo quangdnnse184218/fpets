@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useApp } from "@/context/AppContext";
+import { canAccessAdminPath } from "@/lib/roles";
 
 // Số việc đang chờ admin, tính ở server (RPC admin_task_counts) trong 1 lần gọi.
 // Dùng chung cho chuông thông báo, số đếm trên menu và khối "Việc cần xử lý" ở Tổng quan.
@@ -73,8 +75,17 @@ const AdminTasksContext = createContext<AdminTasksValue>({ counts: EMPTY, loaded
 
 export const useAdminTasks = () => useContext(AdminTasksContext);
 
-export const actionableTotal = (counts: AdminTaskCounts) =>
-  ADMIN_TASK_ITEMS.filter((t) => t.actionable).reduce((sum, t) => sum + counts[t.key], 0);
+// Việc theo vai trò: staff không vào trang Sản phẩm nên hàng sắp hết dẫn sang Nhập / xuất kho, việc ngoài quyền thì ẩn
+export function taskItemsFor(role: string): AdminTaskItem[] {
+  return ADMIN_TASK_ITEMS.flatMap((t) => {
+    if (canAccessAdminPath(role, t.href.split("?")[0])) return [t];
+    if (t.key === "low_stock") return [{ ...t, href: "/admin/inventory" }];
+    return [];
+  });
+}
+
+export const actionableTotal = (counts: AdminTaskCounts, items: AdminTaskItem[] = ADMIN_TASK_ITEMS) =>
+  items.filter((t) => t.actionable).reduce((sum, t) => sum + counts[t.key], 0);
 
 const REFRESH_MS = 60_000;
 
@@ -117,11 +128,13 @@ const TIME = new Intl.DateTimeFormat("vi-VN", { hour: "2-digit", minute: "2-digi
 /** Chuông "Việc cần xử lý" trên thanh trên cùng của trang quản trị */
 export function AdminNotificationBell() {
   const { counts, loaded, updatedAt } = useAdminTasks();
+  const { user } = useApp();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const total = actionableTotal(counts);
-  const items = ADMIN_TASK_ITEMS.filter((t) => counts[t.key] > 0);
+  const roleItems = taskItemsFor(user.role);
+  const total = actionableTotal(counts, roleItems);
+  const items = roleItems.filter((t) => counts[t.key] > 0);
 
   useEffect(() => setOpen(false), [pathname]);
 
@@ -184,7 +197,9 @@ export function AdminNotificationBell() {
           )}
           <div className="px-4 py-2.5 border-t border-surface-border bg-surface-muted/60 text-[11px] text-bark-600 flex items-center justify-between">
             <span>Đơn mới hôm nay: <strong className="text-pine-950">{counts.orders_today}</strong></span>
-            <Link href="/admin/dashboard" className="font-bold text-pine-900 hover:underline">Xem tổng quan</Link>
+            {user.role === "admin" && (
+              <Link href="/admin/dashboard" className="font-bold text-pine-900 hover:underline">Xem tổng quan</Link>
+            )}
           </div>
         </div>
       )}

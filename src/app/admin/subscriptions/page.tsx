@@ -34,6 +34,7 @@ const STATUS_STYLE: Record<SubStatus, string> = {
 
 const ERROR_TEXT: Record<string, string> = {
   ERR_PAST_CUTOFF: "Đã qua ngày chốt của kỳ này nên không tạm dừng được; hộp kỳ này vẫn được giao.",
+  ERR_PAUSE_LIMIT: "Gói đã bỏ đủ 2 kỳ liên tiếp (tối đa theo chính sách). Kỳ tới phải giao hộp rồi mới tạm dừng tiếp được.",
   ERR_NOTHING_TO_PAUSE: "Gói đã giao hết số hộp trả trước và đang chờ gia hạn, không còn kỳ nào để tạm dừng.",
   ERR_INVALID_STATUS_FOR_PAUSE: "Chỉ tạm dừng được gói đang hoạt động.",
   ERR_INVALID_STATUS_FOR_RESUME: "Gói không ở trạng thái tạm dừng.",

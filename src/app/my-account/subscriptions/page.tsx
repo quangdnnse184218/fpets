@@ -56,6 +56,8 @@ interface SubscriptionRow {
   total_cycles: number;
   remaining_cycles: number;
   current_cycle: number;
+  // Số kỳ đã bỏ liên tiếp (tạm dừng tối đa 2 kỳ liên tiếp), về 0 khi bé nhận hộp mới
+  consecutive_paused_cycles: number;
   next_delivery_date: string;
   cutoff_date: string;
   delivery_schedule: DeliverySchedule;
@@ -129,7 +131,7 @@ export default function MySubscriptionsPage() {
     const [{ data: subData }, { data: orderData }] = await Promise.all([
       supabase
         .from("subscriptions")
-        .select("id, subscription_code, status, total_cycles, remaining_cycles, current_cycle, next_delivery_date, cutoff_date, delivery_schedule, total_prepaid_amount, grace_period_expires_at, shipping_address_snapshot, pets(name), box_types(name, baseprice), subscription_plans(name)")
+        .select("id, subscription_code, status, total_cycles, remaining_cycles, current_cycle, consecutive_paused_cycles, next_delivery_date, cutoff_date, delivery_schedule, total_prepaid_amount, grace_period_expires_at, shipping_address_snapshot, pets(name), box_types(name, baseprice), subscription_plans(name)")
         .eq("user_id", uid)
         .order("created_at", { ascending: false }),
       supabase
@@ -371,13 +373,20 @@ function PauseModal({ sub, onClose, onDone }: { sub: SubscriptionRow; onClose: (
   const [error, setError] = useState("");
   const pastCutoff = daysUntil(sub.cutoff_date) < 0;
   const newDate = addMonths(sub.next_delivery_date, cycles);
+  const pauseLeft = Math.max(0, MAX_PAUSE_CYCLES - (sub.consecutive_paused_cycles || 0));
 
   const submit = async () => {
     setSaving(true);
     const { error: err } = await createClient().rpc("pause_subscription", { p_subscription_id: sub.id, p_cycles: cycles });
     setSaving(false);
     if (err) {
-      setError(err.message.includes("ERR_PAST_CUTOFF") ? "Đã qua ngày chốt, hộp kỳ này vẫn được giao." : "Không tạm dừng được gói, vui lòng thử lại.");
+      setError(
+        err.message.includes("ERR_PAST_CUTOFF")
+          ? "Đã qua ngày chốt, hộp kỳ này vẫn được giao."
+          : err.message.includes("ERR_PAUSE_LIMIT")
+            ? pauseLimitText(err.message)
+            : "Không tạm dừng được gói, vui lòng thử lại."
+      );
       return;
     }
     onDone(`Đã tạm dừng ${cycles} kỳ. Hộp tiếp theo giao ${deliveryWindowLabel(newDate, sub.delivery_schedule)}.`);
@@ -391,11 +400,15 @@ function PauseModal({ sub, onClose, onDone }: { sub: SubscriptionRow; onClose: (
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={saving}>Để sau</Button>
-          <Button onClick={submit} loading={saving} disabled={pastCutoff}>Xác nhận tạm dừng</Button>
+          <Button onClick={submit} loading={saving} disabled={pastCutoff || pauseLeft === 0}>Xác nhận tạm dừng</Button>
         </>
       }
     >
-      {pastCutoff ? (
+      {pauseLeft === 0 && !pastCutoff ? (
+        <p className="text-sm text-bark-700">
+          Gói đã bỏ {MAX_PAUSE_CYCLES} kỳ giao liên tiếp, mức tối đa cho phép. Bé nhận hộp kỳ tới rồi bạn mới tạm dừng tiếp được.
+        </p>
+      ) : pastCutoff ? (
         <p className="text-sm text-bark-700">
           Đã qua ngày chốt ({formatDate(sub.cutoff_date)}), hộp kỳ này đang được chuẩn bị nên không thể tạm dừng. Bạn có thể tạm dừng từ kỳ sau.
         </p>
@@ -403,7 +416,7 @@ function PauseModal({ sub, onClose, onDone }: { sub: SubscriptionRow; onClose: (
         <div className="space-y-3">
           <p className="text-sm text-bark-700">Bỏ qua tối đa {MAX_PAUSE_CYCLES} kỳ giao liên tiếp. Hộp đã trả trước được giữ nguyên và dời sang các tháng sau.</p>
           <div className="grid grid-cols-2 gap-2">
-            {Array.from({ length: MAX_PAUSE_CYCLES }, (_, i) => i + 1).map((n) => (
+            {Array.from({ length: pauseLeft }, (_, i) => i + 1).map((n) => (
               <button key={n} type="button" onClick={() => setCycles(n)} aria-pressed={cycles === n}
                 className={`min-h-11 rounded-box border text-sm font-bold ${cycles === n ? "border-pine-900 bg-pine-50 text-pine-950" : "border-surface-border text-bark-700"}`}>
                 {cycles === n ? "✓ " : ""}Bỏ qua {n} kỳ
@@ -617,4 +630,12 @@ function RenewModal({
       </div>
     </Modal>
   );
+}
+
+// Tạm dừng tối đa 2 kỳ liên tiếp (SPEC §5); server trả số kỳ còn được bỏ sau dấu ":"
+function pauseLimitText(message: string): string {
+  const left = Number(message.split("ERR_PAUSE_LIMIT:")[1]?.trim().split(/\D/)[0]);
+  return left > 0
+    ? `Gói chỉ được bỏ tối đa 2 kỳ liên tiếp. Lần này bạn chỉ tạm dừng thêm được ${left} kỳ.`
+    : "Gói đã bỏ 2 kỳ liên tiếp. Bé cần nhận hộp kỳ tới rồi mới tạm dừng tiếp được.";
 }

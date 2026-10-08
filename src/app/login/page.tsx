@@ -3,6 +3,7 @@
 import React, { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { adminHomeFor, isBackofficeRole } from "@/lib/roles";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { safeRedirect } from "@/lib/safeRedirect";
 import { useApp } from "@/context/AppContext";
@@ -47,7 +48,7 @@ function LoginForm() {
   // Đã đăng nhập sẵn mà mở /login (link cũ, nút Back): đi tiếp tới trang định vào thay vì hiện form
   useEffect(() => {
     if (isLoadingAuth || !isLoggedIn || isLoading || successMessage) return;
-    router.replace(redirectUrl || (user.role === "admin" ? "/admin/dashboard" : "/my-account"));
+    router.replace(redirectUrl || (isBackofficeRole(user.role) ? adminHomeFor(user.role) : "/my-account"));
   }, [isLoadingAuth, isLoggedIn, isLoading, successMessage, redirectUrl, user.role, router]);
 
   const handleResendConfirmation = async () => {
@@ -139,8 +140,8 @@ function LoginForm() {
         setTimeout(() => {
           if (redirectUrl) {
             router.push(redirectUrl);
-          } else if (profile?.role === "admin") {
-            router.push("/admin/dashboard");
+          } else if (isBackofficeRole(profile?.role)) {
+            router.push(adminHomeFor(profile?.role));
           } else {
             router.push("/my-account");
           }

@@ -23,7 +23,7 @@ import { fetchMyOrder, MyOrder, orderLines } from "@/lib/myOrders";
 import { EXCHANGE_POLICY } from "@/lib/copy";
 import OrderStepper from "@/components/common/OrderStepper";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { resizeImageToJpeg } from "@/lib/imageResize";
 
@@ -37,6 +37,9 @@ export default function OrderDetailPage() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [hasReview, setHasReview] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
 
   const load = useCallback(async () => {
     const data = await fetchMyOrder(id);
@@ -73,6 +76,33 @@ export default function OrderDetailPage() {
   const isBoxOrder = order.order_type === "mystery_box" || isCycle;
   const pendingPayment = order.status === "cho_thanh_toan" && order.payment_expires_at && new Date(order.payment_expires_at) > new Date();
 
+  // SPEC §7: khách hủy được khi đơn còn "Chờ thanh toán" hoặc "Đã xác nhận" (chưa đóng gói).
+  // Đơn giao hộp của gói và biên nhận gói đã trả thì dùng Tạm dừng / Hủy gói.
+  const canCancel =
+    order.status === "cho_thanh_toan" ||
+    (order.status === "da_xac_nhan" && (order.order_type === "retail" || order.order_type === "mystery_box"));
+  const paidOnline = order.payment_status === "paid" && order.payment_method !== "cod";
+  const awaitingRefund = cancelled && paidOnline;
+
+  const cancelOrder = async () => {
+    setCancelling(true);
+    const { error } = await createClient().rpc("cancel_my_order", { p_order_id: order.id, p_reason: cancelReason.trim() || undefined });
+    setCancelling(false);
+    if (error) {
+      show(
+        error.message.includes("ERR_INVALID_ORDER_STATUS")
+          ? "Đơn đã bắt đầu được chuẩn bị nên không hủy được nữa. Vui lòng liên hệ FPETS."
+          : "Không hủy được đơn, vui lòng thử lại.",
+        { tone: "error" }
+      );
+      load();
+      return;
+    }
+    setCancelOpen(false);
+    show(paidOnline ? "Đã hủy đơn. FPETS sẽ hoàn tiền cho bạn." : "Đã hủy đơn.");
+    load();
+  };
+
   const copyTracking = async () => {
     if (!order.tracking_code) return;
     await navigator.clipboard.writeText(order.tracking_code);
@@ -97,6 +127,7 @@ export default function OrderDetailPage() {
         {cancelled ? (
           <div className="p-3 rounded-box bg-red-50 border border-red-200 text-xs text-red-800">
             Đơn đã hủy{order.cancelled_at ? ` lúc ${formatDateTime(order.cancelled_at)}` : ""}.{order.cancellation_reason ? ` Lý do: ${order.cancellation_reason}` : ""}
+            {awaitingRefund && <> FPETS đang hoàn {formatVND(order.total_amount)} về tài khoản bạn đã thanh toán.</>}
           </div>
         ) : (
           <div className="py-2">
@@ -122,6 +153,14 @@ export default function OrderDetailPage() {
               {order.return_resolved_at ? ` · ${formatDateTime(order.return_resolved_at)}` : ""}
             </p>
             {order.return_admin_note && <p className="mt-0.5">{order.return_admin_note}</p>}
+          </div>
+        )}
+
+        {canCancel && (
+          <div className="flex justify-end">
+            <Button variant="secondary" size="sm" onClick={() => setCancelOpen(true)}>
+              Hủy đơn
+            </Button>
           </div>
         )}
 
@@ -213,6 +252,33 @@ export default function OrderDetailPage() {
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={cancelOpen}
+        title="Hủy đơn hàng"
+        danger
+        message={
+          <>
+            Hủy đơn <strong>{order.order_code}</strong>?
+            {paidOnline && ` Bạn đã thanh toán ${formatVND(order.total_amount)}; FPETS sẽ hoàn tiền về tài khoản đã dùng để thanh toán.`}
+          </>
+        }
+        confirmLabel="Hủy đơn"
+        loading={cancelling}
+        onClose={() => setCancelOpen(false)}
+        onConfirm={cancelOrder}
+      >
+        <label className="block text-xs font-semibold text-bark-700">
+          Lý do (không bắt buộc)
+          <textarea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            maxLength={500}
+            rows={2}
+            className="mt-1 w-full rounded-box border border-surface-border px-3 py-2 text-sm focus:border-pine-900 focus:outline-none"
+          />
+        </label>
+      </ConfirmDialog>
 
       {reviewOpen && (
         <ReviewModal

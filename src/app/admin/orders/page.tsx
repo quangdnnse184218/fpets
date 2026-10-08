@@ -847,6 +847,19 @@ function OrderDetail({
             )}
           </section>
         )}
+
+        {/* Khách tự hủy đơn đã trả online: hoàn tiền thủ công rồi ghi nhận để doanh thu không tính đơn này */}
+        {order.status === "da_huy" && paidOnline && (
+          <section className="pt-4 border-t border-surface-border space-y-2">
+            <p className="p-3 rounded-box bg-amber-50 border border-amber-200 text-amber-900 leading-relaxed">
+              Đơn đã hủy nhưng khách đã thanh toán {formatVND(order.total_amount)} qua {PAYMENT_METHOD_NAME[order.payment_method]}.
+              Hoàn tiền cho khách rồi bấm xác nhận bên dưới.
+            </p>
+            <Button size="sm" loading={busy} onClick={() => run(() => supabase.rpc("mark_order_refunded", { p_order_id: order.id }), "Đã ghi nhận hoàn tiền, khách nhận được thông báo.")}>
+              Đã hoàn tiền cho khách
+            </Button>
+          </section>
+        )}
       </div>
     </Modal>
   );

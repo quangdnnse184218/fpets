@@ -300,7 +300,14 @@ Admin có 11 module; "Hàng chờ tuyển chọn box" là module mới cần th�
 
 **Phân quyền**
 
-Chỉ 1 vai trò quản trị (`admin`) có toàn quyền trên mọi module Admin, gồm cả tài khoản nhân viên và thống kê doanh thu. Không tách vai trò kho/CSKH riêng vì hệ thống chưa cần luồng đăng nhập/UI riêng cho từng bộ phận; cần thêm người quản trị thì tạo thêm tài khoản `role = 'admin'` khác.
+Hai vai trò nội bộ (cập nhật 08/10/2026):
+
+| Vai trò | Module được dùng |
+| --- | --- |
+| `admin` | Toàn quyền mọi module, gồm thống kê doanh thu, sản phẩm/giá, loại box, voucher, khóa tài khoản khách và cấp/thu hồi quyền nhân viên |
+| `staff` (nhân viên vận hành) | Đơn hàng (cập nhật trạng thái, mã vận đơn, xác nhận COD, đổi/trả, hủy đơn và ghi nhận hoàn tiền), Hàng chờ tuyển chọn box, Tồn kho (nhập/xuất), Subscription (tạm dừng, tiếp tục, hủy hộ khách), Pet Profile, Review và góp ý của khách |
+
+Staff không xem doanh thu, không sửa sản phẩm, giá, loại box, voucher và không quản lý tài khoản. Admin cấp hoặc thu hồi quyền staff trong module Khách hàng; không đổi được vai trò của tài khoản admin.
 
 ## 10. Chính sách đổi trả
 

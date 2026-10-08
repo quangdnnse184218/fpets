@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { adminHomeFor, isBackofficeRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 import { safeRedirect } from "@/lib/safeRedirect";
 
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(next, origin));
   }
 
-  // Không có trang đích: admin vào dashboard, khách vào hồ sơ thú cưng (giống đăng nhập bằng mật khẩu)
+  // Không có trang đích: admin/staff vào trang quản trị, khách vào hồ sơ thú cưng (giống đăng nhập bằng mật khẩu)
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
-  return NextResponse.redirect(new URL(profile?.role === "admin" ? "/admin/dashboard" : "/my-account", origin));
+  return NextResponse.redirect(new URL(isBackofficeRole(profile?.role) ? adminHomeFor(profile?.role) : "/my-account", origin));
 }

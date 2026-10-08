@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { adminHomeFor, canAccessAdminPath, isBackofficeRole } from "@/lib/roles";
 
-// Bảo vệ route ở tầng server: /admin chỉ role admin, /my-account chỉ user đã đăng nhập.
+// Bảo vệ route ở tầng server: /admin chỉ admin và staff (staff chỉ các trang vận hành),
+// /my-account chỉ user đã đăng nhập.
 // Không tin bất kỳ role/trạng thái đăng nhập nào gửi từ client (AGENTS.md).
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -52,8 +54,12 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!profile || profile.role !== "admin" || profile.is_active === false) {
+    if (!profile || !isBackofficeRole(profile.role) || profile.is_active === false) {
       return NextResponse.redirect(new URL("/", request.url));
+    }
+    // Staff chỉ vào các trang vận hành; trang ngoài quyền (doanh thu, sản phẩm, voucher...) đưa về trang đơn hàng
+    if (!canAccessAdminPath(profile.role, pathname)) {
+      return NextResponse.redirect(new URL(adminHomeFor(profile.role), request.url));
     }
   }
 

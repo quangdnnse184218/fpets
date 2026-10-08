@@ -7,7 +7,7 @@ Dự án làm cho khách hàng thật. Tài liệu: docs/SPEC.md (nghiệp vụ)
 
 ## Trạng thái hiện tại
 - Toàn bộ trang khách và admin chạy trên dữ liệu Supabase thật (không còn src/mock).
-- Đăng nhập: email/mật khẩu và Google (Supabase Auth). Chỉ 2 vai trò: admin, customer.
+- Đăng nhập: email/mật khẩu và Google (Supabase Auth). 3 vai trò: admin, staff (nhân viên vận hành), customer.
 - Nghiệp vụ tính ở server bằng RPC SECURITY DEFINER (checkout_create_order, subscribe_to_box, renew_subscription...);
   cron chạy bằng pg_cron trong Supabase (không dùng Vercel Cron).
 - Schema chỉ thay đổi qua supabase/migrations. Không lưu tài khoản/mật khẩu trong repo.
@@ -32,13 +32,21 @@ Chi tiết đầy đủ nằm trong docs/SPEC.md; dưới đây là các điểm
 4. Gói định kỳ trả trước: hộp đầu tạo ngay khi thanh toán, hộp thứ 2 giao theo đợt cách ngày đăng ký ít nhất 20 ngày, các hộp sau cách nhau 1 tháng.
 5. Cut-off 7 ngày trước đợt giao. Tạm dừng tối đa 2 kỳ. Hết hộp trả trước thì nhắc gia hạn 7/3/1 ngày; quá hạn còn 5 ngày rồi gói kết thúc.
 6. Hủy gói: vẫn giao hết hộp đã trả, không hoàn tiền. Gói đăng ký mà không thanh toán thì không sinh hộp.
-7. Đơn thanh toán online quá 30 phút chưa trả thì tự hủy. Tồn kho chỉ bị trừ khi đơn được xác nhận (đã thanh toán, hoặc đơn COD), đơn chờ thanh toán KHÔNG giữ hàng. Điểm này khác SPEC, xem mục "Còn phải làm".
+7. Đơn thanh toán online quá 30 phút chưa trả thì tự hủy. Tồn kho chỉ bị trừ khi đơn được xác nhận (đã thanh toán, hoặc đơn COD), đơn chờ thanh toán KHÔNG giữ hàng (khác SPEC §4 "trả tồn kho").
+   Lúc xác nhận thanh toán server kiểm tra lại tồn kho: món đã bán hết thì hủy đơn và báo khách, không nhận tiền; tồn kho không bao giờ âm.
 8. COD chỉ cho đơn mua 1 lần không quá 2.000.000₫; gói định kỳ chỉ thanh toán online.
 9. Dị ứng khai trong hồ sơ chỉ xét với món ăn (danh mục Thức ăn, Bánh thưởng), không xét đồ chơi, phụ kiện.
 10. Đề xuất món cho hộp (src/lib/boxSuggestion.ts): đạt giá trị tối thiểu và vượt không quá 20.000₫, đúng số món, đủ 3 nhóm món; thứ tự ưu tiên ghi trong SPEC §3.
 11. Tra cứu đơn chỉ cần mã đơn; kết quả che bớt tên, số điện thoại và chỉ hiện tỉnh/thành.
 12. Địa chỉ theo địa giới từ 01/07/2025: 34 tỉnh/thành, phường/xã, không có quận/huyện. Phí ship tính theo tỉnh/thành.
-13. Vai trò người dùng: chỉ có admin và customer.
+13. Vai trò người dùng: admin, staff, customer (staff thêm ngày 08/10/2026, quyền chi tiết ở SPEC §9).
+    Trang staff được vào khai báo ở src/lib/roles.ts (middleware và menu admin dùng chung); quyền dữ liệu ở is_staff()/is_admin().
+14. Khách tự hủy đơn khi còn "Chờ thanh toán" hoặc "Đã xác nhận". Đơn đã trả online thì vẫn ghi "Đã thanh toán"
+    cho tới khi nhân viên hoàn tiền và bấm "Đã hoàn tiền cho khách" ở trang Đơn hàng.
+15. Tạm dừng gói tối đa 2 kỳ liên tiếp (cột consecutive_paused_cycles, về 0 khi gói có đơn giao hộp mới).
+16. Voucher khi đăng ký gói: nhận phạm vi all / box / first_subscription, chỉ cho gói không có giảm giá (gói 1 hộp)
+    vì không cộng dồn với ưu đãi gói 3/6. Mã first_subscription chỉ dùng khi khách chưa từng thanh toán gói nào.
+17. Từ khóa dị ứng có hai bản phải sửa cùng nhau: src/lib/petOptions.ts (web) và _product_has_allergen (server, chặn khi duyệt hộp).
 
 ## Quy ước thiết kế (khách đã duyệt, đừng đổi)
 - Font: Bricolage Grotesque (tiêu đề) + Be Vietnam Pro (nội dung), subset vietnamese.
@@ -68,7 +76,8 @@ Việc cần chủ cửa hàng quyết định hoặc cung cấp:
 - Ảnh chụp hộp và sản phẩm thật thay ảnh minh họa; 19 sản phẩm hiện chỉ dùng cho hộp, chưa bật bán lẻ.
 
 Việc kỹ thuật còn dang dở:
-- Giữ hàng cho đơn chờ thanh toán: SPEC ghi "tự hủy và trả tồn kho" nhưng hệ thống chỉ trừ kho khi thanh toán xong và không kiểm tra còn hàng lúc đó, nên hai khách cùng trả tiền cho món cuối có thể làm tồn kho âm.
+- Khi nối cổng thanh toán thật: tiền đã bị trừ trước khi server kiểm tra tồn kho, nên đơn bị hủy vì hết hàng lúc xác nhận
+  thanh toán (lý do "Hết hàng trước khi thanh toán") phải được hoàn tiền tự động hoặc báo nhân viên hoàn tiền.
 - Màn admin chưa nhắc quà sinh nhật cho gói 6 hộp (SPEC có quyền lợi này).
 - Voucher thưởng cho đánh giá có ảnh (SPEC §8) chưa làm.
 - Email giao dịch chưa có; khách chỉ nhận thông báo trên web.

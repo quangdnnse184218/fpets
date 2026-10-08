@@ -177,7 +177,13 @@ function CurationContent() {
         ERR_OUT_OF_STOCK: "Một món đã hết hàng, vui lòng chọn món khác.",
         ERR_ALREADY_CURATED: "Hộp này đã được duyệt trước đó.",
         ERR_ORDER_NOT_READY: "Đơn của hộp này chưa thanh toán hoặc đã hủy nên chưa tuyển chọn được.",
+        ERR_DUPLICATE_ITEM: "Một món bị chọn hai lần, vui lòng bỏ bớt.",
       };
+      // Món chứa thành phần bé dị ứng: server trả kèm tên món và dị ứng
+      if (rpcError.message.includes("ERR_ALLERGEN")) {
+        setError(`Không duyệt được: ${rpcError.message.split("ERR_ALLERGEN:")[1]?.trim()} chứa thành phần bé dị ứng. Vui lòng đổi món.`);
+        return;
+      }
       const key = Object.keys(map).find((k) => rpcError.message.includes(k));
       setError(key ? map[key] : rpcError.message);
       return;
