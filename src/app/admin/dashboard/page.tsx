@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatDateTime, formatVND } from "@/lib/formatters";
 import { ORDER_STATUS_LABEL, ORDER_STATUS_STYLE, OrderStatus } from "@/lib/orderDisplay";
 import { ADMIN_TASK_ITEMS, useAdminTasks } from "../AdminTasks";
+import GrowthCharts from "./GrowthCharts";
 
 interface DashboardStats {
   revenue_today: number;
@@ -49,6 +50,7 @@ export default function AdminDashboardPage() {
   const [recent, setRecent] = useState<RecentOrder[]>([]);
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -73,6 +75,7 @@ export default function AdminDashboardPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    setRefreshKey((k) => k + 1);
     await Promise.all([load(), refreshTasks()]);
     setRefreshing(false);
   };
@@ -116,6 +119,8 @@ export default function AdminDashboardPage() {
         />
         <Kpi label="Đơn mới hôm nay" value={`${counts.orders_today} đơn`} note={`${counts.orders_in_transit} đơn đang giao`} href="/admin/orders" />
       </div>
+
+      <GrowthCharts refreshKey={refreshKey} />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-5 items-start">
         {/* Việc cần xử lý: cùng nguồn với chuông thông báo */}
