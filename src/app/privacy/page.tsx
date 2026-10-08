@@ -36,7 +36,7 @@ export default function PrivacyPage() {
           items: [
             "FPETS không bán thông tin cá nhân.",
             "Tên, số điện thoại và địa chỉ được chuyển cho đơn vị vận chuyển để giao hàng.",
-            "Thanh toán online do MoMo, VNPay xử lý; FPETS không lưu số thẻ của bạn.",
+            "Thanh toán online là chuyển khoản ngân hàng qua payOS; FPETS không lưu số thẻ hay thông tin tài khoản ngân hàng của bạn.",
           ],
         },
         {

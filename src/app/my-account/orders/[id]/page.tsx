@@ -28,6 +28,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { resizeImageToJpeg } from "@/lib/imageResize";
+import { pointsEarnedFor } from "@/lib/points";
 
 type ItemRating = "like" | "neutral" | "dislike";
 
@@ -39,6 +40,8 @@ export default function OrderDetailPage() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [hasReview, setHasReview] = useState(false);
+  // Điểm đã cộng cho đơn (null: chưa cộng)
+  const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
@@ -47,8 +50,13 @@ export default function OrderDetailPage() {
     const data = await fetchMyOrder(id);
     setOrder(data);
     if (data) {
-      const { count } = await createClient().from("reviews").select("id", { count: "exact", head: true }).eq("order_id", data.id);
+      const supabase = createClient();
+      const [{ count }, { data: earn }] = await Promise.all([
+        supabase.from("reviews").select("id", { count: "exact", head: true }).eq("order_id", data.id),
+        supabase.from("point_transactions").select("points").eq("order_id", data.id).eq("kind", "earn").maybeSingle(),
+      ]);
       setHasReview((count || 0) > 0);
+      setEarnedPoints(earn ? earn.points : null);
     }
     setLoading(false);
   }, [id]);
@@ -102,6 +110,8 @@ export default function OrderDetailPage() {
       return;
     }
     setCancelOpen(false);
+    // Hủy luôn link payOS để không chuyển nhầm tiền vào đơn đã hủy (không chặn nếu lỗi)
+    if (order.payment_method === "payos") fetch("/api/payos/cancel", { method: "POST", body: JSON.stringify({ orderId: order.id }) }).catch(() => undefined);
     show(paidOnline ? "Đã hủy đơn. FPETS sẽ hoàn tiền cho bạn." : "Đã hủy đơn.");
     load();
   };
@@ -232,7 +242,14 @@ export default function OrderDetailPage() {
             {order.discount_amount > 0 && (
               <div className="flex justify-between text-grass-700"><dt>Giảm giá</dt><dd>−{formatVND(order.discount_amount)}</dd></div>
             )}
+            {order.points_used > 0 && (
+              <div className="flex justify-between text-grass-700">
+                <dt>Dùng {order.points_used.toLocaleString("vi-VN")} điểm</dt>
+                <dd>−{formatVND(order.points_discount)}</dd>
+              </div>
+            )}
             <div className="flex justify-between pt-2 border-t border-surface-border font-extrabold text-pine-950"><dt>Tổng cộng</dt><dd>{formatVND(order.total_amount)}</dd></div>
+            <PointsNote order={order} earned={earnedPoints} />
           </dl>
         )}
       </div>
@@ -635,4 +652,15 @@ function ReturnModal({ order, onClose, onDone }: { order: MyOrder; onClose: () =
       </div>
     </Modal>
   );
+}
+
+// Điểm của đơn: đã cộng, hoặc sẽ cộng khi giao (gói định kỳ: khi thanh toán xong)
+function PointsNote({ order, earned }: { order: MyOrder; earned: number | null }) {
+  if (earned !== null) {
+    return <p className="text-xs text-grass-700 font-semibold pt-1">Đơn này đã được cộng {earned.toLocaleString("vi-VN")} điểm.</p>;
+  }
+  const expected = pointsEarnedFor(order.total_amount - order.shipping_fee);
+  if (expected === 0 || order.status === "da_huy" || order.order_type === "subscription_cycle") return null;
+  const when = order.order_type === "subscription_initial" || order.order_type === "subscription_renewal" ? "khi thanh toán xong" : "khi đơn giao thành công";
+  return <p className="text-xs text-bark-600 pt-1">Bạn sẽ được cộng {expected.toLocaleString("vi-VN")} điểm {when}.</p>;
 }

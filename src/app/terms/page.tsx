@@ -1,6 +1,6 @@
 import LegalPage from "@/components/common/LegalPage";
 import { CONTACT_INFO } from "@/lib/contactInfo";
-import { COD_RULE, EXCHANGE_POLICY } from "@/lib/copy";
+import { COD_RULE, EXCHANGE_POLICY, ONLINE_PAYMENT } from "@/lib/copy";
 import { DELIVERY_TIME, SHIPPING_POLICY } from "@/lib/shipping";
 
 export const metadata = {
@@ -27,7 +27,7 @@ export default function TermsPage() {
           title: "Đặt hàng và thanh toán",
           items: [
             "Giá, phí ship và giảm giá được hệ thống tính lại khi tạo đơn; số tiền ở bước thanh toán là số tiền cuối cùng.",
-            `Thanh toán qua MoMo, VNPay; COD chỉ áp dụng cho ${COD_RULE}.`,
+            `Thanh toán bằng ${ONLINE_PAYMENT}; COD chỉ áp dụng cho ${COD_RULE}.`,
             "Đơn thanh toán online chưa hoàn tất sau 30 phút sẽ tự hủy.",
             "Mỗi đơn dùng tối đa 1 voucher; voucher không cộng dồn với giảm giá của gói 3 hoặc 6 hộp.",
           ],

@@ -64,6 +64,8 @@ interface OrderRow {
   subtotal: number;
   shipping_fee: number;
   discount_amount: number;
+  points_used: number;
+  points_discount: number;
   total_amount: number;
   recipient_name: string;
   recipient_phone: string;
@@ -134,7 +136,7 @@ const TODO_SECTIONS: { step: Exclude<NextStep, null>; title: string; hint: strin
 ];
 
 const SELECT =
-  "id, order_code, order_type, cycle_index, status, payment_method, payment_status, subtotal, shipping_fee, discount_amount, total_amount, recipient_name, recipient_phone, shipping_address, ward, province_city, customer_notes, admin_notes, return_reason, return_requested_at, return_resolution, return_admin_note, cancellation_reason, tracking_code, created_at, paid_at, delivered_at, subscriptions(subscription_code), order_items(id, product_name_snapshot, quantity, total_price, pets(name)), box_curations(status, pets(name), box_types(name), box_curation_items(quantity, products(name)))";
+  "id, order_code, order_type, cycle_index, status, payment_method, payment_status, subtotal, shipping_fee, discount_amount, points_used, points_discount, total_amount, recipient_name, recipient_phone, shipping_address, ward, province_city, customer_notes, admin_notes, return_reason, return_requested_at, return_resolution, return_admin_note, cancellation_reason, tracking_code, created_at, paid_at, delivered_at, subscriptions(subscription_code), order_items(id, product_name_snapshot, quantity, total_price, pets(name)), box_curations(status, pets(name), box_types(name), box_curation_items(quantity, products(name)))";
 
 // Ký tự đặc biệt của bộ lọc PostgREST (dấu phẩy, ngoặc, %) bỏ đi để từ khóa không phá câu truy vấn
 const cleanQuery = (q: string) => q.replace(/[,()%*\\]/g, " ").trim();
@@ -657,6 +659,7 @@ function OrderDetail({
                   <dt>Tạm tính</dt><dd className="text-right tabular-nums">{formatVND(order.subtotal)}</dd>
                   <dt>Phí vận chuyển</dt><dd className="text-right tabular-nums">{formatVND(order.shipping_fee)}</dd>
                   {order.discount_amount > 0 && (<><dt>Giảm giá</dt><dd className="text-right tabular-nums">−{formatVND(order.discount_amount)}</dd></>)}
+                  {order.points_used > 0 && (<><dt>Dùng {order.points_used} điểm</dt><dd className="text-right tabular-nums">−{formatVND(order.points_discount)}</dd></>)}
                   <dt className="font-bold text-pine-950">Tổng cộng</dt><dd className="text-right font-extrabold text-pine-950 tabular-nums">{formatVND(order.total_amount)}</dd>
                 </dl>
               </>

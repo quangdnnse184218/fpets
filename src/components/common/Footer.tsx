@@ -8,7 +8,7 @@ import { CONTACT_INFO } from "@/lib/contactInfo";
 import BrandLogo from "@/components/common/BrandLogo";
 import { useApp } from "@/context/AppContext";
 
-const PAYMENT_METHODS = ["MoMo", "VNPay", "COD"];
+const PAYMENT_METHODS = ["VietQR · payOS", "COD"];
 
 export default function Footer() {
   const pathname = usePathname();

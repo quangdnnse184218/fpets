@@ -19,7 +19,11 @@ export const CANCEL_POLICY =
 // COD (SPEC §6): hệ thống nhận COD khi tổng đơn không vượt 2.000.000₫ (checkout_create_order chặn đơn trên mức này)
 export const COD_RULE = "đơn mua 1 lần không quá 2.000.000₫";
 export const COD_MAX_AMOUNT = 2000000;
-export const COD_OVER_LIMIT = "Đơn trên 2.000.000₫ không hỗ trợ thanh toán khi nhận hàng (COD). Vui lòng chọn MoMo hoặc VNPay.";
+export const COD_OVER_LIMIT = "Đơn trên 2.000.000₫ không hỗ trợ thanh toán khi nhận hàng (COD). Vui lòng chọn chuyển khoản VietQR (payOS).";
+
+// Thanh toán (SPEC §6, chốt 08/10/2026): chuyển khoản VietQR qua payOS hoặc COD
+export const ONLINE_PAYMENT = "chuyển khoản ngân hàng bằng mã VietQR (qua payOS)";
+export const PAYMENT_METHODS_SHORT = "Chuyển khoản VietQR (payOS) hoặc COD";
 
 // Pet Quiz (SPEC §3: không cần đăng nhập)
 export const QUIZ_NAME = "Pet Quiz";

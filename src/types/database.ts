@@ -568,6 +568,13 @@ export type Database = {
           payment_expires_at: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           payment_status: Database["public"]["Enums"]["payment_status"]
+          payos_checkout_url: string | null
+          payos_order_code: number | null
+          payos_payment_link_id: string | null
+          payos_qr: Json | null
+          payos_reference: string | null
+          points_discount: number
+          points_used: number
           province_city: string
           recipient_name: string
           recipient_phone: string
@@ -606,6 +613,13 @@ export type Database = {
           payment_expires_at?: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          payos_checkout_url?: string | null
+          payos_order_code?: number | null
+          payos_payment_link_id?: string | null
+          payos_qr?: Json | null
+          payos_reference?: string | null
+          points_discount?: number
+          points_used?: number
           province_city: string
           recipient_name: string
           recipient_phone: string
@@ -644,6 +658,13 @@ export type Database = {
           payment_expires_at?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          payos_checkout_url?: string | null
+          payos_order_code?: number | null
+          payos_payment_link_id?: string | null
+          payos_qr?: Json | null
+          payos_reference?: string | null
+          points_discount?: number
+          points_used?: number
           province_city?: string
           recipient_name?: string
           recipient_phone?: string
@@ -695,6 +716,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      point_transactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          note: string | null
+          order_id: string | null
+          points: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          note?: string | null
+          order_id?: string | null
+          points: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          order_id?: string | null
+          points?: number
+          user_id?: string
+        }
+        Relationships: []
       }
       pet_item_feedback: {
         Row: {
@@ -1261,6 +1315,10 @@ export type Database = {
         Returns: number
       }
       cancel_expired_orders: { Args: never; Returns: number }
+      admin_adjust_points: {
+        Args: { p_note: string; p_points: number; p_user_id: string }
+        Returns: number
+      }
       cancel_my_order: {
         Args: { p_order_id: string; p_reason?: string }
         Returns: Json
@@ -1283,6 +1341,7 @@ export type Database = {
           p_province_city: string
           p_recipient_name: string
           p_recipient_phone: string
+          p_points?: number
           p_shipping_address: string
           p_voucher_code?: string
           p_ward: string
@@ -1290,6 +1349,10 @@ export type Database = {
         Returns: Json
       }
       confirm_cod_order: { Args: { p_order_id: string }; Returns: Json }
+      confirm_payos_payment: {
+        Args: { p_amount: number; p_payos_order_code: number; p_reference: string | null; p_secret: string }
+        Returns: Json
+      }
       confirm_order_payment: {
         Args: { p_order_code: string; p_order_id: string }
         Returns: Json
@@ -1315,6 +1378,12 @@ export type Database = {
         }[]
       }
       mark_order_delivered: { Args: { p_order_id: string }; Returns: Json }
+      my_points: { Args: never; Returns: number }
+      payos_prepare: { Args: { p_order_id: string }; Returns: Json }
+      payos_save_link: {
+        Args: { p_checkout_url: string; p_order_id: string; p_payment_link_id: string; p_qr: Json }
+        Returns: undefined
+      }
       mark_order_refunded: {
         Args: { p_order_id: string; p_note?: string }
         Returns: Json
@@ -1357,6 +1426,7 @@ export type Database = {
         Args: {
           p_payment_method: Database["public"]["Enums"]["payment_method"]
           p_plan_id: string
+          p_points?: number
           p_subscription_id: string
         }
         Returns: Json
@@ -1403,6 +1473,7 @@ export type Database = {
           p_province_city: string
           p_recipient_name: string
           p_recipient_phone: string
+          p_points?: number
           p_shipping_address: string
           p_voucher_code?: string
           p_ward: string
@@ -1435,7 +1506,7 @@ export type Database = {
         | "da_giao"
         | "da_huy"
         | "doi_tra"
-      payment_method: "momo" | "vnpay" | "cod"
+      payment_method: "momo" | "vnpay" | "cod" | "payos"
       payment_status: "pending" | "paid" | "failed" | "refunded"
       pet_age_group: "puppy_kitten" | "adult" | "senior"
       pet_size: "small" | "large"
@@ -1594,7 +1665,7 @@ export const Constants = {
         "da_huy",
         "doi_tra",
       ],
-      payment_method: ["momo", "vnpay", "cod"],
+      payment_method: ["momo", "vnpay", "cod", "payos"],
       payment_status: ["pending", "paid", "failed", "refunded"],
       pet_age_group: ["puppy_kitten", "adult", "senior"],
       pet_size: ["small", "large"],

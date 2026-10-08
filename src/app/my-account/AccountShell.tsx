@@ -3,13 +3,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, LayoutGrid, Lock, LogIn, LogOut, Package, PawPrint, RefreshCw, User } from "lucide-react";
+import { Bell, Coins, LayoutGrid, Lock, LogIn, LogOut, Package, PawPrint, RefreshCw, User } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { createClient } from "@/lib/supabase/client";
 import { ButtonLink } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/Modal";
 
-type TabKey = "overview" | "pets" | "orders" | "subscriptions" | "notifications" | "profile";
+type TabKey = "overview" | "pets" | "orders" | "subscriptions" | "points" | "notifications" | "profile";
 
 // Mỗi mục có tiêu đề và mô tả riêng; khung này hiển thị tiêu đề nên các trang con không lặp lại
 const ACCOUNT_TABS: { key: TabKey; href: string; label: string; title: string; description: string; icon: typeof User }[] = [
@@ -17,6 +17,7 @@ const ACCOUNT_TABS: { key: TabKey; href: string; label: string; title: string; d
   { key: "pets", href: "/my-account/pets", label: "Thú cưng", title: "Thú cưng của tôi", description: "Hồ sơ của bé giúp FPETS chọn đúng món và tránh thành phần bé dị ứng.", icon: PawPrint },
   { key: "orders", href: "/my-account/orders", label: "Đơn hàng", title: "Đơn hàng", description: "Theo dõi trạng thái giao hàng, đánh giá và yêu cầu đổi trả.", icon: Package },
   { key: "subscriptions", href: "/my-account/subscriptions", label: "Gói định kỳ", title: "Gói định kỳ", description: "Lịch giao từng kỳ, tạm dừng, đổi địa chỉ hoặc gia hạn gói.", icon: RefreshCw },
+  { key: "points", href: "/my-account/points", label: "Điểm thưởng", title: "Điểm thưởng", description: "Mua 10.000₫ được 1 điểm, mỗi điểm trừ 1.000₫ ở lần mua sau.", icon: Coins },
   { key: "notifications", href: "/my-account/notifications", label: "Thông báo", title: "Thông báo", description: "Cập nhật về đơn hàng và gói định kỳ của bạn.", icon: Bell },
   { key: "profile", href: "/my-account/profile", label: "Thông tin & địa chỉ", title: "Thông tin & địa chỉ", description: "Thông tin tài khoản, sổ địa chỉ nhận hàng và mật khẩu.", icon: User },
 ];

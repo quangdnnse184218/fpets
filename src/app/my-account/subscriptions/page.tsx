@@ -17,6 +17,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { planUnitPrice } from "@/lib/pricing";
+import { usablePoints, VND_PER_POINT } from "@/lib/points";
 import { DEFAULT_PLANS, capitalize, discountSentence, freeShippingPlans } from "@/lib/planCopy";
 
 type SubStatus = "cho_thanh_toan" | "dang_hoat_dong" | "tam_dung" | "qua_han" | "het_han" | "da_huy";
@@ -575,17 +576,27 @@ function RenewModal({
   onError: (msg: string) => void;
 }) {
   const [planId, setPlanId] = useState(() => (plans.find((p) => p.cycles === 3) || plans[0])?.id || "");
-  const [method, setMethod] = useState<"momo" | "vnpay">("momo");
   const [saving, setSaving] = useState(false);
+  // Dùng điểm khi gia hạn: 1 điểm trừ 1.000₫ tiền gói (server tính lại)
+  const [pointsBalance, setPointsBalance] = useState(0);
+  const [usePoints, setUsePoints] = useState(false);
+  useEffect(() => {
+    createClient().rpc("my_points").then(({ data }) => setPointsBalance(Number(data) || 0));
+  }, []);
+  const selectedPlan = plans.find((p) => p.id === planId);
+  const planTotal = selectedPlan ? planUnitPrice(sub.box_types?.baseprice || 0, selectedPlan.discountPercent) * selectedPlan.cycles : 0;
+  const pointsToUse = usePoints ? usablePoints(pointsBalance, planTotal) : 0;
 
   const submit = async () => {
     if (!planId) return;
     setSaving(true);
-    const { data, error } = await createClient().rpc("renew_subscription", { p_subscription_id: sub.id, p_plan_id: planId, p_payment_method: method });
+    // Gói định kỳ chỉ thanh toán bằng chuyển khoản VietQR (payOS)
+    const { data, error } = await createClient().rpc("renew_subscription", { p_subscription_id: sub.id, p_plan_id: planId, p_payment_method: "payos", p_points: pointsToUse });
     setSaving(false);
     if (error || !data) return onError(error?.message.includes("ERR_RENEW_NOT_ALLOWED") ? "Gói này hiện không thể gia hạn." : error?.message.includes("ERR_ACCOUNT_LOCKED") ? "Tài khoản đang bị tạm khóa. Vui lòng gọi hotline để được hỗ trợ." : "Không tạo được yêu cầu gia hạn, vui lòng thử lại.");
-    const r = data as { order_id: string; order_code: string; total_amount: number };
-    onCreated(`/checkout/pay/${r.order_id}?code=${r.order_code}&amount=${r.total_amount}&method=${method}&sub=1`);
+    const r = data as { order_id: string; order_code: string; total_amount: number; paid?: boolean };
+    // Điểm trả hết tiền gói: gia hạn xong luôn, không cần chuyển khoản
+    onCreated(r.paid ? "/my-account/subscriptions" : `/checkout/pay/${r.order_id}?code=${r.order_code}&amount=${r.total_amount}&method=payos&sub=1`);
   };
 
   return (
@@ -618,15 +629,18 @@ function RenewModal({
             </button>
           );
         })}
-        <div className="grid grid-cols-2 gap-2">
-          {(["momo", "vnpay"] as const).map((m) => (
-            <button key={m} type="button" onClick={() => setMethod(m)} aria-pressed={method === m}
-              className={`min-h-11 rounded-box border text-sm font-bold ${method === m ? "border-pine-900 bg-pine-50" : "border-surface-border"}`}>
-              {method === m ? "✓ " : ""}{m === "momo" ? "Ví MoMo" : "VNPay"}
-            </button>
-          ))}
-        </div>
-        <p className="text-xs text-bark-500">Số tiền cuối cùng (kể cả phí ship) được tính lại ở bước thanh toán.</p>
+        {pointsBalance > 0 && (
+          <label className="flex items-center gap-2 p-3 rounded-box border border-surface-border cursor-pointer text-sm">
+            <input type="checkbox" checked={usePoints} onChange={(e) => setUsePoints(e.target.checked)} className="accent-pine-900" />
+            <span className="flex-1 text-bark-800">
+              Dùng điểm <span className="text-bark-500">(có {pointsBalance.toLocaleString("vi-VN")} điểm)</span>
+            </span>
+            {pointsToUse > 0 && <span className="font-semibold text-grass-700">−{formatVND(pointsToUse * VND_PER_POINT)}</span>}
+          </label>
+        )}
+        <p className="text-xs text-bark-500">
+          Thanh toán bằng chuyển khoản VietQR (payOS). Số tiền cuối cùng (kể cả phí ship) được tính lại ở bước thanh toán.
+        </p>
       </div>
     </Modal>
   );

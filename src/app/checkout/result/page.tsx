@@ -9,6 +9,7 @@ import { CheckCircle2, Package, Home } from "lucide-react";
 
 const PAYMENT_LABEL: Record<string, string> = {
   cod: "Thanh toán khi nhận hàng (COD)",
+  payos: "Chuyển khoản VietQR (payOS)",
   momo: "Ví MoMo",
   vnpay: "VNPay",
 };

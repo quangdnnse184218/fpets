@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Search } from "lucide-react";
 import { DELIVERY_DAYS, SHIPPING_SUMMARY } from "@/lib/shipping";
-import { CANCEL_POLICY, COD_RULE, DISLIKE_POLICY, NO_AUTO_CHARGE, PREMIUM_ITEMS, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
+import { CANCEL_POLICY, COD_RULE, DISLIKE_POLICY, NO_AUTO_CHARGE, ONLINE_PAYMENT, PREMIUM_ITEMS, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
 import { CONTACT_INFO } from "@/lib/contactInfo";
 import { normalizeText } from "@/lib/petOptions";
 import { buttonClass } from "@/components/ui/Button";
@@ -96,7 +96,7 @@ const buildFaq = (plans: PlanLite[]): FaqItem[] => [
   {
     category: "payment",
     question: "FPETS nhận những hình thức thanh toán nào?",
-    answer: `Ví MoMo, VNPay (QR ngân hàng, thẻ ATM, Visa/Mastercard) và thanh toán khi nhận hàng (COD) cho ${COD_RULE}. Gói định kỳ chỉ thanh toán online qua MoMo hoặc VNPay.`,
+    answer: `Hai hình thức: ${ONLINE_PAYMENT} bằng ứng dụng ngân hàng bất kỳ, và thanh toán khi nhận hàng (COD) cho ${COD_RULE}. Gói định kỳ chỉ thanh toán bằng chuyển khoản VietQR.`,
   },
   {
     category: "payment",

@@ -8,7 +8,7 @@ import { formatVND } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/client";
 import { calcShippingFee, formatShippingFee, DELIVERY_DAYS } from "@/lib/shipping";
 import { fetchBoxTypeById, fetchPlanOptions } from "@/lib/catalog";
-import { CreditCard, Truck, ArrowLeft, Banknote, Smartphone } from "lucide-react";
+import { Truck, ArrowLeft, Banknote, QrCode, Coins } from "lucide-react";
 import { BoxType, SubscriptionPlan } from "@/types/models";
 import AddressFields, { AddressValue, SavedAddressRow, emptyAddress, formatAddress, isAddressValid, rowToAddress } from "@/components/common/AddressFields";
 import { DeliverySchedule, SCHEDULE_LABEL, deliveryWindowLabel, recommendedSchedule, secondDeliveryWindow } from "@/lib/deliverySchedule";
@@ -16,6 +16,7 @@ import { formatDate } from "@/lib/formatters";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { planUnitPrice } from "@/lib/pricing";
 import { CANCEL_POLICY, COD_MAX_AMOUNT, COD_OVER_LIMIT, NO_AUTO_CHARGE } from "@/lib/copy";
+import { pointsEarnedFor, usablePoints, VND_PER_POINT } from "@/lib/points";
 
 function CheckoutFormContent() {
   const router = useRouter();
@@ -44,7 +45,17 @@ function CheckoutFormContent() {
     const fromUrl = searchParams.get("schedule");
     return fromUrl === "giua_thang" || fromUrl === "dau_thang" ? fromUrl : recommendedSchedule();
   });
-  const [paymentMethod, setPaymentMethod] = useState<'momo' | 'vnpay' | 'cod'>('momo');
+  // Hai hình thức (chốt 08/10/2026): chuyển khoản VietQR qua payOS, hoặc COD cho đơn mua 1 lần
+  const [paymentMethod, setPaymentMethod] = useState<'payos' | 'cod'>('payos');
+
+  // Tích điểm: 1 điểm trừ 1.000₫ tiền hàng, không giới hạn số điểm mỗi đơn (server tính lại)
+  const [pointsBalance, setPointsBalance] = useState(0);
+  const [usePoints, setUsePoints] = useState(false);
+  const [pointsInput, setPointsInput] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    createClient().rpc("my_points").then(({ data }) => setPointsBalance(Number(data) || 0));
+  }, [isLoggedIn]);
 
   const [subBox, setSubBox] = useState<BoxType | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -156,12 +167,17 @@ function CheckoutFormContent() {
       scope: row.scope,
     });
   };
-  const finalAmount = Math.max(0, itemsAmount + (shippingFee ?? 0) - discount);
+  // Điểm trừ vào tiền hàng còn lại sau voucher (không trừ phí ship)
+  const maxPoints = usablePoints(pointsBalance, itemsAmount - discount);
+  const pointsToUse = usePoints ? Math.min(Math.max(0, pointsInput ?? maxPoints), maxPoints) : 0;
+  const pointsDiscount = pointsToUse * VND_PER_POINT;
+  const finalAmount = Math.max(0, itemsAmount + (shippingFee ?? 0) - discount - pointsDiscount);
+  const pointsToEarn = pointsEarnedFor(finalAmount - (shippingFee ?? 0));
   // COD chỉ nhận đơn không quá 2.000.000₫ (server kiểm tra lại): quá mức thì khóa lựa chọn và nói rõ lý do
   const codAllowed = finalAmount <= COD_MAX_AMOUNT;
   useEffect(() => {
-    if (!codAllowed && paymentMethod === "cod") setPaymentMethod("momo");
-  }, [codAllowed, paymentMethod]);
+    if ((!codAllowed || isSubscription) && paymentMethod === "cod") setPaymentMethod("payos");
+  }, [codAllowed, isSubscription, paymentMethod]);
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,11 +212,17 @@ function CheckoutFormContent() {
           p_shipping_address: addr.street.trim(),
           p_payment_method: paymentMethod,
           p_voucher_code: subVoucherState.applied && subVoucher ? subVoucher.code : undefined,
+          p_points: pointsToUse,
         });
         if (error) throw error;
         await persistAddressQuietly();
-        const result = data as { order_id: string; order_code: string; total_amount: number };
-        router.push(`/checkout/pay/${result.order_id}?code=${result.order_code}&amount=${result.total_amount}&method=${paymentMethod}&sub=1`);
+        const result = data as { order_id: string; order_code: string; total_amount: number; paid?: boolean };
+        // Điểm / voucher trả hết tiền: gói đã kích hoạt, không cần thanh toán
+        router.push(
+          result.paid
+            ? "/my-account/subscriptions"
+            : `/checkout/pay/${result.order_id}?code=${result.order_code}&amount=${result.total_amount}&method=${paymentMethod}&sub=1`
+        );
         return;
       }
 
@@ -223,6 +245,7 @@ function CheckoutFormContent() {
         p_payment_method: paymentMethod,
         p_customer_notes: notes.trim() || undefined,
         p_voucher_code: voucherCode || undefined,
+        p_points: pointsToUse,
       });
 
       if (error) throw error;
@@ -231,8 +254,9 @@ function CheckoutFormContent() {
       setPlaced(true);
       await removeOrderedFromCart(cart.map((c) => c.id));
 
-      if (paymentMethod === "cod") {
-        router.push(`/checkout/result?code=${result.order_code}&method=cod&amount=${result.total_amount}&status=confirmed`);
+      if (paymentMethod === "cod" || result.status === "da_xac_nhan") {
+        // COD, hoặc điểm / voucher đã trả hết tiền: đơn xác nhận ngay
+        router.push(`/checkout/result?code=${result.order_code}&method=${paymentMethod}&amount=${result.total_amount}&status=${paymentMethod === "cod" ? "confirmed" : "paid"}`);
       } else {
         router.push(`/checkout/pay/${result.order_id}?code=${result.order_code}&amount=${result.total_amount}&method=${paymentMethod}`);
       }
@@ -256,6 +280,7 @@ function CheckoutFormContent() {
     if (message.includes("ERR_VOUCHER_SCOPE")) return "Mã voucher không áp dụng cho loại hàng trong đơn này.";
     if (message.includes("ERR_VOUCHER_MIN_ORDER")) return "Đơn chưa đạt giá trị tối thiểu để dùng mã voucher.";
     if (message.includes("ERR_VOUCHER_USER_LIMIT")) return "Bạn đã dùng hết lượt cho mã voucher này.";
+    if (message.includes("ERR_PAYMENT_METHOD_NOT_SUPPORTED")) return "Hình thức thanh toán này không còn hỗ trợ. Vui lòng chọn chuyển khoản VietQR hoặc COD.";
     if (message.includes("ERR_VOUCHER_NOT_STACKABLE")) return "Voucher không dùng chung với ưu đãi của gói 3 và 6 hộp. Chọn gói 1 hộp hoặc bỏ mã.";
     if (message.includes("ERR_VOUCHER_NOT_FIRST_SUBSCRIPTION")) return "Mã này chỉ dành cho lần đăng ký gói đầu tiên.";
     if (message.includes("ERR_VOUCHER_EXHAUSTED")) return "Mã voucher đã hết lượt sử dụng.";
@@ -399,30 +424,18 @@ function CheckoutFormContent() {
             <h2 className="text-sm font-bold text-pine-950 flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-pine-900 text-white flex items-center justify-center text-xs font-bold">3</span>
               <span>Hình thức thanh toán</span>
-              <span className="ml-auto px-2 py-0.5 rounded-tag bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">Chế độ thử nghiệm</span>
             </h2>
 
             <div className="space-y-2.5 text-xs">
-              <label className={`p-3.5 rounded-box border flex items-center justify-between cursor-pointer transition-colors ${paymentMethod === 'momo' ? 'border-pine-900 bg-pine-50/60 ring-1 ring-pine-900/20' : 'border-surface-border hover:bg-surface-muted'}`}>
+              <label className={`p-3.5 rounded-box border flex items-center justify-between cursor-pointer transition-colors ${paymentMethod === 'payos' ? 'border-pine-900 bg-pine-50/60 ring-1 ring-pine-900/20' : 'border-surface-border hover:bg-surface-muted'}`}>
                 <div className="flex items-center gap-3">
-                  <input type="radio" name="payment" value="momo" checked={paymentMethod === 'momo'} onChange={() => setPaymentMethod('momo')} className="accent-pine-900" />
+                  <input type="radio" name="payment" value="payos" checked={paymentMethod === 'payos'} onChange={() => setPaymentMethod('payos')} className="accent-pine-900" />
                   <div>
-                    <span className="font-bold text-pine-950">Ví điện tử MoMo</span>
-                    <p className="text-xs text-bark-500">Quét mã QR bằng ứng dụng MoMo</p>
+                    <span className="font-bold text-pine-950">Chuyển khoản ngân hàng (VietQR)</span>
+                    <p className="text-xs text-bark-500">Quét mã QR bằng app ngân hàng bất kỳ, xác nhận tự động qua payOS</p>
                   </div>
                 </div>
-                <Smartphone className="w-5 h-5 text-bark-600 shrink-0" />
-              </label>
-
-              <label className={`p-3.5 rounded-box border flex items-center justify-between cursor-pointer transition-colors ${paymentMethod === 'vnpay' ? 'border-pine-900 bg-pine-50/60 ring-1 ring-pine-900/20' : 'border-surface-border hover:bg-surface-muted'}`}>
-                <div className="flex items-center gap-3">
-                  <input type="radio" name="payment" value="vnpay" checked={paymentMethod === 'vnpay'} onChange={() => setPaymentMethod('vnpay')} className="accent-pine-900" />
-                  <div>
-                    <span className="font-bold text-pine-950">VNPay QR / Thẻ ATM & Thẻ quốc tế</span>
-                    <p className="text-xs text-bark-500">QR ngân hàng, thẻ ATM, Visa / Mastercard</p>
-                  </div>
-                </div>
-                <CreditCard className="w-5 h-5 text-bark-600 shrink-0" />
+                <QrCode className="w-5 h-5 text-bark-600 shrink-0" />
               </label>
 
               {!isSubscription ? (
@@ -442,7 +455,7 @@ function CheckoutFormContent() {
                 </label>
               ) : (
                 <div className="p-3 rounded-box bg-surface-muted text-xs text-bark-700 leading-relaxed space-y-1">
-                  <p>Gói định kỳ trả trước nên chỉ thanh toán online qua MoMo hoặc VNPay. {NO_AUTO_CHARGE}</p>
+                  <p>Gói định kỳ trả trước nên chỉ thanh toán bằng chuyển khoản VietQR. {NO_AUTO_CHARGE}</p>
                   <p>{CANCEL_POLICY}</p>
                 </div>
               )}
@@ -530,10 +543,49 @@ function CheckoutFormContent() {
                   <span>{voucherFreeShip ? "Miễn phí ship" : `−${formatVND(discount)}`}</span>
                 </div>
               )}
+              {pointsBalance > 0 && (
+                <div className="p-2.5 rounded-box bg-surface-card border border-surface-border space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={usePoints}
+                      onChange={(e) => setUsePoints(e.target.checked)}
+                      disabled={maxPoints === 0}
+                      className="accent-pine-900"
+                    />
+                    <Coins className="w-4 h-4 text-honey-600 shrink-0" />
+                    <span className="flex-1 text-bark-800">
+                      Dùng điểm <span className="text-bark-500">(có {pointsBalance.toLocaleString("vi-VN")} điểm)</span>
+                    </span>
+                    {pointsToUse > 0 && <span className="font-semibold text-grass-700">−{formatVND(pointsDiscount)}</span>}
+                  </label>
+                  {usePoints && maxPoints > 0 && (
+                    <div className="flex items-center gap-2 pl-6">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={maxPoints}
+                        value={pointsInput ?? maxPoints}
+                        onChange={(e) => setPointsInput(e.target.value === "" ? 0 : Math.floor(Number(e.target.value)))}
+                        aria-label="Số điểm muốn dùng"
+                        className="w-24 h-8 px-2 rounded-box border border-surface-border bg-white tabular-nums"
+                      />
+                      <span className="text-bark-500">điểm, tối đa {maxPoints.toLocaleString("vi-VN")} cho đơn này</span>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex justify-between items-baseline pt-3 border-t border-surface-border text-sm font-extrabold text-pine-950">
                 <span>Tổng cộng:</span>
                 <span className="text-2xl font-extrabold font-display text-pine-950">{formatVND(finalAmount)}</span>
               </div>
+              {pointsToEarn > 0 && (
+                <p className="text-bark-600">
+                  Nhận thêm <strong className="text-pine-950">{pointsToEarn.toLocaleString("vi-VN")} điểm</strong>{" "}
+                  {isSubscription ? "khi thanh toán xong" : "khi đơn giao thành công"}.
+                </p>
+              )}
             </div>
 
             <div className="hidden lg:block space-y-2">

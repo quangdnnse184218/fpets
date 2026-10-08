@@ -28,6 +28,8 @@ export interface MyOrder {
   subtotal: number;
   shipping_fee: number;
   discount_amount: number;
+  points_used: number;
+  points_discount: number;
   total_amount: number;
   cycle_index: number | null;
   tracking_code: string | null;
@@ -59,7 +61,7 @@ export interface MyOrder {
   } | null;
 }
 
-const ORDER_SELECT = `id, order_code, order_type, status, payment_method, payment_status, subtotal, shipping_fee, discount_amount, total_amount,
+const ORDER_SELECT = `id, order_code, order_type, status, payment_method, payment_status, subtotal, shipping_fee, discount_amount, points_used, points_discount, total_amount,
   cycle_index, tracking_code, created_at, updated_at, paid_at, cancelled_at, cancellation_reason, return_requested_at, return_reason, delivered_at, return_resolution, return_resolved_at, return_admin_note,
   payment_expires_at, recipient_name, recipient_phone, shipping_address, province_city, ward, customer_notes,
   order_items(id, product_id, product_name_snapshot, quantity, unit_price, total_price, box_type_id, pets(name), products(slug, images), box_types(name, images)),

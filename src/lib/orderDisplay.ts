@@ -45,7 +45,8 @@ export const ORDER_TYPE_LABEL: Record<string, string> = {
   subscription_cycle: "Hộp theo gói định kỳ",
 };
 
-const METHOD_LABEL: Record<string, string> = { momo: "MoMo", vnpay: "VNPay", cod: "COD" };
+// payOS: chuyển khoản ngân hàng bằng mã VietQR. MoMo/VNPay chỉ còn ở đơn cũ.
+const METHOD_LABEL: Record<string, string> = { payos: "chuyển khoản VietQR (payOS)", momo: "MoMo", vnpay: "VNPay", cod: "COD" };
 
 export function paymentText(method: string, paymentStatus: string, orderType: string): string {
   if (orderType === "subscription_cycle") return "Đã trả trước theo gói";

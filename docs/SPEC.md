@@ -214,17 +214,16 @@ Tên trạng thái: Chờ thanh toán, Đang hoạt động, Tạm dừng, Quá 
 
 ## 6. Thanh toán và giao hàng
 
-Dùng MoMo và VNPay cho thanh toán online, COD cho đơn mua 1 lần; giao toàn quốc qua một đơn vị vận chuyển có API (đề xuất GHN).
+Hai hình thức (chốt 08/10/2026): chuyển khoản ngân hàng bằng mã VietQR qua payOS, và COD cho đơn mua 1 lần; giao toàn quốc qua một đơn vị vận chuyển có API (đề xuất GHN).
 
 **Thanh toán**
 
 | Phương thức | Mua 1 lần | Gói định kỳ | Ghi chú |
 | --- | --- | --- | --- |
-| Ví MoMo | Có | Có |  |
-| VNPay (QR ngân hàng, thẻ ATM, Visa/Master) | Có | Có |  |
+| Chuyển khoản VietQR (payOS) | Có | Có | payOS báo về khi tiền vào, đơn xác nhận tự động |
 | COD | Có, đơn không quá 2.000.000₫ | Không | Admin gọi xác nhận đơn COD đầu tiên của khách |
 
-Giai đoạn làm web chạy trên môi trường sandbox; khách cần tài khoản merchant MoMo/VNPay trước khi mở bán thật.
+Trang thanh toán tự hiện mã VietQR của payOS, đơn xác nhận tự động khi tiền về (chi tiết kỹ thuật ở docs/payos/README.md).
 
 **Giao hàng**
 
@@ -266,6 +265,14 @@ Review vừa để khách mới tin, vừa là dữ liệu để chọn hộp sa
 - Điều kiện: đơn tối thiểu, số lượt dùng (tổng và mỗi khách), thời hạn, phạm vi (hàng lẻ / box / gói định kỳ lần đầu).
 - Mặc định có sẵn: mã chào mừng giảm 10% cho đơn đầu tiên.
 - Mỗi đơn dùng 1 voucher; voucher không cộng dồn với giảm giá của gói 3/6.
+
+**Tích điểm** (chốt 08/10/2026)
+
+- Mua 10.000₫ được 1 điểm, tính trên tiền hàng khách thật trả (tổng đơn trừ phí ship, sau voucher và điểm).
+- Cộng điểm khi đơn giao thành công; gói định kỳ cộng khi thanh toán gói / gia hạn xong.
+- 1 điểm trừ 1.000₫ vào tiền hàng khi thanh toán (không trừ phí ship), không giới hạn số điểm mỗi đơn, dùng chung với voucher. Dùng được cho đơn mua 1 lần, đăng ký gói và gia hạn.
+- Đơn bị hủy thì điểm đã dùng được trả lại; đơn đổi / trả được hoàn tiền thì thu lại điểm đã cộng.
+- Điểm không hết hạn. Admin cộng / trừ điểm tay ở trang Khách hàng (bắt buộc ghi lý do, khách nhận thông báo).
 
 **Thông báo**
 

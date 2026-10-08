@@ -34,17 +34,25 @@ export default function AdminCustomersPage() {
   const [busy, setBusy] = useState(false);
   const [locking, setLocking] = useState<ProfileRow | null>(null);
   const [roleChange, setRoleChange] = useState<ProfileRow | null>(null);
+  const [pointsByUser, setPointsByUser] = useState<Map<string, number>>(new Map());
+  const [adjustPoints, setAdjustPoints] = useState("");
+  const [adjustNote, setAdjustNote] = useState("");
   const { show } = useToast();
 
   const loadData = useCallback(async () => {
     setLoading(true);
     const supabase = createClient();
-    const [{ data: p }, { data: pe }, { data: o }, { data: s }] = await Promise.all([
+    const [{ data: p }, { data: pe }, { data: o }, { data: s }, { data: pts }] = await Promise.all([
       supabase.from("profiles").select("id, full_name, email, phone, is_active, role, created_at").in("role", ["customer", "staff"]).order("created_at", { ascending: false }),
       supabase.from("pets").select("id, user_id, name, species, breed"),
       supabase.from("orders").select("user_id, total_amount, payment_status").not("user_id", "is", null),
       supabase.from("subscriptions").select("user_id, status, subscription_code"),
+      supabase.from("point_transactions").select("user_id, points"),
     ]);
+    // Số dư điểm = tổng sổ điểm của từng khách
+    const balances = new Map<string, number>();
+    ((pts as { user_id: string; points: number }[]) || []).forEach((t) => balances.set(t.user_id, (balances.get(t.user_id) || 0) + t.points));
+    setPointsByUser(balances);
     setProfiles((p as ProfileRow[]) || []);
     setPets((pe as unknown as PetRow[]) || []);
     setOrders((o as unknown as OrderAgg[]) || []);
@@ -98,6 +106,22 @@ export default function AdminCustomersPage() {
     if (error) return show("Không đổi được vai trò tài khoản.", { tone: "error" });
     show(next === "staff" ? `${person.email} đã là nhân viên vận hành.` : `${person.email} đã trở lại là khách hàng.`);
     setRoleChange(null);
+    loadData();
+  };
+
+  // Admin cộng / trừ điểm tay (bồi thường, sửa sai), bắt buộc ghi lý do; khách nhận thông báo
+  const submitAdjustPoints = async (person: ProfileRow) => {
+    const pts = Math.trunc(Number(adjustPoints));
+    if (!pts || !adjustNote.trim()) return show("Nhập số điểm (âm để trừ) và lý do.", { tone: "error" });
+    setBusy(true);
+    const { error } = await createClient().rpc("admin_adjust_points", { p_user_id: person.id, p_points: pts, p_note: adjustNote.trim() });
+    setBusy(false);
+    if (error) {
+      return show(error.message.includes("ERR_POINTS_NEGATIVE") ? "Khách không đủ điểm để trừ." : "Không điều chỉnh được điểm.", { tone: "error" });
+    }
+    show(`Đã ${pts > 0 ? "cộng" : "trừ"} ${Math.abs(pts)} điểm cho ${person.email}.`);
+    setAdjustPoints("");
+    setAdjustNote("");
     loadData();
   };
 
@@ -378,6 +402,34 @@ export default function AdminCustomersPage() {
                 <span className="font-bold text-grass-700 block">
                   {formatVND((orderStatsByUser.get(selectedCustomer.id) || { total: 0 }).total)} ({(orderStatsByUser.get(selectedCustomer.id) || { count: 0 }).count} đơn)
                 </span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-box border border-surface-border space-y-2">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[11px] text-bark-500">Điểm thưởng</span>
+                <span className="font-extrabold text-pine-950 tabular-nums">{(pointsByUser.get(selectedCustomer.id) || 0).toLocaleString("vi-VN")} điểm</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  type="number"
+                  value={adjustPoints}
+                  onChange={(e) => setAdjustPoints(e.target.value)}
+                  placeholder="+50 hoặc -20"
+                  aria-label="Số điểm cộng hoặc trừ"
+                  className="w-28 h-9 px-2 rounded-box border border-surface-border tabular-nums"
+                />
+                <input
+                  value={adjustNote}
+                  onChange={(e) => setAdjustNote(e.target.value)}
+                  placeholder="Lý do (gửi cho khách)"
+                  aria-label="Lý do điều chỉnh điểm"
+                  className="flex-1 min-w-[10rem] h-9 px-2 rounded-box border border-surface-border"
+                />
+                <button type="button" onClick={() => submitAdjustPoints(selectedCustomer)} disabled={busy}
+                  className="h-9 px-3 rounded-box border border-surface-border font-semibold text-pine-900 hover:bg-surface-muted disabled:opacity-60">
+                  Điều chỉnh
+                </button>
               </div>
             </div>
 
