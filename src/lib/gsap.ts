@@ -8,7 +8,8 @@ import { useGSAP } from "@gsap/react";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
-// Người dùng bật "giảm chuyển động" trong hệ điều hành thì không chạy hiệu ứng nào
-export const MOTION_OK = "(prefers-reduced-motion: no-preference)";
+// Hiệu ứng luôn chạy, kể cả khi hệ điều hành bật "giảm chuyển động" (chủ dự án chọn 08/10/2026).
+// Muốn tôn trọng lại cài đặt đó: đổi thành "(prefers-reduced-motion: no-preference)" và bọc CSS trong globals.css tương ứng.
+export const MOTION_OK = "all";
 
 export { gsap, ScrollTrigger, useGSAP };

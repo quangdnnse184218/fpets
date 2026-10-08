@@ -95,8 +95,8 @@ html {
 }
 
 /* Trang chủ: hiệu ứng vào trang của hero chạy bằng CSS ngay từ khung hình đầu (không chờ JavaScript nên không nháy).
-   Hiệu ứng khi cuộn dùng GSAP (src/components/motion). Người bật "giảm chuyển động" không thấy hiệu ứng nào. */
-@media (prefers-reduced-motion: no-preference) {
+   Hiệu ứng khi cuộn dùng GSAP (src/components/motion). Luôn chạy, không phụ thuộc cài đặt "giảm chuyển động". */
+@media all {
   @keyframes heroRise {
     from {
       opacity: 0;

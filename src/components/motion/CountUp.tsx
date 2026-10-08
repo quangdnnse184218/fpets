@@ -3,7 +3,7 @@
 import React, { useRef } from "react";
 import { gsap, MOTION_OK, useGSAP } from "@/lib/gsap";
 
-// Số đếm tăng dần từ 0 khi cuộn tới. Không có JavaScript hoặc giảm chuyển động thì hiện ngay số thật.
+// Số đếm tăng dần từ 0 khi cuộn tới. Không có JavaScript thì hiện ngay số thật.
 export default function CountUp({ value, decimals = 0, className }: { value: number; decimals?: number; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const format = (v: number) => v.toLocaleString("vi-VN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });

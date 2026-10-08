@@ -5,7 +5,7 @@ import { gsap, MOTION_OK, ScrollTrigger, useGSAP } from "@/lib/gsap";
 
 // Hiện dần khi cuộn tới. Các phần tử con có data-reveal hiện lần lượt (so le); không có thì cả khối hiện một lần.
 // Phần tử có data-pop bên trong mỗi mục "bật" nhẹ sau khi mục đó hiện (ví dụ ô số thứ tự bước).
-// Chỉ chạy một lần, không lặp lại khi cuộn ngược. Tắt hoàn toàn khi người dùng bật giảm chuyển động.
+// Chỉ chạy một lần, không lặp lại khi cuộn ngược.
 export default function Reveal({
   children,
   className,
