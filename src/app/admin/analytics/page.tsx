@@ -53,8 +53,8 @@ export default function AdminAnalyticsPage() {
     const yearStart = new Date(`${year}-01-01T00:00:00+07:00`).toISOString();
 
     const [{ data: paid }, { data: retailItems }, { data: boxItems }, { data: subs }] = await Promise.all([
-      // Doanh thu = tiền đã thu, tính theo lúc thu tiền (đơn đã hoàn tiền không tính)
-      supabase.from("orders").select("total_amount, paid_at, created_at").eq("payment_status", "paid").gte("created_at", yearStart).limit(10000),
+      // Doanh thu = tiền đã thu, tính theo lúc thu tiền (đơn đã hoàn tiền, đơn đã hủy đang chờ hoàn tiền không tính)
+      supabase.from("orders").select("total_amount, paid_at, created_at").eq("payment_status", "paid").neq("status", "da_huy").gte("created_at", yearStart).limit(10000),
       // Bán lẻ: chỉ đơn đã xác nhận trở đi, bỏ đơn hủy / chưa thanh toán
       supabase
         .from("order_items")

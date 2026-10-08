@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 
 // Số liệu tăng trưởng cho trang Tổng quan (admin): doanh thu và khách hàng mới theo ngày / tháng, giờ Việt Nam.
-// Doanh thu = tiền đã thu (payment_status = paid), tính theo lúc thu tiền; đơn đã hoàn tiền không tính
+// Doanh thu = tiền đã thu (payment_status = paid), tính theo lúc thu tiền; đơn đã hoàn tiền và đơn đã hủy không tính
 // (cùng định nghĩa với trang Báo cáo). Khách mới = tài khoản vai trò khách hàng, theo ngày tạo.
 
 export type GrowthRange = "7d" | "30d" | "12m";
@@ -95,6 +95,8 @@ export async function fetchGrowth(range: GrowthRange): Promise<GrowthData> {
         .from("orders")
         .select("total_amount, paid_at, created_at")
         .eq("payment_status", "paid")
+        // Đơn đã hủy mà khách đã trả (đang chờ hoàn tiền) không phải doanh thu
+        .neq("status", "da_huy")
         .or(`paid_at.gte.${since},and(paid_at.is.null,created_at.gte.${since})`)
         .order("id")
         .range(from, to)
