@@ -73,6 +73,11 @@ export function returnDaysLeft(status: OrderStatus, deliveredAt: string | null, 
   return Math.max(0, Math.ceil((deadline - Date.now()) / 86400000));
 }
 
+// SPEC §8: chỉ đơn "Đã giao" mới được đánh giá, trong vòng 30 ngày kể từ lúc giao (khớp policy reviews_own_insert)
+export const REVIEW_WINDOW_DAYS = 30;
+export const reviewDaysLeft = (status: OrderStatus, deliveredAt: string | null) =>
+  returnDaysLeft(status, deliveredAt, false, REVIEW_WINDOW_DAYS);
+
 // Tên dòng hàng Box đã gồm "(Dành cho bé X)"; bỏ đi để hiện 1 chip tên bé riêng
 export const RETURN_RESOLUTION_LABEL: Record<"exchanged" | "refunded" | "rejected", string> = {
   exchanged: "Đổi món",

@@ -97,14 +97,14 @@ export default function OrderTrackingPage() {
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 sm:items-end">
           <div>
             <label htmlFor="track-code" className="text-xs font-bold text-bark-800 block mb-1">Mã đơn hàng</label>
-            <input id="track-code" type="text" value={orderCode} onChange={(e) => setOrderCode(e.target.value)} placeholder="FPET-20261003-1234" autoComplete="off" className={`${input} font-mono uppercase placeholder:normal-case placeholder:font-sans`} />
+            <input id="track-code" type="text" value={orderCode} onChange={(e) => setOrderCode(e.target.value)} placeholder="FPET-20261008-7KQ4XM" autoComplete="off" className={`${input} font-mono uppercase placeholder:normal-case placeholder:font-sans`} />
           </div>
           <Button type="submit" loading={loading} loadingText="Đang tìm…">
             <Search className="w-4 h-4" /> Tra cứu
           </Button>
         </div>
         {error && <p role="alert" className="text-sm font-semibold text-red-700">{error}</p>}
-        <p className="text-xs text-bark-500">Mã đơn có dạng FPET-ngày-4 số, nằm trên trang xác nhận sau khi đặt hàng.</p>
+        <p className="text-xs text-bark-500">Mã đơn có dạng FPET-ngày-mã (ví dụ FPET-20261008-7KQ4XM), nằm trên trang xác nhận sau khi đặt hàng.</p>
       </form>
 
       {searched && !loading && order && (

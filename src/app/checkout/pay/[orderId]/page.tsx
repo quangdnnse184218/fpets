@@ -22,7 +22,7 @@ function PaySimulationContent() {
   const method = searchParams.get("method") || "momo";
   const isSubscription = searchParams.get("sub") === "1";
 
-  const [status, setStatus] = useState<"idle" | "processing" | "failed" | "expired" | "out_of_stock">("idle");
+  const [status, setStatus] = useState<"idle" | "processing" | "failed" | "expired" | "out_of_stock" | "subscription_ended">("idle");
   const [soldOutItem, setSoldOutItem] = useState("");
 
   const handleConfirmPayment = async () => {
@@ -50,6 +50,11 @@ function PaySimulationContent() {
     if (result?.reason === "out_of_stock") {
       setSoldOutItem(result.product || "");
       setStatus("out_of_stock");
+      return;
+    }
+    // Gia hạn khi gói đã hết hạn / bị hủy trong lúc chờ thanh toán: server hủy đơn gia hạn, không nhận tiền
+    if (result?.reason === "subscription_ended") {
+      setStatus("subscription_ended");
       return;
     }
     if (result?.status === "da_huy") {
@@ -113,10 +118,17 @@ function PaySimulationContent() {
           </div>
         )}
 
+        {status === "subscription_ended" && (
+          <div role="alert" className="p-3 rounded-box bg-red-50 border border-red-200 text-xs text-red-700 font-semibold space-y-2">
+            <p>Gói đã kết thúc trước khi bạn thanh toán gia hạn nên yêu cầu gia hạn đã được hủy, bạn không bị trừ tiền. Bạn có thể đăng ký gói mới cho bé.</p>
+            <Link href="/subscription" className="inline-block font-bold underline underline-offset-2">Đăng ký gói mới</Link>
+          </div>
+        )}
+
         <button
           type="button"
           onClick={handleConfirmPayment}
-          disabled={status === "processing" || status === "expired" || status === "out_of_stock"}
+          disabled={status === "processing" || status === "expired" || status === "out_of_stock" || status === "subscription_ended"}
           className="w-full py-3.5 rounded-box bg-pine-900 hover:bg-pine-800 text-white font-bold text-sm shadow-sm transition-colors disabled:opacity-60"
         >
           {status === "processing" ? "Đang xác nhận..." : "Tôi đã thanh toán"}

@@ -16,6 +16,8 @@ import {
   paymentText,
   returnDaysLeft,
   returnWindowDays,
+  reviewDaysLeft,
+  REVIEW_WINDOW_DAYS,
   RETURN_RESOLUTION_LABEL,
   timelineIndex,
 } from "@/lib/orderDisplay";
@@ -74,6 +76,7 @@ export default function OrderDetailPage() {
   const hasRetailItems = order.order_items.some((it) => !it.box_type_id);
   const daysLeft = returnDaysLeft(order.status, order.delivered_at || order.updated_at, !!order.return_requested_at, returnWindowDays(hasRetailItems));
   const isBoxOrder = order.order_type === "mystery_box" || isCycle;
+  const reviewLeft = reviewDaysLeft(order.status, order.delivered_at || order.updated_at);
   const pendingPayment = order.status === "cho_thanh_toan" && order.payment_expires_at && new Date(order.payment_expires_at) > new Date();
 
   // SPEC §7: khách hủy được khi đơn còn "Chờ thanh toán" hoặc "Đã xác nhận" (chưa đóng gói).
@@ -240,10 +243,15 @@ export default function OrderDetailPage() {
             <p className="flex items-center gap-1.5 min-h-11 text-xs text-grass-800 font-semibold">
               <Star className="w-4 h-4 fill-honey-500 text-honey-500" /> Bạn đã đánh giá đơn này. Cảm ơn bạn!
             </p>
-          ) : (
+          ) : reviewLeft > 0 ? (
             <Button onClick={() => setReviewOpen(true)}>
               <Star className="w-4 h-4" /> {isBoxOrder ? "Đánh giá hộp" : "Đánh giá sản phẩm"}
+              {reviewLeft <= 7 && <span className="font-normal">(còn {reviewLeft} ngày)</span>}
             </Button>
+          ) : (
+            <p className="flex items-center min-h-11 text-xs text-bark-500">
+              Đã quá {REVIEW_WINDOW_DAYS} ngày kể từ khi giao nên đơn này không còn nhận đánh giá.
+            </p>
           )}
           {daysLeft > 0 && (
             <Button variant="secondary" onClick={() => setReturnOpen(true)}>
