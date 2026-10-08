@@ -24,6 +24,7 @@ import {
   Menu,
   X,
   ChevronDown,
+  Coins,
 } from "lucide-react";
 import BrandLogo from "@/components/common/BrandLogo";
 import { AdminNotificationBell, AdminTasksProvider, AdminTaskCounts, useAdminTasks } from "./AdminTasks";
@@ -69,6 +70,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/admin/pets", label: "Hồ sơ thú cưng", icon: PawPrint },
       { href: "/admin/reviews", label: "Đánh giá & góp ý", icon: Star, badge: ["feedback_new", "reviews_unreplied"] },
       { href: "/admin/vouchers", label: "Voucher", icon: Tag },
+      { href: "/admin/points", label: "Điểm thưởng", icon: Coins },
     ],
   },
   {
