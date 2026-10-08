@@ -59,7 +59,7 @@ export default function BrandLogo({
 
   if (href) {
     return (
-      <Link href={href} className="group inline-flex items-center focus:outline-hidden">
+      <Link href={href} className="group inline-flex items-center rounded-box focus:outline-none focus-visible:outline-none focus-visible:opacity-75">
         {content}
       </Link>
     );
