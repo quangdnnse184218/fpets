@@ -100,6 +100,15 @@ function CheckoutFormContent() {
     });
   };
 
+  // Gọi sau khi đơn đã tạo: lưu sổ địa chỉ lỗi thì bỏ qua, không báo nhầm là đặt hàng thất bại
+  const persistAddressQuietly = async () => {
+    try {
+      await persistAddress();
+    } catch (err) {
+      console.warn("Không lưu được địa chỉ vào sổ:", err);
+    }
+  };
+
   const selectedPlan = plans.find((p) => p.id === planId);
   const subPet = pets.find((p) => p.id === petId);
 
@@ -189,7 +198,7 @@ function CheckoutFormContent() {
           p_voucher_code: subVoucherState.applied && subVoucher ? subVoucher.code : undefined,
         });
         if (error) throw error;
-        await persistAddress();
+        await persistAddressQuietly();
         const result = data as { order_id: string; order_code: string; total_amount: number };
         router.push(`/checkout/pay/${result.order_id}?code=${result.order_code}&amount=${result.total_amount}&method=${paymentMethod}&sub=1`);
         return;
@@ -217,7 +226,7 @@ function CheckoutFormContent() {
       });
 
       if (error) throw error;
-      await persistAddress();
+      await persistAddressQuietly();
       const result = data as { order_id: string; order_code: string; status: string; total_amount: number };
       setPlaced(true);
       await removeOrderedFromCart(cart.map((c) => c.id));

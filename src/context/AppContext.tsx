@@ -59,6 +59,7 @@ interface AppContextType {
   // Trả về mã dòng giỏ hàng vừa thêm (hoặc dòng đã có sẵn) để trang gọi có thể tick chọn nó
   addToCart: (item: Omit<CartItem, "id">) => Promise<string | undefined>;
   updateQuantity: (id: string, delta: number) => Promise<void>;
+  // Báo lỗi (throw) nếu server không nhận, giỏ trên màn hình được trả về như cũ
   updatePetForBox: (cartItemId: string, petId: string, petName: string) => Promise<void>;
   removeFromCart: (id: string) => Promise<void>;
   // Các món khách tick để thanh toán (như giỏ Shopee): mọi số tiền bên dưới chỉ tính trên các món này
@@ -558,6 +559,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (item.type === "retail" && item.productId) {
       const maxQty = Math.min(10, item.product?.stock ?? 10);
+      // Hết hàng: không thêm (giỏ không nhận dòng số lượng 0)
+      if (maxQty < 1) return undefined;
       const { data: existingRow } = await supabase
         .from("cart_items")
         .select("id, quantity")
@@ -621,9 +624,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePetForBox = async (cartItemId: string, petId: string, petName: string) => {
+    const before = cart.find((c) => c.id === cartItemId);
     setCart((prev) => prev.map((c) => (c.id === cartItemId ? { ...c, petId, petName } : c)));
-    if (isLoggedIn) {
-      await createClient().from("cart_items").update({ pet_id: petId }).eq("id", cartItemId);
+    if (!isLoggedIn) return;
+    const { error } = await createClient().from("cart_items").update({ pet_id: petId }).eq("id", cartItemId);
+    if (error) {
+      // Server không nhận (ví dụ bé đã có cùng loại hộp trong giỏ): trả giỏ về như cũ
+      if (before) setCart((prev) => prev.map((c) => (c.id === cartItemId ? before : c)));
+      throw error;
     }
   };
 

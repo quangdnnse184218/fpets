@@ -245,7 +245,10 @@ export default function CartPage() {
                               value={item.petId || ""}
                               onChange={(e) => {
                                 const newPet = pets.find((p) => p.id === e.target.value);
-                                if (newPet) updatePetForBox(item.id, newPet.id, newPet.name);
+                                if (!newPet) return;
+                                updatePetForBox(item.id, newPet.id, newPet.name).catch(() =>
+                                  show(`Không đổi được sang bé ${newPet.name}. Bé có thể đã có hộp cùng loại trong giỏ.`, { tone: "error" })
+                                );
                               }}
                               className="min-h-9 text-xs font-medium px-2 rounded-box border border-surface-border bg-white text-pine-950"
                             >
