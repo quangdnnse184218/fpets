@@ -137,10 +137,10 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-surface-muted flex flex-col md:flex-row antialiased">
       {/* Sidebar desktop */}
-      <aside className="hidden md:flex md:w-60 bg-pine-950 text-pine-100 px-3 py-4 flex-col border-r border-pine-900 shrink-0 md:sticky md:top-0 md:h-screen md:overflow-y-auto">
-        <div className="px-2 pb-4 mb-2 border-b border-pine-900/80">
-          <BrandLogo variant="dark" size="sm" showText={true} href={home} />
-          <p className="text-[11px] text-pine-400 mt-1">{user.role === "staff" ? "Vận hành cửa hàng" : "Quản trị cửa hàng"}</p>
+      <aside className="hidden md:flex md:w-60 bg-surface-card text-bark-800 px-3 py-4 flex-col border-r border-surface-border shrink-0 md:sticky md:top-0 md:h-screen md:overflow-y-auto">
+        <div className="px-2 pb-4 mb-2 border-b border-surface-border">
+          <BrandLogo size="sm" showText={true} href={home} />
+          <p className="text-[11px] text-bark-500 mt-1">{user.role === "staff" ? "Vận hành cửa hàng" : "Quản trị cửa hàng"}</p>
         </div>
         <AdminNav pathname={pathname} role={user.role} />
       </aside>
@@ -151,16 +151,16 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
       )}
       <aside
         aria-label="Menu quản trị"
-        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-pine-950 text-pine-100 px-3 py-4 flex flex-col shadow-2xl transition-transform duration-200 ease-in-out md:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-surface-card text-bark-800 px-3 py-4 flex flex-col shadow-2xl transition-transform duration-200 ease-in-out md:hidden ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
         }`}
       >
-        <div className="px-2 pb-3 mb-2 border-b border-pine-900/80 flex items-center justify-between">
-          <BrandLogo variant="dark" size="sm" showText={true} href={home} />
+        <div className="px-2 pb-3 mb-2 border-b border-surface-border flex items-center justify-between">
+          <BrandLogo size="sm" showText={true} href={home} />
           <button
             type="button"
             onClick={() => setMobileMenuOpen(false)}
-            className="p-2 rounded-lg text-pine-400 hover:text-white hover:bg-pine-900/80 transition-colors"
+            className="p-2 rounded-lg text-bark-500 hover:text-pine-950 hover:bg-surface-muted transition-colors"
             aria-label="Đóng menu"
           >
             <X className="w-5 h-5" />
@@ -169,23 +169,23 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
         <div className="flex-1 overflow-y-auto">
           <AdminNav pathname={pathname} role={user.role} />
         </div>
-        <div className="pt-3 mt-2 border-t border-pine-900/80 space-y-1 text-xs">
+        <div className="pt-3 mt-2 border-t border-surface-border space-y-1 text-xs">
           <a
             href="/"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-box text-pine-200 hover:text-white hover:bg-pine-900/70"
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-box text-bark-700 hover:text-pine-950 hover:bg-surface-muted"
           >
-            <Store className="w-4 h-4 text-pine-400" />
+            <Store className="w-4 h-4 text-bark-500" />
             <span className="flex-1">Xem cửa hàng</span>
             <ExternalLink className="w-3.5 h-3.5 text-pine-500" />
           </a>
           <button
             type="button"
             onClick={handleLogoutAdmin}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-box text-pine-200 hover:text-white hover:bg-pine-900/70 text-left"
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-box text-bark-700 hover:text-pine-950 hover:bg-surface-muted text-left"
           >
-            <LogOut className="w-4 h-4 text-pine-400" />
+            <LogOut className="w-4 h-4 text-bark-500" />
             <span>Đăng xuất</span>
           </button>
         </div>
@@ -283,7 +283,7 @@ function AdminNav({ pathname, role }: { pathname: string; role: string }) {
       {sections.map((section, i) => (
         <div key={section.title || i} className="space-y-0.5">
           {section.title && (
-            <p className="px-3 pb-1 text-[10px] font-semibold text-pine-400/80 uppercase tracking-wider">{section.title}</p>
+            <p className="px-3 pb-1 text-[10px] font-semibold text-bark-500 uppercase tracking-wider">{section.title}</p>
           )}
           {section.items.map((item) => {
             const Icon = item.icon;
@@ -295,10 +295,10 @@ function AdminNav({ pathname, role }: { pathname: string; role: string }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-box font-medium transition-colors ${
-                  active ? "bg-pine-800 text-white font-semibold" : "text-pine-300 hover:text-white hover:bg-pine-900/70"
+                  active ? "bg-honey-100 text-pine-950 font-semibold" : "text-bark-700 hover:text-pine-950 hover:bg-surface-muted"
                 }`}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${active ? "text-honey-400" : "text-pine-400"}`} />
+                <Icon className={`w-4 h-4 shrink-0 ${active ? "text-honey-700" : "text-bark-500"}`} />
                 <span className="flex-1 truncate">{item.label}</span>
                 {badge > 0 && (
                   <span className="min-w-5 h-5 px-1.5 rounded-full bg-honey-500 text-pine-950 text-[10px] font-extrabold flex items-center justify-center shrink-0">
