@@ -165,7 +165,7 @@ export default function SubscriptionIntroPage() {
               const unit = basePrice !== null ? planUnitPrice(basePrice, plan.discountPercent) : null;
               const perks: [boolean, string][] = [
                 [true, plan.cycles === 1 ? "Nhận 1 hộp" : `Mỗi tháng 1 hộp, trong ${plan.cycles} tháng`],
-                [plan.freeShipping, plan.freeShipping ? "Miễn phí vận chuyển mọi hộp" : `Phí ship ${formatVND(SHIPPING_CONFIG.hcmFee)} – ${formatVND(SHIPPING_CONFIG.otherFee)}`],
+                [plan.freeShipping, plan.freeShipping ? "Miễn phí vận chuyển mọi hộp" : `Phí ship ${formatVND(SHIPPING_CONFIG.localFee)} – ${formatVND(SHIPPING_CONFIG.otherFee)}`],
                 [true, "Tạm dừng hoặc đổi đợt giao trước ngày chốt"],
                 [plan.birthdayGift, plan.birthdayGift ? "Quà sinh nhật cho bé" : "Không kèm quà sinh nhật"],
               ];

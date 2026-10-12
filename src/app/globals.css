@@ -259,3 +259,11 @@ html.dark :is(.text-grass-600, .text-grass-700, .text-grass-800, .text-grass-900
 html.dark :is(.border-red-200, .border-red-300) { border-color: rgb(248 113 113 / 0.4); }
 html.dark .border-amber-200 { border-color: rgb(251 191 36 / 0.35); }
 html.dark .border-grass-200 { border-color: rgb(74 222 128 / 0.35); }
+
+/* Nền nhạt có độ trong (thẻ loài "Chó", ô ảnh sản phẩm...): Tailwind tạo lớp riêng nên cần đổi riêng */
+html.dark .bg-amber-50\/80 { background-color: rgb(120 53 15 / 0.4); }
+html.dark .bg-red-100\/70 { background-color: rgb(127 29 29 / 0.45); }
+html.dark .border-amber-200\/90 { border-color: rgb(251 191 36 / 0.35); }
+html.dark .border-red-200\/60 { border-color: rgb(248 113 113 / 0.3); }
+html.dark .bg-white\/70 { background-color: rgb(var(--c-surface-card) / 0.7); }
+html.dark .bg-white\/85 { background-color: rgb(var(--c-surface-card) / 0.85); }

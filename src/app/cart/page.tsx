@@ -345,7 +345,7 @@ export default function CartPage() {
               <div className="flex justify-between gap-3 text-bark-700">
                 <dt>Phí vận chuyển</dt>
                 <dd className="tabular-nums text-right">
-                  {selectedCount === 0 ? "—" : shippingFee === 0 ? <span className="font-semibold text-grass-700">Miễn phí</span> : `${formatVND(SHIPPING_CONFIG.hcmFee)} – ${formatVND(SHIPPING_CONFIG.otherFee)}`}
+                  {selectedCount === 0 ? "—" : shippingFee === 0 ? <span className="font-semibold text-grass-700">Miễn phí</span> : `${formatVND(SHIPPING_CONFIG.localFee)} – ${formatVND(SHIPPING_CONFIG.otherFee)}`}
                 </dd>
               </div>
             </dl>
