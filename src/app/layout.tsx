@@ -6,6 +6,7 @@ import MainNavbar from "@/components/common/MainNavbar";
 import MobileBottomNav from "@/components/common/MobileBottomNav";
 import Footer from "@/components/common/Footer";
 import { ToastProvider } from "@/components/ui/Toast";
+import { THEME_INIT_SCRIPT } from "@/components/common/ThemeToggle";
 
 const bricolageGrotesque = Bricolage_Grotesque({
   subsets: ["latin", "vietnamese"],
@@ -34,7 +35,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={`${beVietnamPro.variable} ${bricolageGrotesque.variable}`}>
+    <html lang="vi" className={`${beVietnamPro.variable} ${bricolageGrotesque.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Áp giao diện sáng / tối trước khi trang vẽ */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-screen flex flex-col bg-surface text-bark-900 antialiased selection:bg-honey-200">
         <AppProvider>
           <ToastProvider>

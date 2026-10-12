@@ -8,6 +8,7 @@ export interface SuggestCandidate {
   category: "food" | "toy" | "accessory";
   isAllergic: boolean;
   wasSentBefore: boolean;
+  sentRecently?: boolean; // đã gửi trong 3 hộp gần nhất: loại hẳn, như món dị ứng
   wasDisliked: boolean;
   // Món dùng hết rồi mua lại được (đồ ăn, đồ vệ sinh): gửi lặp lại ít phiền hơn đồ chơi, phụ kiện
   isConsumable: boolean;
@@ -68,7 +69,7 @@ function itemPenalty(c: SuggestCandidate): number {
  * nên kết quả là tổ hợp tốt nhất thật sự chứ không phải chọn tham lam theo giá.
  */
 export function suggestBoxItems<T extends SuggestCandidate>(candidates: T[], rule: BoxRule): T[] {
-  const pool = candidates.filter((c) => !c.isAllergic && c.price > 0);
+  const pool = candidates.filter((c) => !c.isAllergic && !c.sentRecently && c.price > 0);
   const min = rule.minRetailValue;
   // Kho không đủ món để đạt giá trị tối thiểu: trả về mọi món bé dùng được để admin thấy còn thiếu bao nhiêu
   if (sumPrice(pool) < min) return pool.filter((c) => !c.wasDisliked);

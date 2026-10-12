@@ -29,7 +29,7 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #1E1B15;
+  outline: 2px solid rgb(var(--c-pine-900));
   outline-offset: 2px;
 }
 
@@ -143,3 +143,119 @@ html {
     animation: faqIn 0.25s ease-out;
   }
 }
+
+/* ============================================================
+   Sáng / tối (12/10/2026). Màu Tailwind pine, honey, surface, bark là biến CSS;
+   html.dark đổi sang bộ giá trị tối. Chọn chế độ bằng nút mặt trời / mặt trăng (src/components/common/ThemeToggle.tsx),
+   lưu trong localStorage "fpets-theme".
+   ============================================================ */
+:root {
+  --c-pine-50: 255 248 230;
+  --c-pine-100: 254 241 203;
+  --c-pine-200: 252 226 154;
+  --c-pine-300: 249 208 106;
+  --c-pine-400: 246 187 57;
+  --c-pine-500: 194 134 13;
+  --c-pine-700: 74 65 52;
+  --c-pine-800: 46 41 32;
+  --c-pine-900: 30 27 21;
+  --c-pine-950: 19 17 13;
+  --c-honey-50: 255 250 235;
+  --c-honey-100: 254 241 203;
+  --c-honey-200: 252 226 154;
+  --c-honey-300: 249 208 106;
+  --c-honey-400: 246 187 57;
+  --c-honey-500: 229 165 32;
+  --c-honey-600: 194 134 13;
+  --c-honey-700: 150 102 10;
+  --c-honey-800: 110 74 8;
+  --c-honey-900: 77 52 6;
+  --c-surface-DEFAULT: 248 245 234;
+  --c-surface-card: 255 255 255;
+  --c-surface-muted: 242 237 220;
+  --c-surface-border: 231 223 200;
+  --c-bark-100: 245 245 244;
+  --c-bark-200: 231 229 228;
+  --c-bark-300: 214 211 209;
+  --c-bark-400: 140 133 127;
+  --c-bark-500: 110 103 98;
+  --c-bark-600: 87 83 78;
+  --c-bark-700: 68 64 60;
+  --c-bark-800: 41 37 36;
+  --c-bark-900: 28 25 23;
+  --c-bark-950: 12 10 9;
+  color-scheme: light;
+}
+
+html.dark {
+  --c-pine-50: 43 36 19;
+  --c-pine-100: 58 48 22;
+  --c-pine-200: 252 226 154;
+  --c-pine-300: 249 208 106;
+  --c-pine-400: 246 187 57;
+  --c-pine-500: 229 165 32;
+  --c-pine-700: 207 198 181;
+  --c-pine-800: 227 218 202;
+  --c-pine-900: 239 232 218;
+  --c-pine-950: 250 246 236;
+  --c-honey-50: 42 35 16;
+  --c-honey-100: 58 47 18;
+  --c-honey-200: 77 61 21;
+  --c-honey-300: 249 208 106;
+  --c-honey-400: 246 187 57;
+  --c-honey-500: 229 165 32;
+  --c-honey-600: 240 179 64;
+  --c-honey-700: 246 198 90;
+  --c-honey-800: 249 214 132;
+  --c-honey-900: 252 230 176;
+  --c-surface-DEFAULT: 21 18 14;
+  --c-surface-card: 30 26 20;
+  --c-surface-muted: 41 36 28;
+  --c-surface-border: 59 52 41;
+  --c-bark-100: 41 36 28;
+  --c-bark-200: 59 52 41;
+  --c-bark-300: 87 79 67;
+  --c-bark-400: 138 129 115;
+  --c-bark-500: 163 154 139;
+  --c-bark-600: 189 180 165;
+  --c-bark-700: 211 203 189;
+  --c-bark-800: 230 223 210;
+  --c-bark-900: 242 236 226;
+  --c-bark-950: 250 247 241;
+  color-scheme: dark;
+}
+
+/* pine đậm vừa là màu chữ (sáng lên khi tối) vừa là nền nút / khối tối: giữ nền tối */
+html.dark .bg-pine-900,
+html.dark .after\:bg-pine-900::after { background-color: #2E2920; }
+html.dark .bg-pine-950,
+html.dark .active\:bg-pine-950:active { background-color: #0E0C09; }
+html.dark .bg-pine-800,
+html.dark .hover\:bg-pine-800:hover { background-color: #3A3328; }
+html.dark .bg-pine-800\/30 { background-color: rgb(58 51 40 / 0.3); }
+html.dark .bg-pine-700 { background-color: #4A4134; }
+html.dark .bg-pine-100,
+html.dark .hover\:bg-pine-100:hover { background-color: #3A3016; }
+html.dark .border-pine-200 { border-color: #5C4A1C; }
+
+/* Nền trắng của thẻ, nút phụ */
+html.dark .bg-white,
+html.dark .hover\:bg-white:hover { background-color: rgb(var(--c-surface-card)); }
+
+/* Nền vàng: chữ đen để đủ tương phản */
+html.dark .bg-honey-700 { background-color: #96660A; }
+html.dark :is(.bg-honey-400, .bg-honey-500, .bg-honey-600) { color: #13110D; }
+
+/* Ô thông báo đỏ / vàng / xanh */
+html.dark .bg-red-50, html.dark .hover\:bg-red-50:hover { background-color: rgb(127 29 29 / 0.35); }
+html.dark .bg-red-100, html.dark .hover\:bg-red-100:hover { background-color: rgb(127 29 29 / 0.5); }
+html.dark .bg-amber-50 { background-color: rgb(120 53 15 / 0.35); }
+html.dark .bg-amber-100, html.dark .hover\:bg-amber-100:hover { background-color: rgb(120 53 15 / 0.5); }
+html.dark .bg-grass-50, html.dark .bg-grass-50\/60 { background-color: rgb(20 83 45 / 0.35); }
+html.dark .bg-grass-100, html.dark .hover\:bg-grass-200:hover { background-color: rgb(20 83 45 / 0.5); }
+html.dark :is(.text-red-600, .text-red-700, .text-red-800) { color: #FCA5A5; }
+html.dark :is(.text-amber-700, .text-amber-800, .text-amber-900) { color: #FCD34D; }
+html.dark :is(.text-grass-600, .text-grass-700, .text-grass-800, .text-grass-900) { color: #86EFAC; }
+html.dark :is(.border-red-200, .border-red-300) { border-color: rgb(248 113 113 / 0.4); }
+html.dark .border-amber-200 { border-color: rgb(251 191 36 / 0.35); }
+html.dark .border-grass-200 { border-color: rgb(74 222 128 / 0.35); }

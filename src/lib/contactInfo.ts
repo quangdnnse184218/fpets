@@ -1,12 +1,12 @@
 // Thông tin liên hệ hiển thị cho khách (trang Liên hệ, Footer).
 // Link Zalo / Messenger để trống thì nút tương ứng sẽ tự ẩn.
 // Địa chỉ là địa chỉ thật của shop (theo địa giới mới: không còn quận/huyện).
-// TODO: thay hotline, email bằng thông tin thật của FPETS trước khi mở bán.
+// TODO: thay email bằng email thật của FPETS trước khi mở bán.
 export const CONTACT_INFO = {
-  hotline: "1900 6868",
-  hotlineTel: "19006868",
+  hotline: "0386 223 236",
+  hotlineTel: "0386223236",
   email: "hotro@fpets.vn",
-  address: "7 Đường D1, Phường Tăng Nhơn Phú, TP. Hồ Chí Minh",
+  address: "Thôn 3 - Thạch Hòa - Thạch Thất - Hòa Lạc",
   hours: "8:00 – 21:00",
   zaloUrl: "",
   messengerUrl: "",

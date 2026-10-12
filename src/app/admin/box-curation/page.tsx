@@ -38,7 +38,11 @@ function ItemFlags({ prod }: { prod: CandidateProduct }) {
     <>
       {prod.isAllergic && <span className="text-red-600 font-bold">· Chứa dị ứng!</span>}
       {prod.wasDisliked && <span className="text-red-600 font-bold">· Bé không thích</span>}
-      {prod.wasSentBefore && <span className="text-amber-700 font-bold">· Đã gửi trước</span>}
+      {prod.sentRecently ? (
+        <span className="text-red-600 font-bold">· Đã gửi trong 3 hộp gần nhất</span>
+      ) : (
+        prod.wasSentBefore && <span className="text-amber-700 font-bold">· Đã gửi trước</span>
+      )}
       {prod.matchedPreferences.length > 0 && <span className="text-grass-700 font-bold">· Hợp sở thích: {prod.matchedPreferences.join(", ")}</span>}
     </>
   );
@@ -139,9 +143,11 @@ function CurationContent() {
   const isValueValid = totalValue >= minValue;
   const overValue = totalValue - minValue;
   const hasAllergyViolation = selectedProducts.some((p) => p.isAllergic);
+  // Món đã gửi trong 3 hộp gần nhất của bé không được chọn lại
+  const recentRepeats = selectedProducts.filter((p) => p.sentRecently);
 
   // Số liệu để giải thích vì sao đề xuất phải lệch quy định (kho thiếu món mới, thiếu món giá trị cao...)
-  const usable = candidates.filter((c) => !c.isAllergic);
+  const usable = candidates.filter((c) => !c.isAllergic && !c.sentRecently);
   const usableValue = sumPrice(usable);
   // Giá trị cao nhất đạt được nếu chỉ dùng món bé chưa nhận, trong giới hạn số món của hộp
   const freshTopValue = sumPrice(
@@ -154,7 +160,7 @@ function CurationContent() {
 
   // Cửa sổ thêm món: món nên chọn lên đầu (hợp sở thích, chưa gửi), món không nên chọn xuống cuối
   const pickRank = (c: CandidateProduct) =>
-    (c.isAllergic ? 8 : 0) + (c.wasDisliked ? 4 : 0) + (c.wasSentBefore ? 2 : 0) + (c.matchedPreferences.length > 0 ? 0 : 1);
+    (c.isAllergic || c.sentRecently ? 8 : 0) + (c.wasDisliked ? 4 : 0) + (c.wasSentBefore ? 2 : 0) + (c.matchedPreferences.length > 0 ? 0 : 1);
   const pickerItems = candidates.filter((c) => !selectedIds.includes(c.id)).sort((a, b) => pickRank(a) - pickRank(b) || b.price - a.price);
 
   const resuggest = () => {
@@ -178,6 +184,7 @@ function CurationContent() {
         ERR_ALREADY_CURATED: "Hộp này đã được duyệt trước đó.",
         ERR_ORDER_NOT_READY: "Đơn của hộp này chưa thanh toán hoặc đã hủy nên chưa tuyển chọn được.",
         ERR_DUPLICATE_ITEM: "Một món bị chọn hai lần, vui lòng bỏ bớt.",
+        ERR_RECENTLY_SENT: "Có món bé đã nhận trong 3 hộp gần nhất, vui lòng đổi món khác.",
       };
       // Món chứa thành phần bé dị ứng: server trả kèm tên món và dị ứng
       if (rpcError.message.includes("ERR_ALLERGEN")) {
@@ -380,6 +387,12 @@ function CurationContent() {
                     Hệ thống chọn tổ hợp món đạt mức tối thiểu và vượt không quá {formatVND(SUGGEST_TOLERANCE)}, đủ món ăn, đồ chơi, đồ chăm sóc, ưu tiên món hợp sở thích và món bé chưa nhận.
                   </p>
 
+                  {recentRepeats.length > 0 && (
+                    <div className="p-3 rounded-box bg-red-50 border border-red-200 text-red-800 text-xs font-bold flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                      <span>Bé đã nhận {recentRepeats.map((p) => p.name).join(", ")} trong 3 hộp gần nhất. Đổi món khác trước khi duyệt.</span>
+                    </div>
+                  )}
                   {hasAllergyViolation ? (
                     <div className="p-3 rounded-box bg-red-50 border border-red-200 text-red-800 text-xs font-bold flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
@@ -481,7 +494,7 @@ function CurationContent() {
                       )}
                     </div>
                   </div>
-                  <button type="button" onClick={handleApprove} disabled={approving || !isValueValid || hasAllergyViolation}
+                  <button type="button" onClick={handleApprove} disabled={approving || !isValueValid || hasAllergyViolation || recentRepeats.length > 0}
                     className="w-full sm:w-auto px-6 py-3 rounded-box text-xs font-bold transition-colors flex items-center justify-center gap-2 bg-pine-900 hover:bg-pine-800 text-white shadow-sm disabled:bg-surface-muted disabled:text-bark-400">
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{approving ? "Đang xử lý..." : visibleQueue.length > 1 ? "Duyệt và sang hộp kế tiếp" : "Duyệt hộp này"}</span>
@@ -515,7 +528,7 @@ function CurationContent() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-bold text-pine-950">{formatVND(prod.price)}</span>
-                    <button type="button" disabled={prod.isAllergic}
+                    <button type="button" disabled={prod.isAllergic || prod.sentRecently}
                       onClick={() => { setSelectedIds((prev) => [...prev, prod.id]); setPickerOpen(false); }}
                       className="px-3 py-1.5 rounded-box bg-pine-900 text-white font-bold text-xs disabled:opacity-40 flex items-center gap-1">
                       <Plus className="w-3 h-3" />

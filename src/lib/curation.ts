@@ -31,9 +31,14 @@ export async function fetchPendingCurations(): Promise<CurationQueueRow[]> {
   return data as unknown as CurationQueueRow[];
 }
 
+// Số hộp gần nhất của một bé mà món đã gửi không được lặp lại (khớp approve_box_curation ở server)
+export const RECENT_BOX_WINDOW = 3;
+
 export interface CandidateProduct extends Product {
   isAllergic: boolean;
   wasSentBefore: boolean;
+  // Đã gửi trong 3 hộp gần nhất của bé: không được gửi lại (chặn cứng, server cũng chặn khi duyệt)
+  sentRecently: boolean;
   wasDisliked: boolean;
   // Đồ ăn, đồ vệ sinh: gửi lặp lại ít phiền hơn đồ chơi, phụ kiện
   isConsumable: boolean;
@@ -66,13 +71,20 @@ export async function fetchCandidateProducts(
 
   const { data: historyRows } = await supabase
     .from("box_curation_items")
-    .select("product_id, box_curations(pet_id)")
-    .eq("box_curations.pet_id", pet.id);
-  const sentBefore = new Set(
-    ((historyRows as unknown as { product_id: string; box_curations: { pet_id: string } | null }[]) || [])
-      .filter((r) => r.box_curations?.pet_id === pet.id)
-      .map((r) => r.product_id)
-  );
+    .select("product_id, box_curations!inner(id, pet_id, status, curated_at)")
+    .eq("box_curations.pet_id", pet.id)
+    .eq("box_curations.status", "curated");
+  type HistoryRow = { product_id: string; box_curations: { id: string; pet_id: string; curated_at: string | null } | null };
+  const history = ((historyRows as unknown as HistoryRow[]) || []).filter((r) => r.box_curations?.pet_id === pet.id);
+  const sentBefore = new Set(history.map((r) => r.product_id));
+  // 3 hộp đã tuyển chọn gần nhất của bé: món trong các hộp này không được gửi lại ở hộp kế tiếp
+  const recentBoxIds = Array.from(
+    new Map(history.map((r) => [r.box_curations!.id, r.box_curations!.curated_at || ""])).entries()
+  )
+    .sort((a, b) => b[1].localeCompare(a[1]))
+    .slice(0, RECENT_BOX_WINDOW)
+    .map(([id]) => id);
+  const sentRecently = new Set(history.filter((r) => recentBoxIds.includes(r.box_curations!.id)).map((r) => r.product_id));
 
   const { data: dislikedRows } = await supabase
     .from("pet_item_feedback")
@@ -90,6 +102,7 @@ export async function fetchCandidateProducts(
       ...product,
       isAllergic,
       wasSentBefore: sentBefore.has(row.id),
+      sentRecently: sentRecently.has(row.id),
       wasDisliked: disliked.has(row.id),
       isConsumable: isConsumableCategory(row.categories?.slug),
       matchedPreferences: (pet.preferences || []).filter((pref) => productMatchesPreference(product, pref)),

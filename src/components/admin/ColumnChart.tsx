@@ -26,9 +26,9 @@ interface Props {
 
 // Màu cột: họ xanh pine của thương hiệu, bản đủ độ bão hòa để không trông như màu xám (đã kiểm bằng validate_palette)
 const BAR = "#C2860D"; // vàng logo bản đậm, đủ tương phản 3:1 trên nền trắng
-const BAR_ACTIVE = "#1E1B15"; // pine-900 (đen ấm)
-const GRID = "#E7DFC8"; // surface-border
-const AXIS_TEXT = "#6E6762"; // bark-500, đạt 4.5:1 trên nền trắng
+const BAR_ACTIVE = "rgb(var(--c-pine-900))"; // đen ấm (sáng lên ở giao diện tối)
+const GRID = "rgb(var(--c-surface-border))";
+const AXIS_TEXT = "rgb(var(--c-bark-500))"; // đạt 4.5:1 trên nền thẻ ở cả sáng và tối
 
 const PAD = { top: 18, right: 6, bottom: 22, left: 40 };
 // Nửa bề rộng ước tính của một nhãn cỡ 10px ("08/10", "2,5tr"): nhãn gần mép hơn mức này thì canh lề thay vì canh giữa
@@ -126,8 +126,8 @@ export default function ColumnChart({ data, formatTick, formatValue, valueName, 
           >
             {ticks.map((t) => (
               <g key={t}>
-                <line x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} stroke={GRID} strokeWidth={1} shapeRendering="crispEdges" />
-                <text x={PAD.left - 6} y={y(t)} dy="0.32em" textAnchor="end" fontSize={10} fill={AXIS_TEXT} className="tabular-nums">
+                <line x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} style={{ stroke: GRID }} strokeWidth={1} shapeRendering="crispEdges" />
+                <text x={PAD.left - 6} y={y(t)} dy="0.32em" textAnchor="end" fontSize={10} style={{ fill: AXIS_TEXT }} className="tabular-nums">
                   {formatTick(t)}
                 </text>
               </g>
@@ -138,14 +138,14 @@ export default function ColumnChart({ data, formatTick, formatValue, valueName, 
               const h = (d.value / top) * plotH;
               return (
                 <g key={d.key}>
-                  <path d={barPath(x, PAD.top + plotH - h, barW, h)} fill={active === i ? BAR_ACTIVE : BAR} />
+                  <path d={barPath(x, PAD.top + plotH - h, barW, h)} style={{ fill: active === i ? BAR_ACTIVE : BAR }} />
                   {i === peak && active === null && (
-                    <text x={anchorAt(x + barW / 2).x} y={PAD.top + plotH - h - 5} textAnchor={anchorAt(x + barW / 2).anchor} fontSize={10} fontWeight={700} fill="#1E1B15" className="tabular-nums">
+                    <text x={anchorAt(x + barW / 2).x} y={PAD.top + plotH - h - 5} textAnchor={anchorAt(x + barW / 2).anchor} fontSize={10} fontWeight={700} style={{ fill: "rgb(var(--c-pine-900))" }} className="tabular-nums">
                       {formatTick(d.value)}
                     </text>
                   )}
                   {showLabel(i) && (
-                    <text x={anchorAt(PAD.left + slot * i + slot / 2).x} y={height - 6} textAnchor={anchorAt(PAD.left + slot * i + slot / 2).anchor} fontSize={10} fill={AXIS_TEXT}>
+                    <text x={anchorAt(PAD.left + slot * i + slot / 2).x} y={height - 6} textAnchor={anchorAt(PAD.left + slot * i + slot / 2).anchor} fontSize={10} style={{ fill: AXIS_TEXT }}>
                       {d.label}
                     </text>
                   )}

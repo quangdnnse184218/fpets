@@ -27,6 +27,7 @@ import {
   Coins,
 } from "lucide-react";
 import BrandLogo from "@/components/common/BrandLogo";
+import ThemeToggle from "@/components/common/ThemeToggle";
 import { AdminNotificationBell, AdminTasksProvider, AdminTaskCounts, useAdminTasks } from "./AdminTasks";
 import { adminHomeFor, canAccessAdminPath, ROLE_LABEL } from "@/lib/roles";
 
@@ -218,6 +219,7 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
               <ExternalLink className="w-3 h-3 text-bark-400" />
             </a>
 
+            <ThemeToggle className="w-9 h-9 border border-surface-border" />
             <AdminNotificationBell />
 
             <div className="relative" ref={adminMenuRef}>

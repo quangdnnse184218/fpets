@@ -19,6 +19,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import BrandLogo from "@/components/common/BrandLogo";
+import ThemeToggle from "@/components/common/ThemeToggle";
 import NotificationBell from "@/components/common/NotificationBell";
 import { buttonClass } from "@/components/ui/Button";
 import { CONTACT_INFO } from "@/lib/contactInfo";
@@ -219,6 +220,8 @@ export default function MainNavbar() {
           >
             <Search className="w-5 h-5" />
           </button>
+
+          <ThemeToggle className="min-w-11 min-h-11 lg:min-w-10 lg:min-h-10 text-pine-950" />
 
           {isLoggedIn && user.id && <NotificationBell userId={user.id} />}
 
