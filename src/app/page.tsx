@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, Star, Truck, RefreshCw, CreditCard, ChevronDown } from "lucide-react";
+import { ArrowRight, Star, Truck, RefreshCw, CreditCard, ChevronDown, Plus } from "lucide-react";
 import { fetchBoxTypes, fetchProducts } from "@/lib/catalog";
 import { formatVND, formatDate } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/client";
@@ -18,6 +18,8 @@ import { CONTACT_INFO } from "@/lib/contactInfo";
 import Reveal from "@/components/motion/Reveal";
 import CountUp from "@/components/motion/CountUp";
 import Parallax from "@/components/motion/Parallax";
+import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
+import { useApp } from "@/context/AppContext";
 
 // Lối vào nhanh theo loại bé: dẫn thẳng tới bộ lọc "Dành cho" của trang Mystery Box
 const AUDIENCE_CARDS = [
@@ -56,10 +58,15 @@ const isPremium = (b: BoxType) => b.slug.includes("premium");
 const container = "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8";
 const sectionTitle = "text-xl sm:text-3xl font-extrabold text-pine-950 font-display leading-snug";
 // Thẻ nhấc nhẹ và đổ bóng khi rê chuột (điện thoại không có hover nên không ảnh hưởng)
-const liftCard = "transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_40px_-24px_rgba(23,52,44,0.45)]";
+const liftCard = "transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_40px_-24px_rgba(30,27,21,0.45)]";
 
 export default function HomePage() {
   const plans = usePlans();
+  // Khách đã có hồ sơ bé: tìm hộp theo hồ sơ có sẵn, không bắt làm Pet Quiz lại
+  const { isLoggedIn, pets } = useApp();
+  const myPets = isLoggedIn ? pets : [];
+  const findBoxHref = myPets.length === 1 ? `/boxes?pet=${myPets[0].id}` : myPets.length > 1 ? "#thu-cung-cua-toi" : "/quiz";
+  const findBoxLabel = myPets.length === 1 ? `Tìm hộp cho ${myPets[0].name}` : "Tìm hộp cho bé";
   const [boxes, setBoxes] = useState<BoxType[]>([]);
   const [featured, setFeatured] = useState<Product[]>([]);
   const [stats, setStats] = useState({ delivered: 0, avgRating: 0, reviewCount: 0 });
@@ -107,7 +114,7 @@ export default function HomePage() {
     <div className="space-y-12 sm:space-y-16 pb-12 sm:pb-20">
       {/* 1. HERO: một khối nổi (thẻ bo góc lớn, bóng mềm), tách khỏi header và phần bên dưới */}
       <section className={`${container} pt-4 sm:pt-6`}>
-        <div className="rounded-3xl bg-surface-card border border-surface-border/70 shadow-[0_24px_64px_-28px_rgba(23,52,44,0.3)] p-5 sm:p-8 lg:p-12 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-14 items-center">
+        <div className="rounded-3xl bg-surface-card border border-surface-border/70 shadow-[0_24px_64px_-28px_rgba(30,27,21,0.3)] p-5 sm:p-8 lg:p-12 grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-14 items-center">
           <div className="lg:col-span-7 space-y-4 sm:space-y-6">
             <h1 className="hero-rise text-[26px] sm:text-[36px] lg:text-[46px] font-extrabold text-pine-950 font-display tracking-tight leading-[1.25]">
               Hộp quà bất ngờ mỗi tháng <br className="hidden sm:block" />
@@ -119,9 +126,39 @@ export default function HomePage() {
             </p>
 
             <div className="hero-rise flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3" style={{ "--rise-delay": "200ms" } as React.CSSProperties}>
-              <ButtonLink href="/quiz" size="lg">Tìm hộp cho bé</ButtonLink>
+              <ButtonLink href={findBoxHref} size="lg">{findBoxLabel}</ButtonLink>
               <ButtonLink href="/boxes" size="lg" variant="secondary">Xem các loại hộp</ButtonLink>
             </div>
+
+            {/* Thú cưng của tôi: chọn bé có sẵn để xem hộp hợp với bé (lọc theo loài, size), hoặc thêm bé mới qua Quiz */}
+            {myPets.length > 0 && (
+              <div id="thu-cung-cua-toi" className="hero-rise space-y-2 scroll-mt-24" style={{ "--rise-delay": "240ms" } as React.CSSProperties}>
+                <p className="text-sm font-bold text-pine-950">Thú cưng của tôi</p>
+                <ul className="flex flex-wrap gap-2">
+                  {myPets.map((pet) => (
+                    <li key={pet.id}>
+                      <Link
+                        href={`/boxes?pet=${pet.id}`}
+                        className="group inline-flex items-center gap-2 h-11 pl-1.5 pr-3 rounded-full border border-surface-border bg-surface-card hover:border-pine-800 hover:bg-pine-50 transition-colors"
+                      >
+                        <PetSpeciesIcon species={pet.species} variant="avatar" size="sm" />
+                        <span className="text-sm font-bold text-pine-950">{pet.name}</span>
+                        <span className="text-xs text-bark-600">{pet.species === "cat" ? "Mèo" : pet.size === "large" ? "Chó lớn" : "Chó nhỏ"}</span>
+                        <ArrowRight className="w-3.5 h-3.5 text-pine-900 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
+                      </Link>
+                    </li>
+                  ))}
+                  <li>
+                    <Link
+                      href="/quiz"
+                      className="inline-flex items-center gap-1.5 h-11 px-3 rounded-full border border-dashed border-surface-border text-sm font-semibold text-bark-700 hover:text-pine-950 hover:border-pine-800 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" aria-hidden="true" /> Thêm bé
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+            )}
 
             <p className="hero-rise text-sm text-bark-700" style={{ "--rise-delay": "280ms" } as React.CSSProperties}>
               Box Tiêu chuẩn từ <strong className="text-pine-950">{formatVND(standard.price)}</strong>, Box Premium từ{" "}

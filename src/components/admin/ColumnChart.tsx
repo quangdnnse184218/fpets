@@ -25,9 +25,9 @@ interface Props {
 }
 
 // Màu cột: họ xanh pine của thương hiệu, bản đủ độ bão hòa để không trông như màu xám (đã kiểm bằng validate_palette)
-const BAR = "#168A6E";
-const BAR_ACTIVE = "#1E4239"; // pine-800
-const GRID = "#E7E3DA"; // surface-border
+const BAR = "#C2860D"; // vàng logo bản đậm, đủ tương phản 3:1 trên nền trắng
+const BAR_ACTIVE = "#1E1B15"; // pine-900 (đen ấm)
+const GRID = "#E7DFC8"; // surface-border
 const AXIS_TEXT = "#6E6762"; // bark-500, đạt 4.5:1 trên nền trắng
 
 const PAD = { top: 18, right: 6, bottom: 22, left: 40 };
@@ -140,7 +140,7 @@ export default function ColumnChart({ data, formatTick, formatValue, valueName, 
                 <g key={d.key}>
                   <path d={barPath(x, PAD.top + plotH - h, barW, h)} fill={active === i ? BAR_ACTIVE : BAR} />
                   {i === peak && active === null && (
-                    <text x={anchorAt(x + barW / 2).x} y={PAD.top + plotH - h - 5} textAnchor={anchorAt(x + barW / 2).anchor} fontSize={10} fontWeight={700} fill="#17342C" className="tabular-nums">
+                    <text x={anchorAt(x + barW / 2).x} y={PAD.top + plotH - h - 5} textAnchor={anchorAt(x + barW / 2).anchor} fontSize={10} fontWeight={700} fill="#1E1B15" className="tabular-nums">
                       {formatTick(d.value)}
                     </text>
                   )}

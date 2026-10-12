@@ -9,40 +9,45 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Màu theo logo mới (12/10/2026): tên "pine" giữ nguyên để không phải sửa toàn bộ class.
+        // Sắc nhạt (50–500) là vàng logo, dùng cho nền ô được chọn và chữ trên nền tối;
+        // sắc đậm (700–950) là đen ấm như nét viền logo, dùng cho chữ, nút chính, viền.
         pine: {
-          50: "#F2F7F5",
-          100: "#E1EDE8",
-          200: "#C2DBD2",
-          300: "#9CC4B6",
-          400: "#7DB3A2",
-          500: "#2D6A5B",
-          700: "#235347",
-          800: "#1E4239",
-          900: "#17342C",
-          950: "#0C1E19",
+          50: "#FFF8E6",
+          100: "#FEF1CB",
+          200: "#FCE29A",
+          300: "#F9D06A",
+          400: "#F6BB39",
+          500: "#C2860D",
+          700: "#4A4134",
+          800: "#2E2920",
+          900: "#1E1B15",
+          950: "#13110D",
         },
+        // Màu nhấn: vàng của logo
         honey: {
-          50: "#FFFDF7",
-          100: "#FEF7E6",
-          200: "#FDECC4",
-          300: "#FAD893",
-          400: "#F0A04B",
-          500: "#E67E22",
-          600: "#C86218",
-          700: "#A3470D",
-          800: "#7C350A",
-          900: "#5C2707",
+          50: "#FFFAEB",
+          100: "#FEF1CB",
+          200: "#FCE29A",
+          300: "#F9D06A",
+          400: "#F6BB39",
+          500: "#E5A520",
+          600: "#C2860D",
+          700: "#96660A",
+          800: "#6E4A08",
+          900: "#4D3406",
         },
         butter: {
           100: "#FEF3C7",
           200: "#FDE68A",
           300: "#FCD34D",
         },
+        // Nền kem như nền logo
         surface: {
-          DEFAULT: "#FAF9F6",
+          DEFAULT: "#F8F5EA",
           card: "#FFFFFF",
-          muted: "#F3F1EC",
-          border: "#E7E3DA",
+          muted: "#F2EDDC",
+          border: "#E7DFC8",
         },
         // Chữ phụ: bark-500 trở lên đạt tương phản 4.5:1 trên mọi nền sáng của site (trắng, surface, surface-muted).
         // bark-400 chỉ dùng cho icon, trạng thái tắt và giá gạch ngang (3:1), không dùng cho chữ cần đọc.

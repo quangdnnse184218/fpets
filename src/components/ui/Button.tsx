@@ -13,8 +13,9 @@ export type ButtonVariant = "primary" | "accent" | "secondary" | "danger" | "lin
 export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANT: Record<ButtonVariant, string> = {
-  primary: "bg-pine-900 hover:bg-pine-800 text-white shadow-xs",
-  accent: "bg-honey-500 hover:bg-honey-600 text-pine-950 shadow-xs",
+  // Nút chính: vàng logo, chữ đen (tương phản ~11:1)
+  primary: "bg-honey-400 hover:bg-honey-500 text-pine-950 shadow-xs",
+  accent: "bg-pine-900 hover:bg-pine-800 text-white shadow-xs",
   secondary: "bg-white hover:bg-pine-50 text-pine-900 border border-pine-800/40",
   danger: "bg-white hover:bg-red-50 text-red-700 border border-red-300",
   link: "text-pine-900 underline-offset-4 hover:underline px-0",

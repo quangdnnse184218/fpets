@@ -52,8 +52,8 @@ Chi tiết đầy đủ nằm trong docs/SPEC.md; dưới đây là các điểm
 
 ## Quy ước thiết kế (khách đã duyệt, đừng đổi)
 - Font: Bricolage Grotesque (tiêu đề) + Be Vietnam Pro (nội dung), subset vietnamese.
-- Màu: xanh rêu pine làm chủ đạo, cam honey dùng tiết kiệm.
-- Logo: ảnh public/images/logo-icon.png kèm chữ FPETS, dựng trong src/components/common/BrandLogo.tsx.
+- Màu (đổi theo logo mới 12/10/2026): vàng logo #F6BB39 (nút chính, điểm nhấn), đen ấm như nét viền logo (chữ, nút phụ, nền tối), nền kem #F8F5EA. Trong Tailwind vẫn tên `pine` (sắc nhạt = vàng, sắc đậm = đen) và `honey` (vàng).
+- Logo: ảnh tròn public/images/logo-icon.png (chó mèo trong hộp quà, nền vàng) kèm chữ FPETS, dựng trong src/components/common/BrandLogo.tsx; favicon src/app/icon.png.
 - Icon: lucide-react, KHÔNG dùng emoji, KHÔNG dùng icon Sparkles.
 - TRÁNH khuôn mẫu AI: không nhãn VIẾT HOA tracking rộng, không mũi tên → trong nút,
   không card bo góc + shadow giống hệt nhau khắp nơi, không badge trang trí vô nghĩa.

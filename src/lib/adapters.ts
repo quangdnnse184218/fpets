@@ -13,10 +13,10 @@ export const CATEGORY_LABEL: Record<Product["category"], string> = {
 const CATEGORY_BUCKET: Record<string, { bucket: Product["category"]; color: string }> = {
   "thuc-an-dinh-duong": { bucket: "food", color: "#FEF7E6" },
   "banh-thuong-snack": { bucket: "food", color: "#FDECC4" },
-  "do-choi-van-dong": { bucket: "toy", color: "#E1EDE8" },
+  "do-choi-van-dong": { bucket: "toy", color: "#FEF1CB" },
   "do-choi-tuong-tac": { bucket: "toy", color: "#FEF7E6" },
-  "cham-soc-ve-sinh": { bucket: "accessory", color: "#C2DBD2" },
-  "phu-kien-dung-cu": { bucket: "accessory", color: "#E1EDE8" },
+  "cham-soc-ve-sinh": { bucket: "accessory", color: "#FCE29A" },
+  "phu-kien-dung-cu": { bucket: "accessory", color: "#FEF1CB" },
 };
 
 // Danh mục món dùng hết rồi mua lại (đồ ăn, đồ vệ sinh), khác với đồ chơi và phụ kiện dùng lâu dài.
@@ -68,7 +68,7 @@ export function productRowToProduct(row: ProductWithCategory): Product {
     targetAge: (row.target_age as Product["targetAge"]) || "all",
     ingredients: row.ingredients || [],
     description: row.description || "",
-    placeholderColor: catInfo?.color || "#E1EDE8",
+    placeholderColor: catInfo?.color || "#FEF1CB",
     image: resolveImageUrl(row.images?.[0], FALLBACK_PRODUCT_IMAGE),
   };
 }
@@ -111,7 +111,7 @@ export function petRowToPet(row: Tables<"pets">): Pet {
     allergies: row.allergies || [],
     preferences: row.preferences || [],
     notes: row.notes || undefined,
-    avatarColor: row.species === "dog" ? "#E1EDE8" : "#FEF7E6",
+    avatarColor: row.species === "dog" ? "#FEF1CB" : "#FEF7E6",
     avatarPath: row.avatar_url || undefined,
   };
 }

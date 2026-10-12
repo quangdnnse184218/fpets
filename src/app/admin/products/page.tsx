@@ -346,7 +346,7 @@ function ProductsContent() {
               <li key={p.id} className={`p-3.5 rounded-container bg-surface-card border border-surface-border space-y-3 text-xs ${!p.is_active ? "opacity-70" : ""}`}>
                 <div className="flex items-start gap-3">
                   <div className="w-14 h-14 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
-                    <ProductItemImage src={resolveImageUrl(p.images?.[0], "")} alt={p.name} placeholderColor="#E1EDE8" sizes="56px" showNote={false} />
+                    <ProductItemImage src={resolveImageUrl(p.images?.[0], "")} alt={p.name} placeholderColor="#FEF1CB" sizes="56px" showNote={false} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-pine-950 leading-snug line-clamp-2">{p.name}{!p.is_active && <span className="text-red-600"> · Đã ẩn</span>}</p>
@@ -382,7 +382,7 @@ function ProductsContent() {
                     <td className="p-3 max-w-xs">
                       <div className="flex items-center gap-2.5">
                         <div className="w-10 h-10 rounded-box overflow-hidden relative shrink-0 border border-surface-border bg-surface-muted">
-                          <ProductItemImage src={resolveImageUrl(p.images?.[0], "")} alt={p.name} placeholderColor="#E1EDE8" sizes="40px" showNote={false} />
+                          <ProductItemImage src={resolveImageUrl(p.images?.[0], "")} alt={p.name} placeholderColor="#FEF1CB" sizes="40px" showNote={false} />
                         </div>
                         <div className="min-w-0">
                           <div className="font-bold text-pine-950 leading-snug line-clamp-2">{p.name}{!p.is_active && <span className="text-red-600"> · Đã ẩn</span>}</div>

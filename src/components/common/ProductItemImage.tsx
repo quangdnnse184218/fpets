@@ -27,7 +27,7 @@ export default function ProductItemImage({
   src,
   alt,
   category = "food",
-  placeholderColor = "#E1EDE8",
+  placeholderColor = "#FEF1CB",
   className = "w-full h-full",
   sizes = "(max-width: 768px) 100vw, 300px",
   priority = false,
@@ -68,7 +68,7 @@ export default function ProductItemImage({
     return (
       <div
         className={`flex flex-col items-center justify-center p-3 text-center select-none relative overflow-hidden ${className}`}
-        style={{ backgroundColor: placeholderColor || "#E1EDE8" }}
+        style={{ backgroundColor: placeholderColor || "#FEF1CB" }}
       >
         <div className="p-3 rounded-full bg-white/70 shadow-xs backdrop-blur-xs mb-2 transform transition-transform hover:scale-105">
           {getProductIcon()}

@@ -258,7 +258,9 @@ function BoxesContent() {
             <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {filtered.map((box) => {
                 const premium = isPremium(box);
-                const href = `/boxes/${box.slug}${planParam ? `?plan=${planParam}` : ""}`;
+                // Giữ gói đã chọn và bé đang lọc khi sang trang chi tiết hộp
+                const query = new URLSearchParams({ ...(planParam ? { plan: planParam } : {}), ...(selectedPet ? { pet: selectedPet.id } : {}) }).toString();
+                const href = `/boxes/${box.slug}${query ? `?${query}` : ""}`;
                 const planPrice = selectedPlan ? planUnitPrice(box.basePrice, selectedPlan.discountPercent) : null;
                 return (
                   <li key={box.id}>

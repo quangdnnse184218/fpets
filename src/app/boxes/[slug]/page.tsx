@@ -113,6 +113,12 @@ export default function BoxDetailPage() {
     ? pets.filter((p) => p.species === box.species && (box.species !== "dog" || p.size === box.size))
     : [];
 
+  // Đến từ "Thú cưng của tôi" (?pet=<id>): chọn sẵn đúng bé đó thay vì bé đầu tiên
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("pet");
+    if (fromUrl) setSelectedPetId(fromUrl);
+  }, []);
+
   useEffect(() => {
     if (eligiblePets.length > 0 && !eligiblePets.some((p) => p.id === selectedPetId)) {
       setSelectedPetId(eligiblePets[0].id);
