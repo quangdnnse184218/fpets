@@ -18,7 +18,7 @@ import { usePlans } from "@/lib/usePlans";
 import { CONTACT_INFO } from "@/lib/contactInfo";
 import Reveal from "@/components/motion/Reveal";
 import CountUp from "@/components/motion/CountUp";
-import Parallax from "@/components/motion/Parallax";
+import HeroBoxSlides from "@/components/home/HeroBoxSlides";
 import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 import { useApp } from "@/context/AppContext";
 
@@ -198,18 +198,9 @@ export default function HomePage() {
           </div>
 
           <div className="lg:col-span-5">
-            {/* Ảnh hộp tạm; thay bằng ảnh chụp hộp thật khi có */}
-            <div className="hero-reveal relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-surface-muted">
-              <Parallax className="absolute inset-0">
-                <Image
-                  src="/images/hero/fpets-box-open.jpg"
-                  alt="Hộp FPETS đang mở với gói snack, bóng cao su, dây thừng và thiệp gửi bé"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 480px"
-                  className="object-cover"
-                  priority
-                />
-              </Parallax>
+            {/* Ảnh hộp FPETS cho chó và cho mèo, tự đổi qua lại */}
+            <div className="hero-reveal relative w-full aspect-[6/5] rounded-2xl overflow-hidden bg-surface-muted">
+              <HeroBoxSlides />
             </div>
           </div>
         </div>
