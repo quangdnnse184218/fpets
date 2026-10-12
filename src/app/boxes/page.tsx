@@ -7,7 +7,8 @@ import Image from "next/image";
 import { ArrowRight, SlidersHorizontal, X } from "lucide-react";
 import { fetchBoxTypes, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND } from "@/lib/formatters";
-import { PREMIUM_ITEMS, QUIZ_LENGTH, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
+import { QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
+import { shortTierName, tierItemCount, useBoxTiers } from "@/lib/boxTiers";
 import { planUnitPrice } from "@/lib/pricing";
 import { buttonClass } from "@/components/ui/Button";
 import { useApp } from "@/context/AppContext";
@@ -27,11 +28,6 @@ const AUDIENCES: { value: Audience; label: string; hint?: string; nested?: boole
   { value: "cat", label: "Mèo" },
 ];
 
-const TIERS: { value: Tier; label: string; hint?: string }[] = [
-  { value: "all", label: "Tất cả" },
-  { value: "standard", label: "Tiêu chuẩn", hint: STANDARD_ITEMS },
-  { value: "premium", label: "Premium", hint: PREMIUM_ITEMS },
-];
 
 const isPremium = (box: BoxType) => box.slug.includes("premium");
 
@@ -89,6 +85,13 @@ function BoxesContent() {
   }, []);
 
   const selectedPet = pets.find((p) => p.id === petId);
+
+  // Hạng hộp: tên, mô tả do admin sửa (bảng box_tiers); số món lấy từ các loại hộp đang bán
+  const { tiers, byKey } = useBoxTiers();
+  const TIERS: { value: Tier; label: string; hint?: string }[] = [
+    { value: "all", label: "Tất cả" },
+    ...tiers.map((t) => ({ value: t.key as Tier, label: shortTierName(t), hint: tierItemCount(boxes, t.key) || undefined })),
+  ];
   const selectedPlan = plans.find((p) => String(p.cycles) === planParam);
 
   // Chọn "Hợp với bé X" thì lọc theo loài và cân nặng của bé, thay cho nhóm "Dành cho"
@@ -282,7 +285,7 @@ function BoxesContent() {
                         <div className="space-y-1">
                           {/* Dòng phân loại dạng chữ, đậm và đủ tương phản: phân hạng + nhóm bé (không icon, không huy hiệu nổi trên ảnh) */}
                           <p className="text-[13px] sm:text-sm leading-snug">
-                            <span className={`font-extrabold uppercase tracking-[0.05em] ${premium ? "text-honey-700" : "text-pine-700"}`}>{premium ? "Premium" : "Tiêu chuẩn"}</span>
+                            <span className={`font-extrabold uppercase tracking-[0.05em] ${premium ? "text-honey-700" : "text-pine-700"}`}>{shortTierName(byKey(premium ? "premium" : "standard"))}</span>
                             <span className="font-semibold text-bark-700"> · {box.sizeLabel}</span>
                           </p>
                           <h3 className="text-base sm:text-[17px] font-bold text-pine-950 leading-snug group-hover:text-pine-800">{box.name}</h3>
@@ -314,64 +317,59 @@ function BoxesContent() {
         </div>
       </div>
 
-      {/* So sánh 2 loại hộp */}
+      {/* So sánh 2 hạng hộp: tên, mô tả từ bảng box_tiers (admin sửa); giá, số món, giá trị từ box_types */}
       <section aria-labelledby="compare-heading" className="space-y-3">
-        <h2 id="compare-heading" className="text-lg sm:text-xl font-extrabold text-pine-950 font-display">Tiêu chuẩn hay Premium?</h2>
+        <h2 id="compare-heading" className="text-lg sm:text-xl font-extrabold text-pine-950 font-display">
+          {tiers.map((t) => t.name).join(" hay ")}?
+        </h2>
         <div className="rounded-container bg-surface-card border border-surface-border overflow-x-auto">
           <table className="w-full text-[13px] sm:text-sm text-left">
             <thead>
               <tr className="border-b border-surface-border text-pine-950">
                 <th scope="col" className="p-2.5 sm:p-3.5 w-[26%] sm:w-[30%] text-xs font-bold text-bark-600 uppercase tracking-wide">So sánh</th>
-                <th scope="col" className="p-2.5 sm:p-3.5 text-sm sm:text-base font-bold">
-                  Box Tiêu chuẩn
-                  {bestSellerTier === "standard" && <span className="block text-[13px] font-bold text-honey-700">Được chọn nhiều nhất</span>}
-                </th>
-                <th scope="col" className="p-2.5 sm:p-3.5 text-sm sm:text-base font-bold">
-                  Box Premium
-                  {bestSellerTier === "premium" && <span className="block text-[13px] font-bold text-honey-700">Được chọn nhiều nhất</span>}
-                </th>
+                {tiers.map((t) => (
+                  <th key={t.key} scope="col" className="p-2.5 sm:p-3.5 text-sm sm:text-base font-bold">
+                    {t.name}
+                    {bestSellerTier === t.key && <span className="block text-[13px] font-bold text-honey-700">Được chọn nhiều nhất</span>}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-border text-bark-700">
               <tr>
                 <th scope="row" className="p-2.5 sm:p-3.5 font-medium text-bark-600">Giá 1 hộp</th>
-                <td className="p-2.5 sm:p-3.5 font-bold text-pine-950">{minPrice(false) ? formatVND(minPrice(false)!) : "—"}</td>
-                <td className="p-2.5 sm:p-3.5 font-bold text-pine-950">{minPrice(true) ? formatVND(minPrice(true)!) : "—"}</td>
+                {tiers.map((t) => (
+                  <td key={t.key} className="p-2.5 sm:p-3.5 font-bold text-pine-950">{minPrice(t.key === "premium") ? formatVND(minPrice(t.key === "premium")!) : "—"}</td>
+                ))}
               </tr>
               <tr>
                 <th scope="row" className="p-2.5 sm:p-3.5 font-medium text-bark-600">Số món</th>
-                <td className="p-2.5 sm:p-3.5">{STANDARD_ITEMS}</td>
-                <td className="p-2.5 sm:p-3.5">{PREMIUM_ITEMS}</td>
+                {tiers.map((t) => (
+                  <td key={t.key} className="p-2.5 sm:p-3.5">{tierItemCount(boxes, t.key) || "—"}</td>
+                ))}
               </tr>
               <tr>
                 <th scope="row" className="p-2.5 sm:p-3.5 font-medium text-bark-600">Trị giá sản phẩm tối thiểu</th>
-                <td className="p-2.5 sm:p-3.5">{minValue(false) ? formatVND(minValue(false)!) : "—"}</td>
-                <td className="p-2.5 sm:p-3.5">{minValue(true) ? formatVND(minValue(true)!) : "—"}</td>
+                {tiers.map((t) => (
+                  <td key={t.key} className="p-2.5 sm:p-3.5">{minValue(t.key === "premium") ? formatVND(minValue(t.key === "premium")!) : "—"}</td>
+                ))}
               </tr>
               <tr>
                 <th scope="row" className="p-2.5 sm:p-3.5 font-medium text-bark-600">Trong hộp có</th>
-                <td className="p-2.5 sm:p-3.5">Đồ ăn hoặc bánh thưởng, đồ chơi, 1 món chăm sóc hoặc phụ kiện</td>
-                <td className="p-2.5 sm:p-3.5">Như Tiêu chuẩn, thêm đồ chơi giấu thức ăn và món chăm sóc dùng hằng ngày</td>
-              </tr>
-              <tr>
-                <th scope="row" className="p-2.5 sm:p-3.5 font-medium text-bark-600">Hợp khi</th>
-                <td className="p-2.5 sm:p-3.5">Muốn thử trước, hoặc bổ sung bánh thưởng và đồ chơi đều đặn</td>
-                <td className="p-2.5 sm:p-3.5">Muốn nhiều món hơn trong một lần nhận</td>
+                {tiers.map((t) => (
+                  <td key={t.key} className="p-2.5 sm:p-3.5">{t.description || "—"}</td>
+                ))}
               </tr>
               <tr>
                 <td className="p-2.5 sm:p-3.5" />
-                <td className="p-2.5 sm:p-3.5">
-                  <Link href="/boxes?tier=standard#box-list" className={buttonClass("secondary", "md", "!px-2.5 sm:!px-4 text-center")}>
-                    <span className="hidden sm:inline">Xem hộp Tiêu chuẩn</span>
-                    <span className="sm:hidden">Xem hộp</span>
-                  </Link>
-                </td>
-                <td className="p-2.5 sm:p-3.5">
-                  <Link href="/boxes?tier=premium#box-list" className={buttonClass("primary", "md", "!px-2.5 sm:!px-4 text-center")}>
-                    <span className="hidden sm:inline">Xem hộp Premium</span>
-                    <span className="sm:hidden">Xem hộp</span>
-                  </Link>
-                </td>
+                {tiers.map((t, i) => (
+                  <td key={t.key} className="p-2.5 sm:p-3.5">
+                    <Link href={`/boxes?tier=${t.key}#box-list`} className={buttonClass(i === tiers.length - 1 ? "primary" : "secondary", "md", "!px-2.5 sm:!px-4 text-center")}>
+                      <span className="hidden sm:inline">Xem {t.name}</span>
+                      <span className="sm:hidden">Xem hộp</span>
+                    </Link>
+                  </td>
+                ))}
               </tr>
             </tbody>
           </table>

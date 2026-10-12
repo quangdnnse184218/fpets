@@ -4,7 +4,7 @@ import { Cookie, MailOpen, SprayCan, Volleyball } from "lucide-react";
 import { BUSINESS, productAssurances } from "@/config/business";
 import { ButtonLink } from "@/components/ui/Button";
 import { CONTACT_INFO } from "@/lib/contactInfo";
-import { PREMIUM_ITEMS, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
+import { QUIZ_NAME } from "@/lib/copy";
 
 export const metadata = {
   title: "Về FPETS",
@@ -89,7 +89,7 @@ export default function AboutPage() {
           <div className="space-y-1.5 max-w-2xl">
             <h2 id="contents-heading" className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">Trong một hộp có gì</h2>
             <p className="text-sm text-bark-700">
-              Box Tiêu chuẩn có {STANDARD_ITEMS}, Box Premium có {PREMIUM_ITEMS}. Tổng giá bán lẻ các món luôn cao hơn giá hộp.
+              Mỗi loại hộp có số món và mức trị giá riêng, ghi rõ ở trang Mystery Box. Tổng giá bán lẻ các món luôn cao hơn giá hộp.
             </p>
           </div>
           <dl className={`rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border sm:divide-y-0 sm:grid sm:divide-x ${BOX_CONTENTS.length === 4 ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}>

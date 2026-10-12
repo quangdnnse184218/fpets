@@ -171,6 +171,12 @@ export type Database = {
           },
         ]
       }
+      box_tiers: {
+        Row: { description: string; key: string; name: string; sort_order: number; updated_at: string }
+        Insert: { description?: string; key: string; name: string; sort_order?: number; updated_at?: string }
+        Update: { description?: string; key?: string; name?: string; sort_order?: number; updated_at?: string }
+        Relationships: []
+      }
       box_types: {
         Row: {
           baseprice: number

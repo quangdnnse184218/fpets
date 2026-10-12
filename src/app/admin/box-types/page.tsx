@@ -11,6 +11,7 @@ import PetSpeciesIcon from "@/components/common/PetSpeciesIcon";
 import { planUnitPrice } from "@/lib/pricing";
 import { useToast } from "@/components/ui/Toast";
 import ImageUpload from "@/components/admin/ImageUpload";
+import BoxTiersEditor from "@/components/admin/BoxTiersEditor";
 
 type BoxTypeRow = Tables<"box_types">;
 type PlanRow = Tables<"subscription_plans">;
@@ -154,6 +155,8 @@ export default function AdminBoxTypesPage() {
           <span>Thêm loại Box mới</span>
         </button>
       </div>
+
+      <BoxTiersEditor />
 
       {notice && (
         <div className="p-3 bg-grass-100 border border-grass-200 text-grass-900 rounded-box text-xs font-semibold flex items-center gap-2">

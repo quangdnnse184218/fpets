@@ -29,6 +29,3 @@ export const PAYMENT_METHODS_SHORT = "Chuyển khoản VietQR (payOS) hoặc COD
 export const QUIZ_NAME = "Pet Quiz";
 export const QUIZ_LENGTH = "7 câu, khoảng 2 phút";
 
-// Số món theo loại box (SPEC §3)
-export const STANDARD_ITEMS = "4–5 món";
-export const PREMIUM_ITEMS = "7–8 món";

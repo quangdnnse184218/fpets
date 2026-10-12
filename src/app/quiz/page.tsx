@@ -8,6 +8,7 @@ import { ArrowLeft, Cat, Check, Dog } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { fetchBoxTypes, fetchPlanOptions } from "@/lib/catalog";
 import { formatVND, formatWeight } from "@/lib/formatters";
+import { useBoxTiers } from "@/lib/boxTiers";
 import { planUnitPrice } from "@/lib/pricing";
 import { calcShippingFee } from "@/lib/shipping";
 import { BUSINESS } from "@/config/business";
@@ -99,6 +100,9 @@ export default function PetQuizPage() {
   const [preferences, setPreferences] = useState<string[]>([]);
   const [energy, setEnergy] = useState("");
   const [tier, setTier] = useState<Tier | null>(null);
+  // Tên, mô tả hạng hộp do admin sửa (bảng box_tiers)
+  const { tiers, byKey } = useBoxTiers();
+  const tierName = (t: Tier) => byKey(t).name;
   const [planCycles, setPlanCycles] = useState<number | null>(null);
 
   useEffect(() => {
@@ -304,8 +308,8 @@ export default function PetQuizPage() {
               <Image src={recommendedBox.imageUrl} alt="" fill sizes="112px" className="object-cover" />
             </div>
             <div className="min-w-0 space-y-1">
-              <p className={`text-xs font-bold uppercase tracking-[0.08em] ${current.tier === "premium" ? "text-amber-800" : "text-bark-500"}`}>
-                {current.tier === "premium" ? "Premium" : "Tiêu chuẩn"}
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-honey-800">
+                {tierName(current.tier)}
               </p>
               <h2 className="text-lg font-bold text-pine-950 leading-snug">{recommendedBox.name}</h2>
               <p className="text-xs text-bark-600">
@@ -352,7 +356,7 @@ export default function PetQuizPage() {
 
         {otherTierBox && otherTierBox.id !== recommendedBox.id && (
           <p className="text-sm text-bark-600">
-            {current.tier === "standard" ? "Muốn nhiều món hơn?" : "Muốn thử với chi phí thấp hơn?"}{" "}
+            {otherTierBox.basePrice > recommendedBox.basePrice ? "Muốn nhiều món hơn?" : "Muốn thử với chi phí thấp hơn?"}{" "}
             <button
               type="button"
               onClick={() => setTier(current.tier === "standard" ? "premium" : "standard")}
@@ -618,16 +622,17 @@ export default function PetQuizPage() {
           <>
             <QuestionTitle ref={headingRef} title="Bạn muốn hộp như thế nào?" hint="Cả hai loại đều tránh thành phần bé dị ứng và chọn đồ chơi đúng cỡ của bé." />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {(["standard", "premium"] as const).map((t) => {
+              {tiers.map((tierInfo) => {
+                const t = tierInfo.key;
                 const box = boxOf(t);
                 return (
                   <button key={t} type="button" aria-pressed={tier === t} onClick={() => setTier(t)} className={optionCard(tier === t)}>
-                    <span className={`block text-xs font-bold uppercase tracking-[0.08em] ${t === "premium" ? "text-amber-800" : "text-bark-500"}`}>{t === "premium" ? "Premium" : "Tiêu chuẩn"}</span>
+                    <span className="block text-xs font-bold uppercase tracking-[0.08em] text-honey-800">{tierInfo.name}</span>
                     <span className="block text-base font-extrabold text-pine-950 mt-1">{box ? `${formatVND(box.basePrice)} / hộp` : "—"}</span>
                     <span className="block text-xs text-bark-600 mt-1">
                       {box ? `${box.itemCount}, trị giá từ ${formatVND(box.minRetailValue)}` : ""}
                     </span>
-                    <span className="block text-xs text-bark-600 mt-1">{t === "premium" ? "Nhiều món hơn, có đồ chơi giấu thức ăn" : "Đủ đồ ăn, đồ chơi và 1 món chăm sóc"}</span>
+                    {tierInfo.description && <span className="block text-xs text-bark-600 mt-1">{tierInfo.description}</span>}
                   </button>
                 );
               })}

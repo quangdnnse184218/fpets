@@ -8,7 +8,8 @@ import { fetchBoxTypes, fetchProducts } from "@/lib/catalog";
 import { formatVND, formatDate } from "@/lib/formatters";
 import { createClient } from "@/lib/supabase/client";
 import ProductItemImage from "@/components/common/ProductItemImage";
-import { COD_RULE, DISLIKE_POLICY, NO_AUTO_CHARGE, PAYMENT_METHODS_SHORT, PREMIUM_ITEMS, QUIZ_LENGTH, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
+import { COD_RULE, DISLIKE_POLICY, NO_AUTO_CHARGE, PAYMENT_METHODS_SHORT, QUIZ_LENGTH, QUIZ_NAME } from "@/lib/copy";
+import { tierItemCount, useBoxTiers } from "@/lib/boxTiers";
 import { BoxType, Product } from "@/types/models";
 import { ButtonLink } from "@/components/ui/Button";
 import { SHIPPING_SUMMARY } from "@/lib/shipping";
@@ -37,7 +38,7 @@ const HOW_IT_WORKS = [
 const HOME_FAQ = [
   {
     q: "Trong hộp có những gì?",
-    a: `Box Tiêu chuẩn có ${STANDARD_ITEMS}, Box Premium có ${PREMIUM_ITEMS}. Hộp nào cũng có ít nhất 1 món ăn, 1 đồ chơi và 1 món chăm sóc hoặc phụ kiện.`,
+    a: "Số món tùy loại hộp, ghi rõ trên từng hộp ở trang Mystery Box. Hộp nào cũng có ít nhất 1 món ăn, 1 đồ chơi và 1 món chăm sóc hoặc phụ kiện.",
   },
   { q: "Bé không thích món trong hộp thì sao?", a: DISLIKE_POLICY },
   {
@@ -62,6 +63,8 @@ const liftCard = "transition-[transform,box-shadow,border-color] duration-300 ea
 
 export default function HomePage() {
   const plans = usePlans();
+  // Tên và mô tả hạng hộp do admin sửa (bảng box_tiers)
+  const { tiers, byKey } = useBoxTiers();
   // Khách đã có hồ sơ bé: tìm hộp theo hồ sơ có sẵn, không bắt làm Pet Quiz lại
   const { isLoggedIn, pets } = useApp();
   const myPets = isLoggedIn ? pets : [];
@@ -100,15 +103,16 @@ export default function HomePage() {
   }, []);
 
   // Giá và trị giá tối thiểu của 2 phân hạng lấy từ bảng box_types (giá trị gốc theo SPEC trong lúc chờ tải)
-  const tierOf = (premium: boolean, fallbackPrice: number, fallbackValue: number) => {
+  const tierStats = (premium: boolean, fallbackPrice: number, fallbackValue: number) => {
     const group = boxes.filter((b) => isPremium(b) === premium);
     return {
       price: group.length ? Math.min(...group.map((b) => b.basePrice)) : fallbackPrice,
       minValue: group.length ? Math.min(...group.map((b) => b.minRetailValue)) : fallbackValue,
     };
   };
-  const standard = tierOf(false, 299000, 380000);
-  const premium = tierOf(true, 499000, 650000);
+  const standard = tierStats(false, 299000, 380000);
+  const premium = tierStats(true, 499000, 650000);
+  const statsOf = (key: "standard" | "premium") => (key === "premium" ? premium : standard);
 
   return (
     <div className="space-y-12 sm:space-y-16 pb-12 sm:pb-20">
@@ -161,8 +165,13 @@ export default function HomePage() {
             )}
 
             <p className="hero-rise text-sm text-bark-700" style={{ "--rise-delay": "280ms" } as React.CSSProperties}>
-              Box Tiêu chuẩn từ <strong className="text-pine-950">{formatVND(standard.price)}</strong>, Box Premium từ{" "}
-              <strong className="text-pine-950">{formatVND(premium.price)}</strong> mỗi hộp.
+              {tiers.map((t, i) => (
+                <React.Fragment key={t.key}>
+                  {i > 0 && ", "}
+                  {t.name} từ <strong className="text-pine-950">{formatVND(statsOf(t.key).price)}</strong>
+                </React.Fragment>
+              ))}{" "}
+              mỗi hộp.
             </p>
 
             {/* Số liệu lấy thật từ database; chỉ hiện khi đã có dữ liệu để tránh khoe số 0 */}
@@ -236,7 +245,7 @@ export default function HomePage() {
         <Reveal className="flex items-end justify-between gap-4">
           <div className="space-y-1.5">
             <h2 id="audience-heading" className={sectionTitle}>Chọn hộp cho bé nhà bạn</h2>
-            <p className="text-sm text-bark-700">Mỗi nhóm có Box Tiêu chuẩn và Box Premium.</p>
+            <p className="text-sm text-bark-700">Mỗi nhóm có {tiers.map((t) => t.name).join(" và ")}.</p>
           </div>
           <Link href="/boxes" className="text-sm font-bold text-pine-900 hover:underline shrink-0">Tất cả hộp</Link>
         </Reveal>
@@ -276,17 +285,17 @@ export default function HomePage() {
         </Reveal>
 
         <Reveal className="rounded-container bg-surface-card border border-surface-border divide-y divide-surface-border overflow-hidden">
-          {[
-            { name: "Box Tiêu chuẩn", items: STANDARD_ITEMS, ...standard, href: "/boxes?tier=standard" },
-            { name: "Box Premium", items: PREMIUM_ITEMS, ...premium, href: "/boxes?tier=premium" },
-          ].map((tier) => (
+          {tiers.map((t) => ({ name: t.name, description: t.description, items: tierItemCount(boxes, t.key), ...statsOf(t.key), href: `/boxes?tier=${t.key}` })).map((tier) => (
             <Link key={tier.name} href={tier.href} className="group flex flex-wrap items-center gap-x-5 gap-y-1 px-4 sm:px-5 py-3.5 hover:bg-surface-muted/50 transition-colors">
               <span className="text-base font-bold text-pine-950 sm:w-36">{tier.name}</span>
               <span className="text-base font-extrabold text-pine-950 font-display tabular-nums">
                 {formatVND(tier.price)}
                 <span className="text-sm font-medium text-bark-600"> / hộp</span>
               </span>
-              <span className="text-sm text-bark-700 basis-full sm:basis-0 sm:flex-1">{tier.items}, trị giá sản phẩm từ {formatVND(tier.minValue)}</span>
+              <span className="text-sm text-bark-700 basis-full sm:basis-0 sm:flex-1">
+                {tier.items ? `${tier.items}, ` : ""}trị giá sản phẩm từ {formatVND(tier.minValue)}
+                {tier.description && <span className="block text-bark-600">{tier.description}</span>}
+              </span>
               <ArrowRight className="hidden sm:block w-4 h-4 text-pine-900 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
             </Link>
           ))}
@@ -294,7 +303,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-5 py-4 bg-honey-100/60">
             <p className="text-sm text-bark-800 leading-relaxed">
               <strong className="text-pine-950">Đăng ký gói định kỳ:</strong> {discountSentence(plans)}, {freeShippingPlans(plans)} được miễn phí giao hàng.{" "}
-              {capitalize(savingsSentence(plans, standard.price))} so với mua lẻ từng hộp Tiêu chuẩn.
+              {capitalize(savingsSentence(plans, standard.price))} so với mua lẻ từng hộp {byKey("standard").name.replace(/^box\s+/i, "")}.
             </p>
             <ButtonLink href="/subscription" variant="secondary" className="shrink-0">Xem gói định kỳ</ButtonLink>
           </div>

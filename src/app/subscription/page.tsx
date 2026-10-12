@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ArrowRight, Check, Minus } from "lucide-react";
 import { formatDate, formatVND } from "@/lib/formatters";
 import { fetchBoxTypes, fetchPlanOptions } from "@/lib/catalog";
+import { useBoxTiers } from "@/lib/boxTiers";
 import { QUIZ_NAME } from "@/lib/copy";
 import { BUSINESS } from "@/config/business";
 import { planUnitPrice } from "@/lib/pricing";
@@ -18,7 +19,7 @@ import { SubscriptionPlan } from "@/types/models";
 // Luồng thật của gói định kỳ (SPEC §5): hồ sơ bé → chọn hộp, gói, đợt giao → trả trước → nhận hộp mỗi tháng → gia hạn
 const STEPS = [
   { title: "Tạo hồ sơ cho bé", text: `Làm ${QUIZ_NAME} hoặc nhập nhanh: loài, cân nặng, độ tuổi, dị ứng và sở thích.` },
-  { title: "Chọn hộp, gói và đợt giao", text: "Box Tiêu chuẩn hoặc Premium; gói 1, 3 hoặc 6 hộp; giao đầu tháng hoặc giữa tháng." },
+  { title: "Chọn hộp, gói và đợt giao", text: "Chọn loại hộp cho bé; gói 1, 3 hoặc 6 hộp; giao đầu tháng hoặc giữa tháng." },
   { title: "Thanh toán một lần", text: "Trả trước toàn bộ gói bằng chuyển khoản VietQR (payOS). FPETS không lưu thẻ và không tự trừ tiền." },
   { title: "Nhận hộp đầu ngay, rồi mỗi tháng một hộp", text: "Hộp đầu gửi ngay sau khi thanh toán. Các hộp sau giao theo đợt bạn chọn; 7 ngày trước mỗi đợt, FPETS chốt hồ sơ của bé và chọn món, ưu tiên món bé chưa nhận ở các hộp trước." },
   { title: "Chấm món, gia hạn khi hết gói", text: "Chấm từng món thích hay không để hộp sau hợp hơn. Giao hết số hộp đã trả, FPETS nhắc bạn gia hạn." },
@@ -74,6 +75,8 @@ export default function SubscriptionIntroPage() {
   // Chọn gói thì sang xem các hộp với giá của gói đó. Hồ sơ bé chỉ cần khi đặt hộp, lúc đó khách tự chọn làm quiz hay nhập nhanh.
   const planHref = (cycles: number) => `/boxes?plan=${cycles}`;
   const [tier, setTier] = useState<"standard" | "premium">("standard");
+  // Tên hạng hộp do admin sửa (bảng box_tiers)
+  const { tiers, byKey } = useBoxTiers();
   const [prices, setPrices] = useState<{ standard: number; premium: number } | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   // Câu chữ về mức giảm dùng cùng dữ liệu với các thẻ gói bên dưới
@@ -140,7 +143,7 @@ export default function SubscriptionIntroPage() {
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-pine-950 font-display">Chọn gói</h2>
             <div role="group" aria-label="Loại hộp để tính giá" className="inline-flex p-1 rounded-box bg-surface-card border border-surface-border text-sm self-start">
-              {(["standard", "premium"] as const).map((t) => (
+              {tiers.map(({ key: t }) => (
                 <button
                   key={t}
                   type="button"
@@ -148,7 +151,7 @@ export default function SubscriptionIntroPage() {
                   onClick={() => setTier(t)}
                   className={`min-h-10 px-4 rounded-[10px] font-bold transition-colors ${tier === t ? "bg-pine-900 text-white" : "text-bark-600 hover:text-pine-950"}`}
                 >
-                  {t === "standard" ? "Box Tiêu chuẩn" : "Box Premium"}
+                  {byKey(t).name}
                 </button>
               ))}
             </div>
@@ -211,7 +214,7 @@ export default function SubscriptionIntroPage() {
             })}
           </div>
           <p className="text-xs text-bark-500">
-            Giá tính cho {tier === "standard" ? "Box Tiêu chuẩn" : "Box Premium"}. Chưa chắc bé có hợp không?{" "}
+            Giá tính cho {byKey(tier).name}. Chưa chắc bé có hợp không?{" "}
             <Link href="/boxes" className="font-bold text-pine-900 underline underline-offset-2">Mua thử 1 hộp</Link>, trả tiền khi nhận hàng.
           </p>
         </section>

@@ -38,10 +38,10 @@ const NAV_ITEMS: NavItem[] = [
     label: "Mystery Box",
     href: "/boxes",
     children: [
-      { href: "/boxes", label: "Tất cả loại hộp", desc: "Tiêu chuẩn và Premium, cho chó nhỏ, chó lớn và mèo" },
+      { href: "/boxes", label: "Tất cả loại hộp", desc: "Các loại hộp cho chó nhỏ, chó lớn và mèo" },
       { href: "/boxes?species=dog", label: "Hộp cho chó", desc: "Theo size chó nhỏ, chó lớn" },
       { href: "/boxes?species=cat", label: "Hộp cho mèo", desc: "Đồ ăn, đồ chơi hợp khẩu vị mèo" },
-      { href: "/boxes?tier=premium", label: "Hộp Premium", desc: "Nhiều món hơn, thương hiệu cao cấp" },
+      { href: "/boxes#compare-heading", label: "So sánh các loại hộp", desc: "Giá, số món và những gì có trong hộp" },
     ],
   },
   { label: "Gói định kỳ", href: "/subscription" },

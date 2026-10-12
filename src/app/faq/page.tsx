@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Search } from "lucide-react";
 import { DELIVERY_DAYS, SHIPPING_SUMMARY } from "@/lib/shipping";
-import { CANCEL_POLICY, COD_RULE, DISLIKE_POLICY, NO_AUTO_CHARGE, ONLINE_PAYMENT, PREMIUM_ITEMS, QUIZ_NAME, STANDARD_ITEMS } from "@/lib/copy";
+import { CANCEL_POLICY, COD_RULE, DISLIKE_POLICY, NO_AUTO_CHARGE, ONLINE_PAYMENT, QUIZ_NAME } from "@/lib/copy";
 import { CONTACT_INFO } from "@/lib/contactInfo";
 import { normalizeText } from "@/lib/petOptions";
 import { buttonClass } from "@/components/ui/Button";
@@ -34,7 +34,7 @@ const buildFaq = (plans: PlanLite[]): FaqItem[] => [
   {
     category: "box",
     question: "Mystery Box là gì, trong hộp có gì?",
-    answer: `Mystery Box là hộp quà chọn riêng cho từng bé chó hoặc mèo. Box Tiêu chuẩn có ${STANDARD_ITEMS}, Box Premium có ${PREMIUM_ITEMS}; hộp nào cũng có ít nhất 1 món ăn, 1 đồ chơi và 1 món chăm sóc hoặc phụ kiện.`,
+    answer: `Mystery Box là hộp quà chọn riêng cho từng bé chó hoặc mèo. Số món tùy loại hộp (ghi rõ trên từng hộp ở trang Mystery Box); hộp nào cũng có ít nhất 1 món ăn, 1 đồ chơi và 1 món chăm sóc hoặc phụ kiện.`,
   },
   {
     category: "box",
