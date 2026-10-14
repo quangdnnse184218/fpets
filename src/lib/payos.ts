@@ -5,13 +5,14 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 const API = "https://api-merchant.payos.vn";
 
+// Khóa dán vào Vercel hay dính dấu cách / xuống dòng: bỏ đi để chữ ký không bị sai
+const env = (name: string) => (process.env[name] || "").trim();
+
 export function payosConfigured(): boolean {
-  return Boolean(
-    process.env.PAYOS_CLIENT_ID && process.env.PAYOS_API_KEY && process.env.PAYOS_CHECKSUM_KEY && process.env.PAYOS_SERVER_SECRET
-  );
+  return Boolean(env("PAYOS_CLIENT_ID") && env("PAYOS_API_KEY") && env("PAYOS_CHECKSUM_KEY") && env("PAYOS_SERVER_SECRET"));
 }
 
-const hmac = (data: string) => createHmac("sha256", process.env.PAYOS_CHECKSUM_KEY || "").update(data).digest("hex");
+const hmac = (data: string) => createHmac("sha256", env("PAYOS_CHECKSUM_KEY")).update(data).digest("hex");
 
 function safeEqual(a: string, b: string): boolean {
   const ba = Buffer.from(a);
@@ -21,8 +22,8 @@ function safeEqual(a: string, b: string): boolean {
 
 function headers() {
   return {
-    "x-client-id": process.env.PAYOS_CLIENT_ID || "",
-    "x-api-key": process.env.PAYOS_API_KEY || "",
+    "x-client-id": env("PAYOS_CLIENT_ID"),
+    "x-api-key": env("PAYOS_API_KEY"),
     "Content-Type": "application/json",
   };
 }
@@ -49,7 +50,7 @@ function dataToSignString(data: Record<string, unknown>): string {
 }
 
 export function verifyPayosSignature(data: Record<string, unknown>, signature: string): boolean {
-  if (!data || typeof signature !== "string" || !process.env.PAYOS_CHECKSUM_KEY) return false;
+  if (!data || typeof signature !== "string" || !env("PAYOS_CHECKSUM_KEY")) return false;
   return safeEqual(hmac(dataToSignString(data)), signature);
 }
 
